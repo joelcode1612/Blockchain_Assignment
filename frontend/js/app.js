@@ -174,3 +174,12 @@ function setRole(role) {
   }
   window.scrollTo({ top: 0, behavior: "instant" });
 }
+
+
+// Highlight active sidebar item based on URL
+document.querySelectorAll('.nav-item[onclick*="page_updated"]').forEach(el => {
+  const href = el.getAttribute('onclick').match(/'(.*?)'/)[1];
+  if (window.location.pathname.includes(href)) {
+    el.classList.add('active');
+  }
+});

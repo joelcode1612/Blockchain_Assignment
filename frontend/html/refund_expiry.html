@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Refund & Expiry — Traxen</title>
+<style>
+  :root{
+    --bg:#0a0b0d;
+    --panel:#111318;
+    --panel-2:#15171d;
+    --border:#22252c;
+    --border-soft:#1a1c22;
+    --text:#f3f4f6;
+    --text-dim:#9199a6;
+    --text-faint:#5b6270;
+    --lime:#cdfa3f;
+    --lime-dim:#a9d431;
+    --lime-glow:rgba(205,250,63,0.14);
+    --red:#ff5c5c;
+    --red-glow:rgba(255,92,92,.12);
+    --amber:#ffb43c;
+    --amber-glow:rgba(255,180,60,.12);
+    --blue:#4f9dff;
+    --radius:10px;
+    --mono:'JetBrains Mono','SF Mono',Consolas,monospace;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;-webkit-font-smoothing:antialiased;}
+  .app{display:flex;min-height:100vh;}
+  .sidebar{width:230px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--border-soft);padding:20px 14px;display:flex;flex-direction:column;}
+  .brand{display:flex;align-items:center;gap:8px;padding:0 6px 22px 6px;font-weight:700;font-size:15px;letter-spacing:-0.02em;}
+  .brand-mark{width:22px;height:22px;border-radius:6px;background:var(--lime);display:flex;align-items:center;justify-content:center;color:#0a0b0d;font-size:13px;font-weight:800;}
+  .nav-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-faint);padding:0 10px;margin-bottom:6px;}
+  .nav-group{margin-bottom:18px;}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;color:var(--text-dim);font-size:13px;font-weight:500;cursor:pointer;user-select:none;transition:background .15s,color .15s;}
+  .nav-item svg{width:15px;height:15px;flex-shrink:0;opacity:.8;}
+  .nav-item:hover{background:var(--panel-2);color:var(--text);}
+  .nav-item.active{background:var(--lime);color:#0a0b0d;font-weight:600;}
+  .nav-item.active svg{opacity:1;}
+  .contract-tag{margin-top:auto;padding-top:14px;border-top:1px solid var(--border-soft);font-size:10.5px;color:var(--text-faint);font-family:var(--mono);}
+  .contract-tag .dot{width:6px;height:6px;border-radius:50%;background:var(--lime);display:inline-block;margin-right:6px;}
+  .main{flex:1;min-width:0;}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-bottom:1px solid var(--border-soft);}
+  .topbar h1{font-size:18px;margin:0;font-weight:600;letter-spacing:-.01em;}
+  .topbar .sub{font-size:12.5px;color:var(--text-faint);margin-top:2px;}
+  .agreement-select{background:var(--panel);border:1px solid var(--border-soft);border-radius:8px;padding:8px 12px;font-size:12.5px;color:var(--text-dim);display:flex;align-items:center;gap:8px;}
+  .agreement-select select{background:transparent;border:none;color:var(--text);font-size:12.5px;font-weight:600;outline:none;}
+  .content{padding:24px 28px 60px;max-width:1180px;}
+  .view{display:block;}
+  .panel{background:var(--panel);border:1px solid var(--border-soft);border-radius:var(--radius);padding:22px;margin-bottom:18px;}
+  .panel h2{margin:0 0 4px;font-size:15.5px;font-weight:700;}
+  .panel .desc{color:var(--text-faint);font-size:12.5px;margin-bottom:18px;}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+  .kv{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-soft);font-size:12.5px;}
+  .kv:last-child{border-bottom:none;}
+  .kv .k{color:var(--text-faint);}
+  .kv .v{font-weight:700;}
+  .btn{padding:10px 18px;border-radius:7px;font-size:12.5px;font-weight:700;cursor:pointer;border:1px solid transparent;transition:.15s;}
+  .btn-danger{background:transparent;border-color:rgba(255,92,92,.4);color:var(--red);}
+  .btn-block{width:100%;}
+  .pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:10.5px;font-weight:700;white-space:nowrap;}
+  .pill.lime{background:var(--lime-glow);color:var(--lime);}
+  .pill.amber{background:var(--amber-glow);color:var(--amber);}
+  .pill.red{background:var(--red-glow);color:var(--red);}
+  .pill.gray{background:var(--panel-2);color:var(--text-faint);border:1px solid var(--border);}
+  .pill .dot{width:5px;height:5px;border-radius:50%;background:currentColor;}
+  .formula-box{background:var(--panel-2);border:1px solid var(--border-soft);border-radius:9px;padding:16px 18px;font-family:var(--mono);font-size:12.5px;color:var(--text-dim);margin-bottom:16px;line-height:1.7;}
+  .formula-box .hl{color:var(--lime);font-weight:700;}
+  .formula-box .op{color:var(--text-faint);}
+  .countdown-ring{position:relative;width:120px;height:120px;margin:0 auto 14px;}
+  .countdown-ring svg{transform:rotate(-90deg);}
+  .countdown-ring .bg{fill:none;stroke:var(--border);stroke-width:8;}
+  .countdown-ring .fg{fill:none;stroke:var(--lime);stroke-width:8;stroke-linecap:round;}
+  .countdown-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .countdown-center .num{font-size:20px;font-weight:800;}
+  .countdown-center .lbl{font-size:9.5px;color:var(--text-faint);text-transform:uppercase;}
+  .expiry-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+  .expiry-card{background:var(--panel-2);border:1px solid var(--border-soft);border-radius:9px;padding:16px;text-align:center;}
+  .expiry-card.risk{border-color:rgba(255,180,60,.35);}
+  .expiry-card.expired{border-color:rgba(255,92,92,.35);}
+  .log-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border-soft);font-size:12.5px;}
+  .log-row:last-child{border-bottom:none;}
+  .log-icon{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;}
+  .log-icon.refund{background:var(--amber-glow);color:var(--amber);}
+  .log-main{flex:1;}
+  .log-title{font-weight:600;}
+  .log-sub{font-size:11px;color:var(--text-faint);font-family:var(--mono);}
+  .log-time{font-size:11px;color:var(--text-faint);white-space:nowrap;}
+  ::selection{background:var(--lime);color:#0a0b0d;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="main">
+    <div class="topbar">
+      <div><h1>Automatic Refund &amp; Expiry Tracking</h1><div class="sub">Deadline monitoring and automatic refund execution</div></div>
+      <div class="agreement-select"><span>Agreement:</span><select><option>#AG8901 — Electronics Shipment to New York</option><option>#AG8877 — Textile Shipment to Chicago</option><option>#AG8804 — Machinery Parts to Austin</option></select></div>
+    </div>
+    <div class="content">
+      <div class="view">
+        <div class="two-col">
+          <div class="panel" style="text-align:center;">
+            <h2 style="text-align:left;">Deadline Countdown — #AG8901</h2>
+            <div class="desc" style="text-align:left;">Time remaining before the delivery deadline triggers refund eligibility.</div>
+            <div class="countdown-ring"><svg width="120" height="120" viewBox="0 0 120 120"><circle class="bg" cx="60" cy="60" r="52"/><circle class="fg" cx="60" cy="60" r="52" stroke-dasharray="327" stroke-dashoffset="98"/></svg><div class="countdown-center"><div class="num">70%</div><div class="lbl">Time Left</div></div></div>
+            <div class="kv"><span class="k">Deadline</span><span class="v">2025-07-15, 12:00 PM</span></div>
+            <div class="kv"><span class="k">Time Remaining</span><span class="v" style="color:var(--lime);">4d 6h 12m</span></div>
+            <div class="kv"><span class="k">Expiry Status</span><span class="v"><span class="pill lime"><span class="dot"></span>On Track</span></span></div>
+          </div>
+          <div class="panel">
+            <h2>Refund Logic</h2>
+            <div class="desc">Automatic refund is triggered if a critical milestone isn't verified before the deadline.</div>
+            <div class="formula-box">if (block.timestamp &gt; <span class="hl">agreement.deadline</span> &amp;&amp;<br>&nbsp;&nbsp;!milestone[<span class="hl">critical</span>].verified) {<br>&nbsp;&nbsp;&nbsp;&nbsp;refundAmount = <span class="hl">remainingLocked</span>;<br>&nbsp;&nbsp;&nbsp;&nbsp;shipper.transfer(refundAmount);<br>&nbsp;&nbsp;&nbsp;&nbsp;agreement.status = <span class="hl">REFUNDED</span>;<br>}</div>
+            <div class="kv"><span class="k">Refund Trigger</span><span class="v">Deadline passed + milestone unmet</span></div>
+            <div class="kv"><span class="k">Refund Recipient</span><span class="v">Shipper (original depositor)</span></div>
+            <div class="kv"><span class="k">Remaining Locked (if refunded now)</span><span class="v">3.50 ETH</span></div>
+            <button class="btn btn-danger btn-block" style="margin-top:14px;" onclick="simulateExpiry()">Simulate Deadline Expiry</button>
+          </div>
+        </div>
+        <div class="panel">
+          <h2>Expiry Status Across Agreements</h2>
+          <div class="expiry-grid">
+            <div class="expiry-card"><div class="pill lime" style="margin-bottom:8px;"><span class="dot"></span>On Track</div><div style="font-weight:700;">#AG8901</div><div style="font-size:11px;color:var(--text-faint);">4d 6h remaining</div></div>
+            <div class="expiry-card risk"><div class="pill amber" style="margin-bottom:8px;"><span class="dot"></span>At Risk</div><div style="font-weight:700;">#AG8877</div><div style="font-size:11px;color:var(--text-faint);">6h remaining · milestone 3 unverified</div></div>
+            <div class="expiry-card expired"><div class="pill red" style="margin-bottom:8px;"><span class="dot"></span>Expired</div><div style="font-weight:700;">#AG8650</div><div style="font-size:11px;color:var(--text-faint);">Refunded 2.20 ETH to shipper</div></div>
+          </div>
+        </div>
+        <div class="panel">
+          <h2>Refund Execution Log</h2>
+          <div class="log-row"><div class="log-icon refund">↩</div><div class="log-main"><div class="log-title">Auto-refund executed — #AG8650</div><div class="log-sub">tx 0x51cc…8a02 · 2.20 ETH → Shipper 0x7a83…4F2E</div></div><div class="log-time">6 days ago</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+function simulateExpiry(){
+  alert('Deadline simulated as passed — Milestone 4 (Delivered) not verified.\n\nAuto-refund executed: 3.50 ETH returned to shipper. Agreement status set to REFUNDED.');
+}
+</script>
+</body>
+<script src="/js/web3_integration.js"></script>
+<script src="/js/api.js"></script>
+</html>

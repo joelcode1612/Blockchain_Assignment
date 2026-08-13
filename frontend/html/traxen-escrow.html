@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Traxen — Escrow Engine</title>
+<style>
+  :root{
+    --bg:#0a0b0d;
+    --panel:#111318;
+    --panel-2:#15171d;
+    --border:#22252c;
+    --border-soft:#1a1c22;
+    --text:#f3f4f6;
+    --text-dim:#9199a6;
+    --text-faint:#5b6270;
+    --lime:#cdfa3f;
+    --lime-dim:#a9d431;
+    --lime-glow:rgba(205,250,63,0.14);
+    --red:#ff5c5c;
+    --red-glow:rgba(255,92,92,.12);
+    --amber:#ffb43c;
+    --amber-glow:rgba(255,180,60,.12);
+    --blue:#4f9dff;
+    --radius:10px;
+    --mono:'JetBrains Mono','SF Mono',Consolas,monospace;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;-webkit-font-smoothing:antialiased;}
+  .app{display:flex;min-height:100vh;}
+
+  /* ---------- SIDEBAR ---------- */
+  .sidebar{width:230px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--border-soft);padding:20px 14px;display:flex;flex-direction:column;}
+  .brand{display:flex;align-items:center;gap:8px;padding:0 6px 22px 6px;font-weight:700;font-size:15px;letter-spacing:-0.02em;}
+  .brand-mark{width:22px;height:22px;border-radius:6px;background:var(--lime);display:flex;align-items:center;justify-content:center;color:#0a0b0d;font-size:13px;font-weight:800;}
+  .nav-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-faint);padding:0 10px;margin-bottom:6px;}
+  .nav-group{margin-bottom:18px;}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;color:var(--text-dim);font-size:13px;font-weight:500;cursor:pointer;user-select:none;transition:background .15s,color .15s;}
+  .nav-item svg{width:15px;height:15px;flex-shrink:0;opacity:.8;}
+  .nav-item:hover{background:var(--panel-2);color:var(--text);}
+  .nav-item.active{background:var(--lime);color:#0a0b0d;font-weight:600;}
+  .nav-item.active svg{opacity:1;}
+  .contract-tag{margin-top:auto;padding-top:14px;border-top:1px solid var(--border-soft);font-size:10.5px;color:var(--text-faint);font-family:var(--mono);}
+  .contract-tag .dot{width:6px;height:6px;border-radius:50%;background:var(--lime);display:inline-block;margin-right:6px;}
+
+  /* ---------- MAIN ---------- */
+  .main{flex:1;min-width:0;}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-bottom:1px solid var(--border-soft);}
+  .topbar h1{font-size:18px;margin:0;font-weight:600;letter-spacing:-.01em;}
+  .topbar .sub{font-size:12.5px;color:var(--text-faint);margin-top:2px;}
+  .agreement-select{background:var(--panel);border:1px solid var(--border-soft);border-radius:8px;padding:8px 12px;font-size:12.5px;color:var(--text-dim);display:flex;align-items:center;gap:8px;}
+  .agreement-select select{background:transparent;border:none;color:var(--text);font-size:12.5px;font-weight:600;outline:none;}
+
+  .content{padding:24px 28px 60px;max-width:1180px;}
+  .view{display:none;}
+  .view.active{display:block;animation:fade .25s ease;}
+  @keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
+
+  /* ---------- SHARED COMPONENTS ---------- */
+  .stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
+  .stat-card{background:var(--panel);border:1px solid var(--border-soft);border-radius:var(--radius);padding:16px 18px;}
+  .stat-card .lbl{font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;}
+  .stat-card .val{font-size:22px;font-weight:800;}
+  .stat-card .val.lime{color:var(--lime);}
+  .stat-card .val.amber{color:var(--amber);}
+  .stat-card .delta{font-size:11px;color:var(--text-faint);margin-top:4px;}
+
+  .panel{background:var(--panel);border:1px solid var(--border-soft);border-radius:var(--radius);padding:22px;margin-bottom:18px;}
+  .panel h2{margin:0 0 4px;font-size:15.5px;font-weight:700;}
+  .panel .desc{color:var(--text-faint);font-size:12.5px;margin-bottom:18px;}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+
+  table{width:100%;border-collapse:collapse;}
+  th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint);padding:9px 10px;border-bottom:1px solid var(--border-soft);font-weight:700;}
+  td{padding:11px 10px;border-bottom:1px solid var(--border-soft);font-size:12.5px;vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  .mono{font-family:var(--mono);font-size:11.5px;color:var(--text-dim);}
+
+  .pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:10.5px;font-weight:700;white-space:nowrap;}
+  .pill.lime{background:var(--lime-glow);color:var(--lime);}
+  .pill.amber{background:var(--amber-glow);color:var(--amber);}
+  .pill.red{background:var(--red-glow);color:var(--red);}
+  .pill.gray{background:var(--panel-2);color:var(--text-faint);border:1px solid var(--border);}
+  .pill .dot{width:5px;height:5px;border-radius:50%;background:currentColor;}
+
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:12px;color:var(--text-dim);margin-bottom:6px;font-weight:500;}
+  .field input,.field select{width:100%;background:var(--panel-2);border:1px solid var(--border);border-radius:7px;padding:10px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none;transition:border-color .15s;}
+  .field input:focus,.field select:focus{border-color:var(--lime);}
+  .field-hint{font-size:11px;color:var(--text-faint);margin-top:5px;}
+  .max-btn{position:absolute;right:8px;top:32px;font-size:10px;font-weight:700;color:var(--lime);background:var(--lime-glow);padding:3px 8px;border-radius:5px;cursor:pointer;}
+  .field-wrap{position:relative;}
+
+  .btn{padding:10px 18px;border-radius:7px;font-size:12.5px;font-weight:700;cursor:pointer;border:1px solid transparent;transition:.15s;}
+  .btn-primary{background:var(--lime);color:#0a0b0d;}
+  .btn-primary:hover{background:var(--lime-dim);}
+  .btn-primary:disabled{background:var(--border);color:var(--text-faint);cursor:not-allowed;}
+  .btn-ghost{background:transparent;border-color:var(--border);color:var(--text-dim);}
+  .btn-ghost:hover{color:var(--text);border-color:var(--text-faint);}
+  .btn-danger{background:transparent;border-color:rgba(255,92,92,.4);color:var(--red);}
+  .btn-block{width:100%;}
+  .btn-row{display:flex;gap:10px;}
+
+  .progress-track{height:8px;border-radius:6px;background:var(--panel-2);border:1px solid var(--border-soft);overflow:hidden;margin:10px 0 6px;}
+  .progress-fill{height:100%;background:linear-gradient(90deg,var(--lime-dim),var(--lime));border-radius:6px;transition:width .4s ease;}
+  .progress-labels{display:flex;justify-content:space-between;font-size:11.5px;color:var(--text-faint);}
+
+  .checklist{margin-top:16px;}
+  .check-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border-soft);font-size:13px;}
+  .check-item:last-child{border-bottom:none;}
+  .check-icon{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0;}
+  .check-icon.done{background:var(--lime);color:#0a0b0d;}
+  .check-icon.pending{background:var(--panel-2);border:1px solid var(--border);color:var(--text-faint);}
+  .check-item.done .check-label{color:var(--text);}
+  .check-item.pending .check-label{color:var(--text-faint);}
+  .check-sub{font-size:11px;color:var(--text-faint);margin-left:auto;font-family:var(--mono);}
+
+  .formula-box{background:var(--panel-2);border:1px solid var(--border-soft);border-radius:9px;padding:16px 18px;font-family:var(--mono);font-size:12.5px;color:var(--text-dim);margin-bottom:16px;line-height:1.7;}
+  .formula-box .hl{color:var(--lime);font-weight:700;}
+  .formula-box .op{color:var(--text-faint);}
+
+  .kv{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-soft);font-size:12.5px;}
+  .kv:last-child{border-bottom:none;}
+  .kv .k{color:var(--text-faint);}
+  .kv .v{font-weight:700;}
+
+  .banner{display:flex;align-items:flex-start;gap:12px;border-radius:9px;padding:14px 16px;font-size:12.5px;margin-bottom:18px;}
+  .banner.info{background:rgba(79,157,255,.08);border:1px solid rgba(79,157,255,.25);color:#a8cbff;}
+  .banner.warn{background:var(--amber-glow);border:1px solid rgba(255,180,60,.3);color:var(--amber);}
+  .banner.danger{background:var(--red-glow);border:1px solid rgba(255,92,92,.3);color:var(--red);}
+  .banner.ok{background:var(--lime-glow);border:1px solid rgba(205,250,63,.3);color:var(--lime);}
+  .banner-icon{font-size:15px;line-height:1;}
+
+  .log-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border-soft);font-size:12.5px;}
+  .log-row:last-child{border-bottom:none;}
+  .log-icon{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;}
+  .log-icon.ok{background:var(--lime-glow);color:var(--lime);}
+  .log-icon.blocked{background:var(--red-glow);color:var(--red);}
+  .log-icon.refund{background:var(--amber-glow);color:var(--amber);}
+  .log-main{flex:1;}
+  .log-title{font-weight:600;}
+  .log-sub{font-size:11px;color:var(--text-faint);font-family:var(--mono);}
+  .log-time{font-size:11px;color:var(--text-faint);white-space:nowrap;}
+
+  .countdown-ring{position:relative;width:120px;height:120px;margin:0 auto 14px;}
+  .countdown-ring svg{transform:rotate(-90deg);}
+  .countdown-ring .bg{fill:none;stroke:var(--border);stroke-width:8;}
+  .countdown-ring .fg{fill:none;stroke:var(--lime);stroke-width:8;stroke-linecap:round;}
+  .countdown-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .countdown-center .num{font-size:20px;font-weight:800;}
+  .countdown-center .lbl{font-size:9.5px;color:var(--text-faint);text-transform:uppercase;}
+
+  .expiry-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+  .expiry-card{background:var(--panel-2);border:1px solid var(--border-soft);border-radius:9px;padding:16px;text-align:center;}
+  .expiry-card.risk{border-color:rgba(255,180,60,.35);}
+  .expiry-card.expired{border-color:rgba(255,92,92,.35);}
+
+  ::selection{background:var(--lime);color:#0a0b0d;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="brand"><div class="brand-mark">T</div> Traxen</div>
+    <div class="nav-group">
+      <div class="nav-label">Escrow Engine</div>
+      <div class="nav-item active" data-goto="deposit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v14M6 10l6 6 6-6"/><path d="M4 20h16"/></svg> Deposit &amp; Balance</div>
+      <div class="nav-item" data-goto="lock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg> Fund Locking</div>
+      <div class="nav-item" data-goto="release"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg> Milestone Release</div>
+      <div class="nav-item" data-goto="duplicate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L14.7 3.86a2 2 0 00-3.4 0z"/></svg> Duplicate Guard</div>
+      <div class="nav-item" data-goto="refund"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg> Refund &amp; Expiry</div>
+    </div>
+    <div class="contract-tag"><span class="dot"></span>0x9F2c…7B1E · Sepolia</div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <h1 id="pageTitle">Escrow Deposit &amp; Balance Tracking</h1>
+        <div class="sub" id="pageSub">Monitor deposits and locked balances across all agreements</div>
+      </div>
+      <div class="agreement-select">
+        Agreement:
+        <select>
+          <option>#AG8901 — Electronics Shipment to New York</option>
+          <option>#AG8877 — Textile Shipment to Chicago</option>
+          <option>#AG8804 — Machinery Parts to Austin</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- ============ 1. DEPOSIT & BALANCE TRACKING ============ -->
+      <div class="view active" id="view-deposit">
+        <div class="stat-row">
+          <div class="stat-card"><div class="lbl">Total Deposited</div><div class="val lime">18.40 ETH</div><div class="delta">Across 6 agreements</div></div>
+          <div class="stat-card"><div class="lbl">Currently Locked</div><div class="val">12.90 ETH</div><div class="delta">4 active escrows</div></div>
+          <div class="stat-card"><div class="lbl">Released to Carriers</div><div class="val">5.10 ETH</div><div class="delta">Across 9 milestones</div></div>
+          <div class="stat-card"><div class="lbl">Refunded</div><div class="val amber">0.40 ETH</div><div class="delta">1 expired agreement</div></div>
+        </div>
+
+        <div class="two-col">
+          <div class="panel">
+            <h2>Deposit Funds</h2>
+            <div class="desc">Deposit ETH into the escrow contract for agreement #AG8901.</div>
+            <div class="field"><label>Wallet Balance</label>
+              <div class="kv" style="border:1px solid var(--border-soft);border-radius:7px;padding:10px 12px;background:var(--panel-2);">
+                <span class="k">Available</span><span class="v">12.84 ETH</span>
+              </div>
+            </div>
+            <div class="field field-wrap">
+              <label>Deposit Amount (ETH)</label>
+              <input type="number" id="depositAmt" value="2.00" step="0.01" oninput="updateDepositPreview()">
+              <span class="max-btn" onclick="document.getElementById('depositAmt').value=12.84;updateDepositPreview();">MAX</span>
+              <div class="field-hint" id="depositHint">Required to reach full funding: 2.00 ETH remaining</div>
+            </div>
+            <button class="btn btn-primary btn-block" onclick="doDeposit()">Deposit to Escrow</button>
+          </div>
+
+          <div class="panel">
+            <h2>Escrow Balance — #AG8901</h2>
+            <div class="desc">Live on-chain balance for the selected agreement.</div>
+            <div class="progress-track"><div class="progress-fill" id="depositProgressFill" style="width:60%;"></div></div>
+            <div class="progress-labels"><span id="depositProgressLabel">3.00 / 5.00 ETH deposited</span><span>60%</span></div>
+            <div class="checklist">
+              <div class="kv"><span class="k">Required Total</span><span class="v">5.00 ETH</span></div>
+              <div class="kv"><span class="k">Deposited So Far</span><span class="v" id="kvDeposited">3.00 ETH</span></div>
+              <div class="kv"><span class="k">Remaining to Lock</span><span class="v" id="kvRemaining">2.00 ETH</span></div>
+              <div class="kv"><span class="k">Contract Status</span><span class="v"><span class="pill amber"><span class="dot"></span>Awaiting Full Funding</span></span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>All Agreement Balances</h2>
+          <div class="desc">Balance tracking across every escrow you're party to.</div>
+          <table>
+            <thead><tr><th>Agreement</th><th>Required</th><th>Deposited</th><th>Locked</th><th>Released</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td>#AG8901 — Electronics Shipment</td><td>5.00 ETH</td><td>3.00 ETH</td><td>3.00 ETH</td><td>0.00 ETH</td><td><span class="pill amber"><span class="dot"></span>Funding</span></td></tr>
+              <tr><td>#AG8877 — Textile Shipment</td><td>3.20 ETH</td><td>3.20 ETH</td><td>1.70 ETH</td><td>1.50 ETH</td><td><span class="pill lime"><span class="dot"></span>Active</span></td></tr>
+              <tr><td>#AG8804 — Machinery Parts</td><td>7.50 ETH</td><td>7.50 ETH</td><td>4.50 ETH</td><td>3.00 ETH</td><td><span class="pill lime"><span class="dot"></span>Active</span></td></tr>
+              <tr><td>#AG8712 — Furniture Batch</td><td>1.90 ETH</td><td>1.90 ETH</td><td>0.00 ETH</td><td>1.50 ETH</td><td><span class="pill gray"><span class="dot"></span>Completed</span></td></tr>
+              <tr><td>#AG8650 — Auto Parts</td><td>2.20 ETH</td><td>2.20 ETH</td><td>0.00 ETH</td><td>0.00 ETH</td><td><span class="pill red"><span class="dot"></span>Refunded</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ============ 2. FUND LOCKING & ACTIVATION ============ -->
+      <div class="view" id="view-lock">
+        <div class="banner warn" id="lockBanner">
+          <div class="banner-icon">⏳</div>
+          <div><strong>Awaiting full funding.</strong> Agreement #AG8901 activates automatically once the required 5.00 ETH is fully deposited and locked in the escrow contract.</div>
+        </div>
+
+        <div class="two-col">
+          <div class="panel">
+            <h2>Fund Locking Progress</h2>
+            <div class="desc">Funds are held by the smart contract and cannot be withdrawn once locked, only released via milestone verification or refund logic.</div>
+            <div class="progress-track"><div class="progress-fill" style="width:60%;"></div></div>
+            <div class="progress-labels"><span>3.00 / 5.00 ETH locked</span><span>60%</span></div>
+
+            <div class="checklist">
+              <div class="check-item done"><div class="check-icon done">✓</div><div class="check-label">Agreement created on-chain</div><div class="check-sub">Block #19244102</div></div>
+              <div class="check-item done"><div class="check-icon done">✓</div><div class="check-label">Initial deposit received</div><div class="check-sub">3.00 ETH</div></div>
+              <div class="check-item pending"><div class="check-icon pending">2</div><div class="check-label">Full amount locked (5.00 ETH)</div><div class="check-sub">2.00 ETH remaining</div></div>
+              <div class="check-item pending"><div class="check-icon pending">3</div><div class="check-label">Agreement auto-activates</div><div class="check-sub">pending</div></div>
+              <div class="check-item pending"><div class="check-icon pending">4</div><div class="check-label">Carrier notified &amp; pickup window opens</div><div class="check-sub">pending</div></div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <h2>Activation Rule</h2>
+            <div class="desc">How the contract decides an agreement is ready to begin.</div>
+            <div class="formula-box">
+              require(<span class="hl">totalDeposited</span> == <span class="hl">agreement.totalValue</span>);<br>
+              <span class="op">// funds fully locked →</span><br>
+              agreement.status = <span class="hl">ACTIVE</span>;<br>
+              <span class="op">// carrier can now begin fulfilment</span>
+            </div>
+            <div class="kv"><span class="k">Locking Mechanism</span><span class="v">On-chain escrow, non-custodial</span></div>
+            <div class="kv"><span class="k">Withdrawal While Locked</span><span class="v" style="color:var(--red);">Disabled</span></div>
+            <div class="kv"><span class="k">Activation Trigger</span><span class="v">Deposited == Required</span></div>
+            <div class="kv"><span class="k">Current State</span><span class="v"><span class="pill amber"><span class="dot"></span>Funding</span></span></div>
+            <button class="btn btn-primary btn-block" style="margin-top:14px;" onclick="simulateActivation()">Simulate Final Deposit → Activate</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ 3. MILESTONE RELEASE & CALCULATION ============ -->
+      <div class="view" id="view-release">
+        <div class="panel">
+          <h2>Payout Calculation</h2>
+          <div class="desc">Each milestone releases a percentage of the total locked escrow once verified.</div>
+          <div class="formula-box">
+            payout(milestone) = <span class="hl">agreement.totalValue</span> <span class="op">×</span> <span class="hl">milestone.percent</span> <span class="op">÷ 100</span><br>
+            <span class="op">// e.g. Milestone 1 — Pickup:</span> 5.00 ETH <span class="op">×</span> 30% = <span class="hl">1.50 ETH</span>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>Milestone Schedule — #AG8901</h2>
+          <table>
+            <thead><tr><th>#</th><th>Milestone</th><th>% of Payment</th><th>Payout Amount</th><th>Verification</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+              <tr>
+                <td>1</td><td>Pickup</td><td>30%</td><td>1.50 ETH</td><td class="mono">oracle: geo-confirm</td>
+                <td><span class="pill lime"><span class="dot"></span>Released</span></td><td></td>
+              </tr>
+              <tr>
+                <td>2</td><td>In Transit</td><td>20%</td><td>1.00 ETH</td><td class="mono">oracle: checkpoint scan</td>
+                <td><span class="pill amber"><span class="dot"></span>Verifying</span></td>
+                <td><button class="btn btn-primary" onclick="releaseMilestone(this)">Release</button></td>
+              </tr>
+              <tr>
+                <td>3</td><td>Out for Delivery</td><td>20%</td><td>1.00 ETH</td><td class="mono">oracle: last-mile scan</td>
+                <td><span class="pill gray"><span class="dot"></span>Pending</span></td><td>—</td>
+              </tr>
+              <tr>
+                <td>4</td><td>Delivered</td><td>30%</td><td>1.50 ETH</td><td class="mono">oracle: recipient sign-off</td>
+                <td><span class="pill gray"><span class="dot"></span>Pending</span></td><td>—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="two-col">
+          <div class="panel">
+            <h2>Release Summary</h2>
+            <div class="kv"><span class="k">Total Escrow</span><span class="v">5.00 ETH</span></div>
+            <div class="kv"><span class="k">Released So Far</span><span class="v" style="color:var(--lime);">1.50 ETH (30%)</span></div>
+            <div class="kv"><span class="k">Remaining Locked</span><span class="v">3.50 ETH</span></div>
+            <div class="kv"><span class="k">Next Release</span><span class="v">Milestone 2 — 1.00 ETH</span></div>
+          </div>
+          <div class="panel">
+            <h2>Release Log</h2>
+            <div class="log-row">
+              <div class="log-icon ok">✓</div>
+              <div class="log-main"><div class="log-title">Milestone 1 — Pickup released</div><div class="log-sub">tx 0x8a1f…c02d · 1.50 ETH → Carrier</div></div>
+              <div class="log-time">2 hrs ago</div>
+            </div>
+            <div class="log-row">
+              <div class="log-icon ok">✓</div>
+              <div class="log-main"><div class="log-title">Escrow fully locked</div><div class="log-sub">tx 0x21bd…9f31 · 5.00 ETH</div></div>
+              <div class="log-time">1 day ago</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ 4. DUPLICATE-PAYMENT PREVENTION ============ -->
+      <div class="view" id="view-duplicate">
+        <div class="banner ok">
+          <div class="banner-icon">🛡</div>
+          <div><strong>Guard active.</strong> Every milestone can only be released once — the contract checks a <code>paid[milestoneId]</code> flag before transferring funds and reverts any repeat call.</div>
+        </div>
+
+        <div class="two-col">
+          <div class="panel">
+            <h2>Prevention Logic</h2>
+            <div class="desc">How the contract blocks a milestone from being paid twice.</div>
+            <div class="formula-box">
+              function releaseMilestone(uint id) external {<br>
+              &nbsp;&nbsp;require(<span class="hl">!milestone[id].paid</span>, "Already released");<br>
+              &nbsp;&nbsp;require(<span class="hl">verified[id]</span>, "Not verified");<br>
+              &nbsp;&nbsp;milestone[id].paid = <span class="hl">true</span>; <span class="op">// state before transfer</span><br>
+              &nbsp;&nbsp;carrier.transfer(milestone[id].amount);<br>
+              }
+            </div>
+            <div class="kv"><span class="k">Guard Type</span><span class="v">paid[] boolean flag + checks-effects-interactions</span></div>
+            <div class="kv"><span class="k">Re-entrancy Protection</span><span class="v" style="color:var(--lime);">Enabled</span></div>
+            <div class="kv"><span class="k">Duplicate Attempts Blocked</span><span class="v">3 (last 30 days)</span></div>
+          </div>
+
+          <div class="panel">
+            <h2>Simulate Payment Attempt</h2>
+            <div class="desc">Try releasing an already-paid milestone to see the guard in action.</div>
+            <div class="field"><label>Milestone</label>
+              <select id="dupMilestone">
+                <option value="paid">Milestone 1 — Pickup (already released)</option>
+                <option value="unpaid">Milestone 2 — In Transit (not yet released)</option>
+              </select>
+            </div>
+            <button class="btn btn-primary btn-block" onclick="simulateDuplicate()">Attempt Release</button>
+            <div id="dupResult" style="margin-top:14px;"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>Payment Attempt Log</h2>
+          <div class="log-row">
+            <div class="log-icon blocked">✕</div>
+            <div class="log-main"><div class="log-title">Duplicate release blocked — Milestone 1</div><div class="log-sub">reverted: "Already released" · caller 0x7a83…4F2E</div></div>
+            <div class="log-time">3 hrs ago</div>
+          </div>
+          <div class="log-row">
+            <div class="log-icon ok">✓</div>
+            <div class="log-main"><div class="log-title">Milestone 1 — Pickup released</div><div class="log-sub">tx 0x8a1f…c02d · 1.50 ETH</div></div>
+            <div class="log-time">2 hrs ago</div>
+          </div>
+          <div class="log-row">
+            <div class="log-icon blocked">✕</div>
+            <div class="log-main"><div class="log-title">Duplicate release blocked — Milestone 1</div><div class="log-sub">reverted: "Already released" · caller 0x7a83…4F2E</div></div>
+            <div class="log-time">2 hrs ago</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ 5. REFUND & EXPIRY TRACKING ============ -->
+      <div class="view" id="view-refund">
+        <div class="two-col">
+          <div class="panel" style="text-align:center;">
+            <h2 style="text-align:left;">Deadline Countdown — #AG8901</h2>
+            <div class="desc" style="text-align:left;">Time remaining before the delivery deadline triggers refund eligibility.</div>
+            <div class="countdown-ring">
+              <svg width="120" height="120" viewBox="0 0 120 120">
+                <circle class="bg" cx="60" cy="60" r="52"/>
+                <circle class="fg" cx="60" cy="60" r="52" stroke-dasharray="327" stroke-dashoffset="98"/>
+              </svg>
+              <div class="countdown-center"><div class="num">70%</div><div class="lbl">Time Left</div></div>
+            </div>
+            <div class="kv"><span class="k">Deadline</span><span class="v">2025-07-15, 12:00 PM</span></div>
+            <div class="kv"><span class="k">Time Remaining</span><span class="v" style="color:var(--lime);">4d 6h 12m</span></div>
+            <div class="kv"><span class="k">Expiry Status</span><span class="v"><span class="pill lime"><span class="dot"></span>On Track</span></span></div>
+          </div>
+
+          <div class="panel">
+            <h2>Refund Logic</h2>
+            <div class="desc">Automatic refund is triggered if a critical milestone isn't verified before the deadline.</div>
+            <div class="formula-box">
+              if (block.timestamp &gt; <span class="hl">agreement.deadline</span> &amp;&amp;<br>
+              &nbsp;&nbsp;!milestone[<span class="hl">critical</span>].verified) {<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;refundAmount = <span class="hl">remainingLocked</span>;<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;shipper.transfer(refundAmount);<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;agreement.status = <span class="hl">REFUNDED</span>;<br>
+              }
+            </div>
+            <div class="kv"><span class="k">Refund Trigger</span><span class="v">Deadline passed + milestone unmet</span></div>
+            <div class="kv"><span class="k">Refund Recipient</span><span class="v">Shipper (original depositor)</span></div>
+            <div class="kv"><span class="k">Remaining Locked (if refunded now)</span><span class="v">3.50 ETH</span></div>
+            <button class="btn btn-danger btn-block" style="margin-top:14px;" onclick="simulateExpiry()">Simulate Deadline Expiry</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>Expiry Status Across Agreements</h2>
+          <div class="expiry-grid">
+            <div class="expiry-card"><div class="pill lime" style="margin-bottom:8px;"><span class="dot"></span>On Track</div><div style="font-weight:700;">#AG8901</div><div style="font-size:11px;color:var(--text-faint);">4d 6h remaining</div></div>
+            <div class="expiry-card risk"><div class="pill amber" style="margin-bottom:8px;"><span class="dot"></span>At Risk</div><div style="font-weight:700;">#AG8877</div><div style="font-size:11px;color:var(--text-faint);">6h remaining · milestone 3 unverified</div></div>
+            <div class="expiry-card expired"><div class="pill red" style="margin-bottom:8px;"><span class="dot"></span>Expired</div><div style="font-weight:700;">#AG8650</div><div style="font-size:11px;color:var(--text-faint);">Refunded 2.20 ETH to shipper</div></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>Refund Execution Log</h2>
+          <div class="log-row">
+            <div class="log-icon refund">↩</div>
+            <div class="log-main"><div class="log-title">Auto-refund executed — #AG8650</div><div class="log-sub">tx 0x51cc…8a02 · 2.20 ETH → Shipper 0x7a83…4F2E</div></div>
+            <div class="log-time">6 days ago</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// ---------------- NAV ----------------
+const titles = {
+  deposit:   ["Escrow Deposit & Balance Tracking", "Monitor deposits and locked balances across all agreements"],
+  lock:      ["Fund Locking & Agreement Activation", "Track how deposited funds get locked and activate the agreement"],
+  release:   ["Automatic Milestone Payment Release", "Calculation and release of milestone-based payouts"],
+  duplicate: ["Duplicate-Payment Prevention", "How the contract guards against double-releasing a milestone"],
+  refund:    ["Automatic Refund & Expiry Tracking", "Deadline monitoring and automatic refund execution"]
+};
+function goto(view){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+view).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active', el.dataset.goto===view));
+  document.getElementById('pageTitle').textContent = titles[view][0];
+  document.getElementById('pageSub').textContent = titles[view][1];
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+document.querySelectorAll('.nav-item[data-goto]').forEach(el=>el.addEventListener('click', ()=>goto(el.dataset.goto)));
+
+// ---------------- DEPOSIT PAGE ----------------
+const required = 5.00, alreadyDeposited = 3.00;
+function updateDepositPreview(){
+  let amt = parseFloat(document.getElementById('depositAmt').value) || 0;
+  const remaining = Math.max(required - alreadyDeposited, 0);
+  const hint = document.getElementById('depositHint');
+  if(amt >= remaining){
+    hint.textContent = `This deposit fully funds the agreement (${remaining.toFixed(2)} ETH needed).`;
+    hint.style.color = 'var(--lime)';
+  } else {
+    hint.textContent = `Required to reach full funding: ${(remaining-amt).toFixed(2)} ETH remaining after this deposit`;
+    hint.style.color = 'var(--text-faint)';
+  }
+}
+function doDeposit(){
+  let amt = parseFloat(document.getElementById('depositAmt').value) || 0;
+  if(amt<=0) return;
+  const newTotal = Math.min(alreadyDeposited + amt, required);
+  const pct = (newTotal/required*100).toFixed(0);
+  document.getElementById('depositProgressFill').style.width = pct+'%';
+  document.getElementById('depositProgressLabel').textContent = `${newTotal.toFixed(2)} / ${required.toFixed(2)} ETH deposited`;
+  document.getElementById('kvDeposited').textContent = newTotal.toFixed(2)+' ETH';
+  document.getElementById('kvRemaining').textContent = (required-newTotal).toFixed(2)+' ETH';
+  if(newTotal >= required){
+    alert('Deposit successful — escrow fully funded. Agreement will now activate.');
+  } else {
+    alert('Deposit successful — '+amt.toFixed(2)+' ETH added to escrow.');
+  }
+}
+
+// ---------------- LOCK / ACTIVATION PAGE ----------------
+function simulateActivation(){
+  document.getElementById('lockBanner').className = 'banner ok';
+  document.getElementById('lockBanner').innerHTML = '<div class="banner-icon">✅</div><div><strong>Agreement activated.</strong> 5.00 ETH is fully locked in escrow. The carrier has been notified and the pickup window is now open.</div>';
+  document.querySelectorAll('#view-lock .check-item').forEach(item=>{
+    item.classList.remove('pending');
+    item.classList.add('done');
+    item.querySelector('.check-icon').classList.remove('pending');
+    item.querySelector('.check-icon').classList.add('done');
+    item.querySelector('.check-icon').textContent = '✓';
+  });
+}
+
+// ---------------- MILESTONE RELEASE PAGE ----------------
+function releaseMilestone(btn){
+  const row = btn.closest('tr');
+  row.querySelector('td:nth-child(6)').innerHTML = '<span class="pill lime"><span class="dot"></span>Released</span>';
+  row.querySelector('td:last-child').textContent = '—';
+  alert('Milestone 2 released — 1.00 ETH transferred to carrier.');
+}
+
+// ---------------- DUPLICATE PREVENTION PAGE ----------------
+function simulateDuplicate(){
+  const sel = document.getElementById('dupMilestone').value;
+  const result = document.getElementById('dupResult');
+  if(sel === 'paid'){
+    result.innerHTML = '<div class="banner danger" style="margin:0;"><div class="banner-icon">✕</div><div><strong>Transaction reverted.</strong> require(!milestone[1].paid) failed — "Already released". No funds moved.</div></div>';
+  } else {
+    result.innerHTML = '<div class="banner ok" style="margin:0;"><div class="banner-icon">✓</div><div><strong>Release allowed.</strong> Milestone 2 has not been paid yet — verification check passed, 1.00 ETH released.</div></div>';
+  }
+}
+
+// ---------------- REFUND / EXPIRY PAGE ----------------
+function simulateExpiry(){
+  alert('Deadline simulated as passed — Milestone 4 (Delivered) not verified.\n\nAuto-refund executed: 3.50 ETH returned to shipper. Agreement status set to REFUNDED.');
+}
+</script>
+</body>
+</html>

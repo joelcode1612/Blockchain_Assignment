@@ -4,10 +4,23 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Traxen — Decentralized Escrow &amp; Logistics</title>
-  <link rel="stylesheet" href="../css/styles.css">
+  <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    /* Ensure iframe fills the app-main */
+    #escrow-iframe {
+      width: 100%;
+      height: 100%;
+      min-height: 600px;
+      border: none;
+      background: var(--bg);
+    }
+    .app-main {
+      display: flex;
+      flex-direction: column;
+    }
+  </style>
 </head>
 <body>
-
 
 <!-- =========================================================
      PAGE 1: PUBLIC LANDING PAGE
@@ -237,7 +250,7 @@
 </div>
 
 <!-- =========================================================
-     PAGE 4: DASHBOARD (Shipper / Carrier)
+     PAGE 4: DASHBOARD (Shipper / Carrier) with IFRAME for Escrow
 ========================================================== -->
 <div class="page" id="page-dashboard">
   <div class="app-shell">
@@ -266,6 +279,48 @@
         <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M16 6V4H8v2"/></svg> Wallet</div>
       </div>
 
+      <!-- Escrow Module (All links point to iframe) -->
+      <div class="nav-group">
+        <div class="nav-label">Escrow Module</div>
+        <div class="nav-item active" onclick="loadEscrowPage('/deposit_balance.html')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"/>
+            <rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/>
+          </svg>
+          Deposit & Balance
+        </div>
+        <div class="nav-item" onclick="loadEscrowPage('/milestone_release.html')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="9"/>
+            <path d="M9 12l2 2 4-4"/>
+          </svg>
+          Milestone Release
+        </div>
+        <div class="nav-item" onclick="loadEscrowPage('/refund_expiry.html')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="9"/>
+            <path d="M12 7v5l3 3"/>
+          </svg>
+          Refund & Expiry
+        </div>
+        <div class="nav-item" onclick="loadEscrowPage('/duplicate_guard.html')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 9v4M12 17h.01"/>
+            <path d="M10.3 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L14.7 3.86a2 2 0 00-3.4 0z"/>
+          </svg>
+          Duplicate Guard
+        </div>
+        <div class="nav-item" onclick="loadEscrowPage('/history.html')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="7"/>
+            <path d="M21 21l-4-4"/>
+          </svg>
+          Transaction History
+        </div>
+      </div>
+
       <div class="nav-group">
         <div class="nav-label">Account</div>
         <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg> Profile</div>
@@ -280,7 +335,7 @@
 
     <div class="app-main">
       <div class="topbar">
-        <div><h1 id="pageTitle">Welcome back, Mike 👋</h1><div class="sub" id="pageSub">Here's what's happening with your shipments</div></div>
+        <div><h1 id="pageTitle">Escrow Dashboard</h1><div class="sub" id="pageSub">Manage your escrow agreements</div></div>
         <div class="topbar-actions">
           <div class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg></div>
           <div class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg><div class="badge-dot"></div></div>
@@ -288,112 +343,60 @@
         </div>
       </div>
 
-      <div class="content">
-        <!-- SHIPPER DASHBOARD -->
-        <div class="dash-view active" id="view-shipper">
-          <div class="stat-row">
-            <div class="stat-card"><div class="lbl">Total Agreements</div><div class="val">24</div><div class="delta up">↑ 18% this month</div></div>
-            <div class="stat-card"><div class="lbl">Escrow Balance</div><div class="val lime">12.45 ETH</div><div class="delta">Locked across active agreements</div></div>
-            <div class="stat-card"><div class="lbl">In Transit</div><div class="val">8</div><div class="delta up">↑ 3% this month</div></div>
-            <div class="stat-card"><div class="lbl">Completed</div><div class="val">16</div><div class="delta up">↑ 20% this month</div></div>
-          </div>
-
-          <div class="cta-banner">
-            <div><h3>Ready to ship something new?</h3><p>Create a milestone-based escrow agreement and get matched with a verified carrier.</p></div>
-            <button class="btn btn-primary">+ Create Agreement</button>
-          </div>
-
-          <div class="grid-2col">
-            <div class="panel">
-              <div class="panel-head"><div><h2>Shipment Volume Trend</h2><div class="sub">Agreements created per month</div></div></div>
-              <div class="legend"><div class="legend-item"><span class="legend-dot" style="background:var(--lime);"></span>This period</div><div class="legend-item"><span class="legend-dot" style="background:var(--text-faint);"></span>Last period</div></div>
-              <svg viewBox="0 0 560 180" width="100%" height="180">
-                <defs><linearGradient id="areaFillS" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#cdfa3f" stop-opacity="0.35"/><stop offset="100%" stop-color="#cdfa3f" stop-opacity="0"/></linearGradient></defs>
-                <polyline fill="none" stroke="#3a3f47" stroke-width="2" points="10,120 60,110 110,130 160,90 210,100 260,70 310,85 360,55 410,60 460,40 510,50 550,30"/>
-                <polygon fill="url(#areaFillS)" points="10,150 10,100 60,95 110,110 160,60 210,75 260,45 310,60 360,35 410,42 460,20 510,30 550,15 550,150"/>
-                <polyline fill="none" stroke="#cdfa3f" stroke-width="2.5" points="10,100 60,95 110,110 160,60 210,75 260,45 310,60 360,35 410,42 460,20 510,30 550,15"/>
-              </svg>
-              <div style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--text-faint);padding:0 6px;"><span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span><span>Nov</span><span>Dec</span></div>
-            </div>
-            <div class="panel">
-              <div class="panel-head"><h2>Recent Activity</h2></div>
-              <div class="activity-item"><div class="activity-icon ok">✓</div><div class="activity-main"><div class="activity-title">Agreement #AG8901 milestone 2 completed</div><div class="activity-sub">FastTrack Logistics</div></div><div class="activity-time">2 min ago</div></div>
-              <div class="activity-item"><div class="activity-icon pay">$</div><div class="activity-main"><div class="activity-title">Payment released to carrier</div><div class="activity-sub">0.85 ETH to Carrier</div></div><div class="activity-time">15 min ago</div></div>
-              <div class="activity-item"><div class="activity-icon new">+</div><div class="activity-main"><div class="activity-title">New Agreement Created</div><div class="activity-sub">#AG8902</div></div><div class="activity-time">1 hour ago</div></div>
-              <div class="activity-item"><div class="activity-icon ok">✓</div><div class="activity-main"><div class="activity-title">Escrow Funded</div><div class="activity-sub">1.25 ETH locked</div></div><div class="activity-time">2 hours ago</div></div>
-              <div class="activity-item"><div class="activity-icon warn">!</div><div class="activity-main"><div class="activity-title">Milestone deadline approaching</div><div class="activity-sub">#AG8877 — 6h remaining</div></div><div class="activity-time">3 hours ago</div></div>
-            </div>
-          </div>
-
-          <div class="panel">
-            <div class="panel-head"><h2>Active Agreements</h2><button class="btn btn-ghost">View All</button></div>
-            <table>
-              <thead><tr><th>Agreement</th><th>Carrier</th><th>Escrow</th><th>Progress</th><th>Deadline</th><th>Status</th></tr></thead>
-              <tbody>
-                <tr><td>#AG8901 — Electronics Shipment</td><td>FastTrack Logistics</td><td>5.00 ETH</td><td>1/4 milestones</td><td>Jul 15, 12:00 PM</td><td><span class="pill amber"><span class="dot"></span>In Transit</span></td></tr>
-                <tr><td>#AG8877 — Textile Shipment</td><td>Meridian Freight Co.</td><td>3.20 ETH</td><td>3/4 milestones</td><td>Jul 12, 6:00 PM</td><td><span class="pill amber"><span class="dot"></span>At Risk</span></td></tr>
-                <tr><td>#AG8804 — Machinery Parts</td><td>Coastal Cargo Partners</td><td>7.50 ETH</td><td>2/3 milestones</td><td>Jul 20, 9:00 AM</td><td><span class="pill lime"><span class="dot"></span>On Track</span></td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- CARRIER DASHBOARD -->
-        <div class="dash-view" id="view-carrier">
-          <div class="stat-row">
-            <div class="stat-card"><div class="lbl">Active Deliveries</div><div class="val">6</div><div class="delta up">↑ 2 new this week</div></div>
-            <div class="stat-card"><div class="lbl">Total Earned</div><div class="val lime">9.65 ETH</div><div class="delta">Released across 14 milestones</div></div>
-            <div class="stat-card"><div class="lbl">Pending Milestones</div><div class="val">5</div><div class="delta">Awaiting verification</div></div>
-            <div class="stat-card"><div class="lbl">Completed Deliveries</div><div class="val">31</div><div class="delta up">98% on-time rate</div></div>
-          </div>
-
-          <div class="cta-banner">
-            <div><h3>3 new jobs match your fleet</h3><p>Browse open agreements from verified shippers and lock in your next delivery.</p></div>
-            <button class="btn btn-primary">Browse Available Jobs</button>
-          </div>
-
-          <div class="grid-2col">
-            <div class="panel">
-              <div class="panel-head"><div><h2>Earnings Trend</h2><div class="sub">ETH released per month</div></div></div>
-              <div class="legend"><div class="legend-item"><span class="legend-dot" style="background:var(--lime);"></span>Earnings released</div><div class="legend-item"><span class="legend-dot" style="background:var(--text-faint);"></span>Deliveries completed</div></div>
-              <svg viewBox="0 0 560 180" width="100%" height="180">
-                <defs><linearGradient id="areaFillC" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#cdfa3f" stop-opacity="0.35"/><stop offset="100%" stop-color="#cdfa3f" stop-opacity="0"/></linearGradient></defs>
-                <polyline fill="none" stroke="#3a3f47" stroke-width="2" points="10,140 60,125 110,135 160,115 210,120 260,95 310,105 360,80 410,88 460,65 510,72 550,55"/>
-                <polygon fill="url(#areaFillC)" points="10,150 10,115 60,105 110,120 160,80 210,90 260,60 310,72 360,45 410,55 460,30 510,40 550,25 550,150"/>
-                <polyline fill="none" stroke="#cdfa3f" stroke-width="2.5" points="10,115 60,105 110,120 160,80 210,90 260,60 310,72 360,45 410,55 460,30 510,40 550,25"/>
-              </svg>
-              <div style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--text-faint);padding:0 6px;"><span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span><span>Nov</span><span>Dec</span></div>
-            </div>
-            <div class="panel">
-              <div class="panel-head"><h2>Recent Activity</h2></div>
-              <div class="activity-item"><div class="activity-icon pay">$</div><div class="activity-main"><div class="activity-title">Milestone payment received</div><div class="activity-sub">1.50 ETH — Pickup, #AG8901</div></div><div class="activity-time">2 min ago</div></div>
-              <div class="activity-item"><div class="activity-icon new">+</div><div class="activity-main"><div class="activity-title">New job assigned</div><div class="activity-sub">#AG8930 — Furniture Batch</div></div><div class="activity-time">40 min ago</div></div>
-              <div class="activity-item"><div class="activity-icon warn">!</div><div class="activity-main"><div class="activity-title">Milestone proof needed</div><div class="activity-sub">#AG8877 — In Transit checkpoint</div></div><div class="activity-time">1 hour ago</div></div>
-              <div class="activity-item"><div class="activity-icon ok">✓</div><div class="activity-main"><div class="activity-title">Delivery marked complete</div><div class="activity-sub">#AG8712 — Furniture Batch</div></div><div class="activity-time">5 hours ago</div></div>
-              <div class="activity-item"><div class="activity-icon pay">$</div><div class="activity-main"><div class="activity-title">Final payout released</div><div class="activity-sub">1.50 ETH — Delivered, #AG8712</div></div><div class="activity-time">5 hours ago</div></div>
-            </div>
-          </div>
-
-          <div class="grid-2col" style="grid-template-columns:1fr 1fr;">
-            <div class="panel">
-              <div class="panel-head"><h2>My Active Deliveries</h2><button class="btn btn-ghost">View All</button></div>
-              <div class="job-card"><div class="job-top"><div><div class="job-title">#AG8901 — Electronics Shipment</div><div class="job-sub">Shipper: Mike Johnson</div></div><div class="job-value">5.00 ETH</div></div><div class="job-meta"><span>Next: <b>In Transit</b></span><span>Deadline: <b>Jul 15</b></span></div><button class="btn btn-primary btn-block">Submit Milestone Proof</button></div>
-              <div class="job-card"><div class="job-top"><div><div class="job-title">#AG8877 — Textile Shipment</div><div class="job-sub">Shipper: Dana Reyes</div></div><div class="job-value">3.20 ETH</div></div><div class="job-meta"><span>Next: <b>Out for Delivery</b></span><span>Deadline: <b>Jul 12</b></span></div><button class="btn btn-primary btn-block">Submit Milestone Proof</button></div>
-            </div>
-            <div class="panel">
-              <div class="panel-head"><h2>Available Jobs Nearby</h2><button class="btn btn-ghost">Browse All</button></div>
-              <div class="job-card"><div class="job-top"><div><div class="job-title">Furniture Batch → Seattle, WA</div><div class="job-sub">Posted by Alan Cho</div></div><div class="job-value">2.80 ETH</div></div><div class="job-meta"><span>4 milestones</span><span>Deadline: <b>Jul 22</b></span></div><button class="btn btn-ghost btn-block">View &amp; Accept</button></div>
-              <div class="job-card"><div class="job-top"><div><div class="job-title">Auto Parts → Denver, CO</div><div class="job-sub">Posted by Priya Nair</div></div><div class="job-value">4.10 ETH</div></div><div class="job-meta"><span>3 milestones</span><span>Deadline: <b>Jul 25</b></span></div><button class="btn btn-ghost btn-block">View &amp; Accept</button></div>
-            </div>
-          </div>
-        </div>
+      <!-- IFRAME for escrow pages -->
+      <div style="flex:1;padding:0 28px 28px 28px;">
+        <iframe id="escrow-iframe" src="/deposit_balance.html"></iframe>
       </div>
     </div>
   </div>
 </div>
 
+<script src="/js/app.js"></script>
+<script>
+  // ─── Load escrow page in iframe ──────────────────────────
+  function loadEscrowPage(url) {
+    const iframe = document.getElementById('escrow-iframe');
+    if (iframe) {
+      iframe.src = url;
+    }
+    // Update active nav item
+    document.querySelectorAll('.nav-group .nav-item').forEach(el => {
+      el.classList.remove('active');
+    });
+    // Find the clicked item and add active class
+    event.currentTarget.classList.add('active');
+  }
 
+  // ─── Override goToDashboard to show the iframe with deposit_balance ──
+  const originalGoToDashboard = window.goToDashboard;
+  window.goToDashboard = function(role) {
+    showPage('page-dashboard');
+    setRole(role || 'shipper');
+    // Load initial escrow page
+    const iframe = document.getElementById('escrow-iframe');
+    if (iframe) {
+      iframe.src = '/deposit_balance.html';
+    }
+    // Set active nav item
+    document.querySelectorAll('.nav-group .nav-item').forEach(el => el.classList.remove('active'));
+    const firstEscrowItem = document.querySelector('.nav-group .nav-item');
+    if (firstEscrowItem) firstEscrowItem.classList.add('active');
+  };
 
-  <script src="../js/app.js"></script>
+  // ─── Adjust iframe height on load ─────────────────────────
+  document.addEventListener('DOMContentLoaded', function() {
+    const iframe = document.getElementById('escrow-iframe');
+    if (iframe) {
+      iframe.addEventListener('load', function() {
+        // Try to set height based on content (optional)
+        try {
+          if (iframe.contentWindow.document.body.scrollHeight) {
+            iframe.style.height = iframe.contentWindow.document.body.scrollHeight + 'px';
+          }
+        } catch (e) {}
+      });
+    }
+  });
+</script>
 </body>
 </html>

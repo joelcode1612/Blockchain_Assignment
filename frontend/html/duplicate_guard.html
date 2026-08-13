@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Duplicate Guard — Traxen</title>
+<style>
+  :root{
+    --bg:#0a0b0d;
+    --panel:#111318;
+    --panel-2:#15171d;
+    --border:#22252c;
+    --border-soft:#1a1c22;
+    --text:#f3f4f6;
+    --text-dim:#9199a6;
+    --text-faint:#5b6270;
+    --lime:#cdfa3f;
+    --lime-dim:#a9d431;
+    --lime-glow:rgba(205,250,63,0.14);
+    --red:#ff5c5c;
+    --red-glow:rgba(255,92,92,.12);
+    --amber:#ffb43c;
+    --amber-glow:rgba(255,180,60,.12);
+    --blue:#4f9dff;
+    --radius:10px;
+    --mono:'JetBrains Mono','SF Mono',Consolas,monospace;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;-webkit-font-smoothing:antialiased;}
+  .app{display:flex;min-height:100vh;}
+  .sidebar{width:230px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--border-soft);padding:20px 14px;display:flex;flex-direction:column;}
+  .brand{display:flex;align-items:center;gap:8px;padding:0 6px 22px 6px;font-weight:700;font-size:15px;letter-spacing:-0.02em;}
+  .brand-mark{width:22px;height:22px;border-radius:6px;background:var(--lime);display:flex;align-items:center;justify-content:center;color:#0a0b0d;font-size:13px;font-weight:800;}
+  .nav-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-faint);padding:0 10px;margin-bottom:6px;}
+  .nav-group{margin-bottom:18px;}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;color:var(--text-dim);font-size:13px;font-weight:500;cursor:pointer;user-select:none;transition:background .15s,color .15s;}
+  .nav-item svg{width:15px;height:15px;flex-shrink:0;opacity:.8;}
+  .nav-item:hover{background:var(--panel-2);color:var(--text);}
+  .nav-item.active{background:var(--lime);color:#0a0b0d;font-weight:600;}
+  .nav-item.active svg{opacity:1;}
+  .contract-tag{margin-top:auto;padding-top:14px;border-top:1px solid var(--border-soft);font-size:10.5px;color:var(--text-faint);font-family:var(--mono);}
+  .contract-tag .dot{width:6px;height:6px;border-radius:50%;background:var(--lime);display:inline-block;margin-right:6px;}
+  .main{flex:1;min-width:0;}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-bottom:1px solid var(--border-soft);}
+  .topbar h1{font-size:18px;margin:0;font-weight:600;letter-spacing:-.01em;}
+  .topbar .sub{font-size:12.5px;color:var(--text-faint);margin-top:2px;}
+  .agreement-select{background:var(--panel);border:1px solid var(--border-soft);border-radius:8px;padding:8px 12px;font-size:12.5px;color:var(--text-dim);display:flex;align-items:center;gap:8px;}
+  .agreement-select select{background:transparent;border:none;color:var(--text);font-size:12.5px;font-weight:600;outline:none;}
+  .content{padding:24px 28px 60px;max-width:1180px;}
+  .view{display:block;}
+  .panel{background:var(--panel);border:1px solid var(--border-soft);border-radius:var(--radius);padding:22px;margin-bottom:18px;}
+  .panel h2{margin:0 0 4px;font-size:15.5px;font-weight:700;}
+  .panel .desc{color:var(--text-faint);font-size:12.5px;margin-bottom:18px;}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:12px;color:var(--text-dim);margin-bottom:6px;font-weight:500;}
+  .field select{width:100%;background:var(--panel-2);border:1px solid var(--border);border-radius:7px;padding:10px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none;transition:border-color .15s;}
+  .field select:focus{border-color:var(--lime);}
+  .btn{padding:10px 18px;border-radius:7px;font-size:12.5px;font-weight:700;cursor:pointer;border:1px solid transparent;transition:.15s;}
+  .btn-primary{background:var(--lime);color:#0a0b0d;}
+  .btn-primary:hover{background:var(--lime-dim);}
+  .btn-primary:disabled{background:var(--border);color:var(--text-faint);cursor:not-allowed;}
+  .btn-block{width:100%;}
+  .kv{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-soft);font-size:12.5px;}
+  .kv:last-child{border-bottom:none;}
+  .kv .k{color:var(--text-faint);}
+  .kv .v{font-weight:700;}
+  .banner{display:flex;align-items:flex-start;gap:12px;border-radius:9px;padding:14px 16px;font-size:12.5px;margin-bottom:18px;}
+  .banner.info{background:rgba(79,157,255,.08);border:1px solid rgba(79,157,255,.25);color:#a8cbff;}
+  .banner.warn{background:var(--amber-glow);border:1px solid rgba(255,180,60,.3);color:var(--amber);}
+  .banner.danger{background:var(--red-glow);border:1px solid rgba(255,92,92,.3);color:var(--red);}
+  .banner.ok{background:var(--lime-glow);border:1px solid rgba(205,250,63,.3);color:var(--lime);}
+  .banner-icon{font-size:15px;line-height:1;}
+  .formula-box{background:var(--panel-2);border:1px solid var(--border-soft);border-radius:9px;padding:16px 18px;font-family:var(--mono);font-size:12.5px;color:var(--text-dim);margin-bottom:16px;line-height:1.7;}
+  .formula-box .hl{color:var(--lime);font-weight:700;}
+  .formula-box .op{color:var(--text-faint);}
+  .log-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border-soft);font-size:12.5px;}
+  .log-row:last-child{border-bottom:none;}
+  .log-icon{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;}
+  .log-icon.ok{background:var(--lime-glow);color:var(--lime);}
+  .log-icon.blocked{background:var(--red-glow);color:var(--red);}
+  .log-icon.refund{background:var(--amber-glow);color:var(--amber);}
+  .log-main{flex:1;}
+  .log-title{font-weight:600;}
+  .log-sub{font-size:11px;color:var(--text-faint);font-family:var(--mono);}
+  .log-time{font-size:11px;color:var(--text-faint);white-space:nowrap;}
+  ::selection{background:var(--lime);color:#0a0b0d;}
+</style>
+</head>
+<body>
+<div class="app">
+ 
+  <div class="main">
+    <div class="topbar">
+      <div><h1>Duplicate-Payment Prevention</h1><div class="sub">How the contract guards against double-releasing a milestone</div></div>
+      <div class="agreement-select"><span>Agreement:</span><select><option>#AG8901 — Electronics Shipment to New York</option><option>#AG8877 — Textile Shipment to Chicago</option><option>#AG8804 — Machinery Parts to Austin</option></select></div>
+    </div>
+    <div class="content">
+      <div class="view">
+        <div class="banner ok"><div class="banner-icon">🛡</div><div><strong>Guard active.</strong> Every milestone can only be released once — the contract checks a <code>paid[milestoneId]</code> flag before transferring funds and reverts any repeat call.</div></div>
+        <div class="two-col">
+          <div class="panel">
+            <h2>Prevention Logic</h2>
+            <div class="desc">How the contract blocks a milestone from being paid twice.</div>
+            <div class="formula-box">function releaseMilestone(uint id) external {<br>&nbsp;&nbsp;require(<span class="hl">!milestone[id].paid</span>, "Already released");<br>&nbsp;&nbsp;require(<span class="hl">verified[id]</span>, "Not verified");<br>&nbsp;&nbsp;milestone[id].paid = <span class="hl">true</span>; <span class="op">// state before transfer</span><br>&nbsp;&nbsp;carrier.transfer(milestone[id].amount);<br>}</div>
+            <div class="kv"><span class="k">Guard Type</span><span class="v">paid[] boolean flag + checks-effects-interactions</span></div>
+            <div class="kv"><span class="k">Re-entrancy Protection</span><span class="v" style="color:var(--lime);">Enabled</span></div>
+            <div class="kv"><span class="k">Duplicate Attempts Blocked</span><span class="v">3 (last 30 days)</span></div>
+          </div>
+          <div class="panel">
+            <h2>Simulate Payment Attempt</h2>
+            <div class="desc">Try releasing an already-paid milestone to see the guard in action.</div>
+            <div class="field"><label>Milestone</label><select id="dupMilestone"><option value="paid">Milestone 1 — Pickup (already released)</option><option value="unpaid">Milestone 2 — In Transit (not yet released)</option></select></div>
+            <button class="btn btn-primary btn-block" onclick="simulateDuplicate()">Attempt Release</button>
+            <div id="dupResult" style="margin-top:14px;"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <h2>Payment Attempt Log</h2>
+          <div class="log-row"><div class="log-icon blocked">✕</div><div class="log-main"><div class="log-title">Duplicate release blocked — Milestone 1</div><div class="log-sub">reverted: "Already released" · caller 0x7a83…4F2E</div></div><div class="log-time">3 hrs ago</div></div>
+          <div class="log-row"><div class="log-icon ok">✓</div><div class="log-main"><div class="log-title">Milestone 1 — Pickup released</div><div class="log-sub">tx 0x8a1f…c02d · 1.50 ETH</div></div><div class="log-time">2 hrs ago</div></div>
+          <div class="log-row"><div class="log-icon blocked">✕</div><div class="log-main"><div class="log-title">Duplicate release blocked — Milestone 1</div><div class="log-sub">reverted: "Already released" · caller 0x7a83…4F2E</div></div><div class="log-time">2 hrs ago</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+function simulateDuplicate(){
+  const sel = document.getElementById('dupMilestone').value;
+  const result = document.getElementById('dupResult');
+  if(sel === 'paid'){
+    result.innerHTML = '<div class="banner danger" style="margin:0;"><div class="banner-icon">✕</div><div><strong>Transaction reverted.</strong> require(!milestone[1].paid) failed — "Already released". No funds moved.</div></div>';
+  } else {
+    result.innerHTML = '<div class="banner ok" style="margin:0;"><div class="banner-icon">✓</div><div><strong>Release allowed.</strong> Milestone 2 has not been paid yet — verification check passed, 1.00 ETH released.</div></div>';
+  }
+}
+</script>
+<script src="/js/web3_integration.js"></script>
+<script src="/js/api.js"></script>
+</body>
+</html>
