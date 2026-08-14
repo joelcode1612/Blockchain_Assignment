@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Traxen — Create Account</title>
+<link rel="stylesheet" href="../css/styles.css">
+<link rel="stylesheet" href="../css/responsive.css">
+<link rel="stylesheet" href="../css/auth.css">
+</head>
+<body>
+<main class="auth-stage">
+<a class="auth-back" href="index.html">← Back to Home</a>
+<section class="auth-card">
+<div class="auth-brand"><div class="brand-mark">T</div> Traxen</div>
+<div class="progress-dots" id="regDots"><div class="dot-bar on"></div><div class="dot-bar"></div><div class="dot-bar"></div></div>
+
+<div class="auth-step active" id="reg-step-1">
+<h2 class="title">Create your account</h2><p class="subtitle">Connect a wallet to register on the Traxen platform</p>
+<div class="wallet-opt" onclick="selectWallet(this,'reg')"><div class="wallet-icon metamask">🦊</div><div><div class="wallet-name">MetaMask</div><div class="wallet-sub">Connect using browser extension</div></div></div>
+<div class="wallet-opt" onclick="selectWallet(this,'reg')"><div class="wallet-icon walletconnect">◆</div><div><div class="wallet-name">WalletConnect</div><div class="wallet-sub">Scan with a mobile wallet</div></div></div>
+<div class="status-line" id="regWalletStatus"><div class="status-dot"></div><span>No wallet connected</span></div>
+<div class="divider">or register with email</div>
+<div class="field"><label>Email Address</label><input id="regEmail" type="email" placeholder="you@company.com"></div>
+<div class="field"><label>Password</label><div class="pw-wrap"><input id="regPw" type="password" placeholder="At least 8 characters"><span class="pw-toggle" onclick="togglePw('regPw')">SHOW</span></div></div>
+<div class="checkbox-row"><input type="checkbox" id="regTerms" checked><label for="regTerms">I agree to the <a href="#" onclick="return false;">Terms of Service</a> and <a href="#" onclick="return false;">Privacy Policy</a></label></div>
+<button class="btn btn-primary btn-block" onclick="goRegStep(2)">Continue</button>
+<div class="foot-link">Already have an account? <a href="login.html">Log in</a></div>
+</div>
+
+<div class="auth-step" id="reg-step-2">
+<h2 class="title">Select your role</h2><p class="subtitle">Choose how you want to participate on Traxen</p>
+<div class="role-grid">
+<div class="role-card" data-role="Shipper" onclick="selectRole(this)"><div class="role-check">✓</div><div class="role-icon">📦</div><h4>Shipper</h4><p>I need to ship goods and manage deliveries</p></div>
+<div class="role-card" data-role="Carrier" onclick="selectRole(this)"><div class="role-check">✓</div><div class="role-icon">🚚</div><h4>Carrier</h4><p>I provide transport and deliver goods</p></div>
+</div>
+<div class="btn-row"><button class="btn btn-ghost" onclick="goRegStep(1)">Back</button><button class="btn btn-primary" id="regRoleContinue" disabled onclick="goRegStep(3)">Continue</button></div>
+</div>
+
+<div class="auth-step" id="reg-step-3">
+<h2 class="title">You're all set</h2><p class="subtitle">Confirm your details to finish creating your account</p>
+<div class="field"><label>Display Name</label><input id="regDisplayName" type="text" placeholder="e.g. Mike Johnson"></div>
+<div class="wallet-readonly"><span id="regWalletAddr">0x7a83…4F2E</span><span class="tag">Connected</span></div>
+<div class="btn-row"><button class="btn btn-ghost" onclick="goRegStep(2)">Back</button><button class="btn btn-primary" onclick="finishRegister()">Create Account</button></div>
+</div>
+</section>
+</main>
+<script src="../js/auth.js"></script>
+</body></html>

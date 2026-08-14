@@ -1,0 +1,7 @@
+Error: ENOENT: no such file or directory, stat 'C:\Users\Lenovo\OneDrive\Desktop\Blockchain_Assignment\backend\frontend\pages\login.html'
+Error: ENOENT: no such file or directory, stat 'C:\Users\Lenovo\OneDrive\Desktop\Blockchain_Assignment\backend\frontend\pages\register.html'
+Error: ENOENT: no such file or directory, stat 'C:\Users\Lenovo\OneDrive\Desktop\Blockchain_Assignment\backend\frontend\pages\shipper\shipper.html'
+Error: ENOENT: no such file or directory, stat 'C:\Users\Lenovo\OneDrive\Desktop\Blockchain_Assignment\backend\frontend\pages\carrier\carrier.html'
+Error: ENOENT: no such file or directory, stat 'C:\Users\Lenovo\OneDrive\Desktop\Blockchain_Assignment\backend\frontend\pages\public\index.html'
+Error: ENOENT: no such file or directory, stat 'C:\Users\Lenovo\OneDrive\Desktop\Blockchain_Assignment\backend\frontend\pages\deposit_balance.html'
+Error: ENOENT: no such file or directory, stat 'C:\Users\Lenovo\OneDrive\Desktop\Blockchain_Assignment\backend\frontend\pages\shared\history.html'

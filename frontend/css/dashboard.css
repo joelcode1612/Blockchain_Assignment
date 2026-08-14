@@ -1,37 +1,15 @@
-:root {
-  --bg: #0a0b0d;
-  --panel: #111318;
-  --panel-2: #15171d;
-  --border: #22252c;
-  --border-soft: #1a1c22;
-  --text: #f3f4f6;
-  --text-dim: #9199a6;
-  --text-faint: #5b6270;
-  --lime: #cdfa3f;
-  --lime-dim: #a9d431;
-  --lime-glow: rgba(205, 250, 63, 0.14);
-  --red: #ff5c5c;
-  --red-glow: rgba(255, 92, 92, 0.12);
-  --amber: #ffb43c;
-  --amber-glow: rgba(255, 180, 60, 0.12);
-  --blue: #4f9dff;
-  --radius: 10px;
-  --mono: "JetBrains Mono", "SF Mono", Consolas, monospace;
-}
+/* =========================================================
+   TRAXEN DASHBOARD SHELL STYLES
+   Shared app-shell layout used by the Shipper and Carrier
+   dashboards and their sub-pages (agreements-list, wizard,
+   agreement-details, transaction states).
 
-* {
-  box-sizing: border-box;
-}
+   Theme variables and global components live in styles.css;
+   agreement-specific UI lives in agreements.css; role-specific
+   styles live in shipper.css / carrier.css.
+   ========================================================= */
 
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
-  -webkit-font-smoothing: antialiased;
-}
-
+/* ---------- APP SHELL ---------- */
 .app {
   display: flex;
   min-height: 100vh;
@@ -48,27 +26,15 @@ body {
   flex-direction: column;
 }
 
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.sidebar .brand {
   padding: 0 6px 22px 6px;
-  font-weight: 700;
   font-size: 15px;
-  letter-spacing: -0.02em;
 }
 
-.brand-mark {
+.sidebar .brand-mark {
   width: 22px;
   height: 22px;
-  border-radius: 6px;
-  background: var(--lime);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #0a0b0d;
   font-size: 13px;
-  font-weight: 800;
 }
 
 .role-switch {
@@ -111,7 +77,7 @@ body {
   margin-bottom: 18px;
 }
 
-.nav-item {
+.sidebar .nav-item {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -122,30 +88,31 @@ body {
   font-weight: 500;
   cursor: default;
   user-select: none;
+  text-decoration: none;
   transition:
     background 0.15s,
     color 0.15s;
 }
 
-.nav-item svg {
+.sidebar .nav-item svg {
   width: 15px;
   height: 15px;
   flex-shrink: 0;
   opacity: 0.8;
 }
 
-.nav-item:hover {
+.sidebar .nav-item:hover {
   background: var(--panel-2);
   color: var(--text);
 }
 
-.nav-item.active {
+.sidebar .nav-item.active {
   background: var(--lime);
   color: #0a0b0d;
   font-weight: 600;
 }
 
-.nav-item.active svg {
+.sidebar .nav-item.active svg {
   opacity: 1;
 }
 
@@ -252,10 +219,10 @@ body {
 
 .view {
   display: block;
-  animation: fade 0.25s ease;
+  animation: dashFade 0.25s ease;
 }
 
-@keyframes fade {
+@keyframes dashFade {
   from {
     opacity: 0;
     transform: translateY(4px);
@@ -266,6 +233,7 @@ body {
   }
 }
 
+/* ---------- STATS ---------- */
 .stat-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -306,10 +274,12 @@ body {
 .stat-card .delta.up {
   color: var(--lime);
 }
+
 .stat-card .delta.down {
   color: var(--red);
 }
 
+/* ---------- LAYOUT GRID / PANELS ---------- */
 .grid-2col {
   display: grid;
   grid-template-columns: 1.7fr 1fr;
@@ -384,6 +354,13 @@ body {
   border-radius: 50%;
 }
 
+/* ---------- CHART WRAP ---------- */
+.chart-wrap svg {
+  display: block;
+  margin: 4px 0 10px;
+}
+
+/* ---------- ACTIVITY LIST ---------- */
 .activity-item {
   display: flex;
   gap: 12px;
@@ -410,15 +387,18 @@ body {
   background: var(--lime-glow);
   color: var(--lime);
 }
+
 .activity-icon.pay {
   background: rgba(79, 157, 255, 0.12);
   color: var(--blue);
 }
+
 .activity-icon.new {
   background: var(--panel-2);
   color: var(--text-dim);
   border: 1px solid var(--border);
 }
+
 .activity-icon.warn {
   background: var(--amber-glow);
   color: var(--amber);
@@ -444,6 +424,7 @@ body {
   white-space: nowrap;
 }
 
+/* ---------- TABLES ---------- */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -477,6 +458,7 @@ tr:last-child td {
   color: var(--text-dim);
 }
 
+/* ---------- PILLS ---------- */
 .pill {
   display: inline-flex;
   align-items: center;
@@ -492,14 +474,17 @@ tr:last-child td {
   background: var(--lime-glow);
   color: var(--lime);
 }
+
 .pill.amber {
   background: var(--amber-glow);
   color: var(--amber);
 }
+
 .pill.red {
   background: var(--red-glow);
   color: var(--red);
 }
+
 .pill.gray {
   background: var(--panel-2);
   color: var(--text-faint);
@@ -513,38 +498,37 @@ tr:last-child td {
   background: currentColor;
 }
 
-.btn {
-  padding: 8px 14px;
-  border-radius: 7px;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  border: 1px solid transparent;
-  transition: 0.15s;
-}
-
-.btn-primary {
-  background: var(--lime);
+/* ---------- BUTTONS (dashboard sizing) ---------- */
+.btn-danger {
+  background: var(--red);
   color: #0a0b0d;
 }
-.btn-primary:hover {
-  background: var(--lime-dim);
+
+.btn-danger:hover {
+  background: #ff8080;
 }
 
-.btn-ghost {
-  background: transparent;
-  border-color: var(--border);
-  color: var(--text-dim);
-}
-.btn-ghost:hover {
-  color: var(--text);
-  border-color: var(--text-faint);
+.btn-sm {
+  padding: 6px 10px;
+  font-size: 11px;
+  border-radius: 6px;
 }
 
+/* ---------- CLICKABLE ROWS / CARDS ---------- */
+.clickable {
+  cursor: pointer;
+}
+
+.clickable:hover {
+  background: var(--panel-2);
+}
+
+/* ---------- CTA BANNER ---------- */
 .cta-banner {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 16px;
   background: linear-gradient(
     120deg,
     rgba(205, 250, 63, 0.1),
@@ -560,61 +544,9 @@ tr:last-child td {
   margin: 0 0 4px;
   font-size: 15px;
 }
+
 .cta-banner p {
   margin: 0;
   font-size: 12.5px;
   color: var(--text-dim);
-}
-
-.job-card {
-  background: var(--panel-2);
-  border: 1px solid var(--border-soft);
-  border-radius: 9px;
-  padding: 16px;
-  margin-bottom: 10px;
-}
-
-.job-card:last-child {
-  margin-bottom: 0;
-}
-
-.job-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 10px;
-}
-
-.job-title {
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.job-sub {
-  font-size: 11.5px;
-  color: var(--text-faint);
-  margin-top: 2px;
-}
-
-.job-value {
-  font-size: 15px;
-  font-weight: 800;
-  color: var(--lime);
-}
-
-.job-meta {
-  display: flex;
-  gap: 16px;
-  font-size: 11.5px;
-  color: var(--text-dim);
-  margin-bottom: 12px;
-}
-
-.job-meta span b {
-  color: var(--text);
-}
-
-::selection {
-  background: var(--lime);
-  color: #0a0b0d;
 }

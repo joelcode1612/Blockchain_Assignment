@@ -1,0 +1,51 @@
+/* =========================================================
+   TRAXEN CARRIER-SPECIFIC STYLES
+   ========================================================= */
+
+/* Carrier delivery/job cards from the original dashboard.css */
+.job-card {
+  background: var(--panel-2);
+  border: 1px solid var(--border-soft);
+  border-radius: 9px;
+  padding: 16px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.job-card:hover {
+  border-color: var(--lime);
+}
+.job-card:last-child {
+  margin-bottom: 0;
+}
+.job-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+.job-title {
+  font-size: 13px;
+  font-weight: 700;
+}
+.job-sub {
+  font-size: 11.5px;
+  color: var(--text-faint);
+  margin-top: 2px;
+}
+.job-value {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--lime);
+}
+.job-meta {
+  display: flex;
+  gap: 16px;
+  font-size: 11.5px;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+}
+.job-meta span b {
+  color: var(--text);
+}

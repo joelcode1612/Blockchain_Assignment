@@ -1,0 +1,14 @@
+/* =========================================================
+   TRAXEN RESPONSIVE STYLES
+   Contains responsive/media-query rules shared across the app.
+   ========================================================= */
+
+@media (max-width:900px){
+    .hero-inner,.why-grid{grid-template-columns:1fr;}
+    .feature-grid{grid-template-columns:1fr 1fr;}
+    .how-grid{grid-template-columns:1fr 1fr;row-gap:34px;}
+    .how-grid::before{display:none;}
+    .footer-grid{grid-template-columns:1fr 1fr;}
+    .nav-links{display:none;}
+    .stat-row,.grid-2col{grid-template-columns:1fr;}
+}

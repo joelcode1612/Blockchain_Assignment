@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Traxen — Agreement #AG8901</title>
+<link rel="stylesheet" href="../css/traxen.css">
+</head>
+<body>
+<div class="app">
+  <div class="sidebar">
+    <div class="brand"><div class="brand-mark">T</div> Traxen</div>
+    <div class="role-switch">
+      <div class="rs-opt " data-role="shipper" onclick="setRole('shipper')">Shipper</div>
+      <div class="rs-opt active" data-role="carrier" onclick="setRole('carrier')">Carrier</div>
+    </div>
+    <div class="nav-group">
+      <a class="nav-item" href="agreements.html">▦ Dashboard</a>
+      <a class="nav-item active" href="agreements.html">▤ Agreements</a>
+      
+      <a class="nav-item" href="#">▣ Wallet</a>
+    </div>
+    <div class="sidebar-foot">
+      <div class="mini-avatar">MJ</div>
+      <div><div class="mini-name">Mike Johnson</div><div class="mini-role">Carrier</div></div>
+    </div>
+  </div>
+  <div class="main">
+    <div class="topbar">
+      <div><h1>Agreement #AG8901</h1><div class="sub">Track your delivery and submit milestone proof</div></div>
+      
+    </div>
+    <div class="content">
+<div class="back-link" onclick="location.href='agreements.html'">← Back to Agreements</div><div class="detail-header"><div><h2>Agreement #AG8901 <span class="pill amber" style="margin-left:8px"><span class="dot"></span>In Transit</span></h2><div style="color:var(--text-faint);font-size:13px">Electronics Shipment to New York · Shipper: Mike Johnson</div></div><div class="escrow-box"><div class="amt">5.00 ETH</div><div class="lbl">Escrow Balance · Locked</div></div></div><div class="detail-grid"><div class="info-card"><h3>Job Info</h3><div class="kv"><span class="k">Shipper</span><span class="v">Mike Johnson</span></div><div class="kv"><span class="k">Deadline</span><span class="v">2025-07-15, 12:00 PM</span></div><div class="kv"><span class="k">Accepted</span><span class="v">2025-05-21</span></div><div class="kv"><span class="k">Contract</span><span class="v" style="font-family:var(--mono);font-size:11px">0x7a83…4F2E</span></div><div class="btn-row"><button class="btn btn-ghost btn-sm">View Contract</button><button class="btn btn-ghost btn-sm">Message Shipper</button></div></div><div class="info-card"><h3>Delivery Progress</h3><div class="track"><div class="track-fill" style="width:8%"></div><div class="tnode complete"><div class="tdot">✓</div><div class="tname">Pickup</div><div class="tamt">30%</div></div><div class="tnode current"><div class="tdot">2</div><div class="tname">In Transit</div><div class="tamt">20%</div></div><div class="tnode"><div class="tdot">3</div><div class="tname">Out for Delivery</div><div class="tamt">20%</div></div><div class="tnode"><div class="tdot">4</div><div class="tname">Delivered</div><div class="tamt">30%</div></div></div></div></div><div class="info-card" style="margin-bottom:18px"><h3>Submit Proof — Milestone 2: In Transit</h3><div class="upload-box" onclick="alert('Opens file picker / GPS checkpoint capture.')">📎 Click to upload proof (photo, GPS checkpoint, or signed receipt)</div><button class="btn btn-primary btn-block" onclick="submitProof()">Submit Milestone Proof</button></div><div class="info-card"><h3>Milestone &amp; Payout Schedule</h3><div class="milestone-row"><div><div class="name">1. Pickup</div><div class="sub">Verified &amp; paid out</div></div><div class="right"><div class="amt">1.50 ETH</div><div class="sub" style="color:var(--lime)">Received</div></div></div><div class="milestone-row"><div><div class="name">2. In Transit</div><div class="sub">Proof submitted — awaiting shipper verification</div></div><div class="right"><div class="amt">1.00 ETH</div><div class="sub" style="color:var(--amber)">Pending Verification</div></div></div><div class="milestone-row"><div><div class="name">3. Out for Delivery</div><div class="sub">Not yet reached</div></div><div class="right"><div class="amt">1.00 ETH</div><div class="sub">Locked</div></div></div><div class="milestone-row"><div><div class="name">4. Delivered</div><div class="sub">Not yet reached</div></div><div class="right"><div class="amt">1.50 ETH</div><div class="sub">Locked</div></div></div></div>
+    </div>
+  </div>
+</div>
+<script src="../js/common.js"></script>
+<script src="../js/actions.js"></script>
+</body>
+</html>

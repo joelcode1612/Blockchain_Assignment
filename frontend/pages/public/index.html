@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Traxen — Decentralized Escrow &amp; Logistics</title>
+  <link rel="stylesheet" href="../../css/styles.css">
+  <link rel="stylesheet" href="../../css/responsive.css">
+</head>
+<body>
+
+<!-- =========================================================
+     PAGE 1: PUBLIC LANDING PAGE
+========================================================== -->
+<div class="page active" id="page-landing">
+
+  <div class="nav">
+    <div class="nav-inner">
+      <div class="brand"><div class="brand-mark">T</div> Traxen</div>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#how-it-works">How It Works</a>
+        <a href="#why">About Us</a>
+        <a href="#contact">Contact</a>
+      </div>
+      <div class="nav-actions">
+        <a class="btn btn-ghost" href="/login">Log In</a>
+        <a class="btn btn-primary" href="/register">Connect Wallet</a>
+      </div>
+    </div>
+  </div>
+
+  <section class="hero">
+    <div class="wrap hero-inner">
+      <div>
+        <div class="eyebrow"><span class="dot"></span> Built on Ethereum · Powered by Smart Contracts</div>
+        <h1 class="headline">Secure. Transparent.<br><span class="accent">Decentralized Logistics.</span></h1>
+        <p class="lede">Traxen uses blockchain escrow and milestone verification to ensure secure payments and on-time deliveries — no intermediaries, no paperwork, no payment delays.</p>
+        <div class="hero-actions">
+          <a class="btn btn-primary btn-lg" href="/register">Connect Wallet</a>
+          <a class="btn btn-ghost btn-lg" href="#how-it-works">Learn More</a>
+        </div>
+        <div class="hero-stats">
+          <div class="hstat"><div class="num">1,310+</div><div class="lbl">Shipments</div></div>
+          <div class="hstat"><div class="num">267+</div><div class="lbl">Delivered</div></div>
+          <div class="hstat"><div class="num">32+</div><div class="lbl">Active Fleet</div></div>
+          <div class="hstat"><div class="num">98%</div><div class="lbl">Success Rate</div></div>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div class="hv-card">
+          <div class="hv-row"><span class="hv-label">Agreement #AG8901</span><span class="hv-pill"><span class="dot"></span>Active</span></div>
+          <div class="hv-row"><span class="hv-label">Escrow Locked</span><span class="hv-value lime">5.00 ETH</span></div>
+          <div class="hv-progress"><div class="hv-progress-fill"></div></div>
+        </div>
+        <div class="hv-card">
+          <div class="hv-row"><span class="hv-label">Milestone</span><span class="hv-value">Pickup Verified</span></div>
+          <div class="hv-row"><span class="hv-label">Released</span><span class="hv-value lime">1.50 ETH → Carrier</span></div>
+        </div>
+        <div class="hv-card">
+          <div class="hv-row"><span class="hv-label">Next Payout</span><span class="hv-value">In Transit — 1.00 ETH</span></div>
+          <div class="hv-chain"><div class="node"></div><div class="line"></div><div class="node"></div><div class="line"></div><div class="node"></div><div class="line"></div><div class="node" style="background:var(--border);"></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="logo-strip">
+    <div class="wrap">
+      <span class="label">Trusted by logistics teams building on</span>
+      <span class="logo-item">Ethereum</span>
+      <span class="logo-item">Sepolia Testnet</span>
+      <span class="logo-item">MetaMask</span>
+      <span class="logo-item">WalletConnect</span>
+      <span class="logo-item">Solidity</span>
+    </div>
+  </div>
+
+  <section class="features" id="features">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="section-tag">Platform</div>
+        <h2>Everything you need to ship with trust</h2>
+        <p>From escrow funding to automated payouts, Traxen replaces manual trade-finance friction with verifiable, on-chain logic.</p>
+      </div>
+      <div class="feature-grid">
+        <div class="feature-card"><div class="feature-icon">🔐</div><h3>On-Chain Escrow</h3><p>Funds are locked in a non-custodial smart contract the moment an agreement is created.</p></div>
+        <div class="feature-card"><div class="feature-icon">📍</div><h3>Milestone Verification</h3><p>Payments release automatically as each delivery checkpoint is cryptographically confirmed.</p></div>
+        <div class="feature-card"><div class="feature-icon">⚖️</div><h3>Automatic Refunds</h3><p>Miss a critical deadline and the contract refunds the shipper automatically.</p></div>
+        <div class="feature-card"><div class="feature-icon">🧾</div><h3>Full Transaction History</h3><p>Every deposit, release, and refund is logged immutably for a transparent audit trail.</p></div>
+        <div class="feature-card"><div class="feature-icon">🛡</div><h3>Duplicate-Payment Guard</h3><p>Each milestone can only be paid once — contract-level checks prevent repeat releases.</p></div>
+        <div class="feature-card"><div class="feature-icon">🤝</div><h3>Verified Carrier Network</h3><p>Work only with wallet-authenticated carriers with reputations built from real deliveries.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="how" id="how-it-works">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="section-tag">Process</div>
+        <h2>How Traxen works</h2>
+        <p>From wallet connection to final delivery, every step is enforced by the smart contract.</p>
+      </div>
+      <div class="how-grid">
+        <div class="how-step"><div class="how-num">1</div><h4>Connect &amp; Register</h4><p>Connect your wallet and register as a Shipper or Carrier in seconds.</p></div>
+        <div class="how-step"><div class="how-num">2</div><h4>Create &amp; Fund Agreement</h4><p>Shippers define milestones, payout %, and deadline, then lock ETH into escrow.</p></div>
+        <div class="how-step"><div class="how-num">3</div><h4>Track Milestones</h4><p>Carriers fulfil checkpoints; each one is verified and released automatically.</p></div>
+        <div class="how-step"><div class="how-num">4</div><h4>Delivery &amp; Payout</h4><p>Final milestone completes delivery and releases the remaining balance.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="why" id="why">
+    <div class="wrap why-grid">
+      <div>
+        <div class="section-tag">Why Traxen</div>
+        <h2 style="font-size:28px;font-weight:800;letter-spacing:-.02em;margin:0 0 20px;">Built to remove friction from trade finance</h2>
+        <ul class="why-list">
+          <li><div class="why-check">✓</div><div><div class="t">No intermediaries</div><div class="d">Smart contracts replace banks, brokers, and manual approval chains.</div></div></li>
+          <li><div class="why-check">✓</div><div><div class="t">Instant, verifiable payouts</div><div class="d">Carriers get paid the moment a milestone is confirmed — not net-30.</div></div></li>
+          <li><div class="why-check">✓</div><div><div class="t">Dispute-resistant by design</div><div class="d">Deadlines and refund logic are enforced by code, not negotiation.</div></div></li>
+          <li><div class="why-check">✓</div><div><div class="t">Full transparency</div><div class="d">Every party can independently verify balances and history on-chain.</div></div></li>
+        </ul>
+      </div>
+      <div class="why-panel">
+        <div class="why-stat-grid">
+          <div class="why-stat"><div class="num">5.2K+</div><div class="lbl">ETH moved through escrow</div></div>
+          <div class="why-stat"><div class="num">1,310+</div><div class="lbl">Agreements created</div></div>
+          <div class="why-stat"><div class="num">98%</div><div class="lbl">On-time delivery rate</div></div>
+          <div class="why-stat"><div class="num">0</div><div class="lbl">Custodial fund holders</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta">
+    <div class="wrap">
+      <div class="cta-box">
+        <h2>Ready to ship with confidence?</h2>
+        <p>Connect your wallet and create your first milestone-based agreement in minutes.</p>
+        <div class="cta-actions">
+          <a class="btn btn-primary btn-lg" href="/register">Connect Wallet</a>
+          <a class="btn btn-ghost btn-lg" href="/register">Create Account</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer" id="contact">
+    <div class="wrap">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <div class="brand"><div class="brand-mark">T</div> Traxen</div>
+          <p>Decentralized escrow and milestone-based logistics, built on Ethereum. Secure payments, transparent tracking, zero intermediaries.</p>
+        </div>
+        <div class="footer-col"><h5>Product</h5><a href="#features">Features</a><a href="#how-it-works">How It Works</a><a onclick="return false;">Pricing</a><a onclick="return false;">Smart Contract</a></div>
+        <div class="footer-col"><h5>Company</h5><a href="#why">About Us</a><a onclick="return false;">Careers</a><a onclick="return false;">Blog</a><a onclick="return false;">Contact</a></div>
+        <div class="footer-col"><h5>Legal</h5><a onclick="return false;">Terms of Service</a><a onclick="return false;">Privacy Policy</a><a onclick="return false;">Security</a></div>
+      </div>
+      <div class="footer-bottom"><span>© 2026 Traxen. All rights reserved.</span><span>Ethereum · Sepolia Testnet</span></div>
+    </div>
+  </footer>
+</div>
+</body>
+</html>

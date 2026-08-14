@@ -1,0 +1,15 @@
+/* =========================================================
+   TRAXEN SHIPPER-SPECIFIC STYLES
+   Add CSS here only when a component is used exclusively
+   by the Shipper role.
+   ========================================================= */
+
+/*
+   Current uploaded CSS did not contain a clearly Shipper-only
+   selector. Shared Agreement UI should remain in styles.css.
+
+   Examples that belong here when introduced:
+   - .shipper-create-agreement
+   - .shipper-funding-panel
+   - .shipper-verify-milestone
+*/

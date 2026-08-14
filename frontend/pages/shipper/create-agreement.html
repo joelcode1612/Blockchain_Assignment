@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Traxen — Create Agreement</title>
+<link rel="stylesheet" href="../css/styles.css">
+<link rel="stylesheet" href="../css/dashboard.css">
+<link rel="stylesheet" href="../css/agreements.css">
+</head>
+<body>
+<div class="app">
+  <div class="sidebar">
+    <div class="brand"><div class="brand-mark">T</div> Traxen</div>
+    <div class="role-switch">
+      <div class="rs-opt active" data-role="shipper" onclick="setRole('shipper')">Shipper</div>
+      <div class="rs-opt " data-role="carrier" onclick="setRole('carrier')">Carrier</div>
+    </div>
+    <div class="nav-group">
+      <a class="nav-item" href="agreements.html">▦ Dashboard</a>
+      <a class="nav-item " href="agreements.html">▤ Agreements</a>
+      <a class="nav-item active" href="create-agreement.html">＋ Create Agreement</a>
+      <a class="nav-item" href="#">▣ Wallet</a>
+    </div>
+    <div class="sidebar-foot">
+      <div class="mini-avatar">MJ</div>
+      <div><div class="mini-name">Mike Johnson</div><div class="mini-role">Shipper</div></div>
+    </div>
+  </div>
+  <div class="main">
+    <div class="topbar">
+      <div><h1>Create Agreement</h1><div class="sub">Set up a new milestone-based logistics agreement</div></div>
+      
+    </div>
+    <div class="content">
+<div class="back-link" onclick="location.href='agreements.html'">← Back to Agreements</div>
+<div class="wizard"><div class="stepper"><div class="step current" id="stp-1"><div class="step-num">1</div> Agreement Info</div><div class="step" id="stp-2"><div class="step-num">2</div> Milestones</div><div class="step" id="stp-3"><div class="step-num">3</div> Review &amp; Confirm</div></div>
+<div class="panel">
+<div class="wstep" id="ws-1"><h2>Agreement Information</h2><div class="desc">Enter the basic details of your logistics agreement.</div><div class="field"><label>Agreement Name</label><input type="text" id="f-name" placeholder="e.g. Electronics Shipment to New York"></div><div class="field"><label>Select Carrier</label><select id="f-carrier"><option>0xA6b7…3F2a (FastTrack Logistics)</option><option>0x18cD…9E41 (Meridian Freight Co.)</option><option>0x9F02…7Ba4 (Coastal Cargo Partners)</option></select></div><div class="row2"><div class="field"><label>Total Payload Value (ETH)</label><input type="number" id="f-value" value="5.00" step="0.01"></div><div class="field"><label>Delivery Deadline</label><input type="datetime-local" id="f-deadline"></div></div><div class="field"><label>Description (optional)</label><textarea id="f-desc" placeholder="Shipment of electronic goods from LA to New York warehouse."></textarea></div><div class="actions"><a class="btn btn-ghost" href="agreements.html">Cancel</a><button class="btn btn-primary" onclick="goStep(2)">Next</button></div></div>
+<div class="wstep" id="ws-2" style="display:none"><h2>Configure Milestones</h2><div class="desc">Add milestones and their payment distribution. Percentages must total 100%.</div><table class="m-table"><thead><tr><th></th><th>Milestone</th><th>Description</th><th>% of Payment</th><th></th></tr></thead><tbody id="milestoneBody"></tbody></table><div class="pct-total" id="pctTotal">Total allocated: 100%</div><div class="add-milestone" onclick="addMilestone()">+ Add Milestone</div><div class="actions"><button class="btn btn-ghost" onclick="goStep(1)">Back</button><button class="btn btn-primary" onclick="goStep(3)">Next</button></div></div>
+<div class="wstep" id="ws-3" style="display:none"><h2>Review Agreement</h2><div class="desc">Please review all details before creating the escrow contract on-chain.</div><div class="review-grid"><div class="review-card"><h3>Agreement Details</h3><div class="kv"><span class="k">Name</span><span class="v" id="rv-name">—</span></div><div class="kv"><span class="k">Carrier</span><span class="v" id="rv-carrier">—</span></div><div class="kv"><span class="k">Total Value</span><span class="v" id="rv-value">—</span></div><div class="kv"><span class="k">Deadline</span><span class="v" id="rv-deadline">—</span></div></div><div class="review-card"><h3>Milestone &amp; Payment</h3><div id="rv-milestones"></div></div></div><div class="actions"><button class="btn btn-ghost" onclick="goStep(2)">Back</button><button class="btn btn-primary" onclick="submitCreateAgreement()">Create Agreement</button></div></div></div></div>
+    </div>
+  </div>
+</div>
+<script src="../js/common.js"></script>
+<script src="../js/create-agreement.js"></script>
+</body>
+</html>

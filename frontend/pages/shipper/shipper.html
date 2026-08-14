@@ -5,7 +5,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Traxen — Shipper Dashboard</title>
-    <link rel="stylesheet" href="../css/shipper_styles.css" />
+    <link rel="stylesheet" href="../css/styles.css" />
+    <link rel="stylesheet" href="../css/dashboard.css" />
+    <link rel="stylesheet" href="../css/responsive.css" />
+    <link rel="stylesheet" href="../css/shipper.css" />
 </head>
 
 <body>
@@ -21,7 +24,7 @@
             </div>
 
             <nav class="nav-group">
-                <div class="nav-item active">
+                <a href="shipper.html" class="nav-item active">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <rect x="3" y="3" width="7" height="7" />
                         <rect x="14" y="3" width="7" height="7" />
@@ -29,20 +32,20 @@
                         <rect x="3" y="14" width="7" height="7" />
                     </svg>
                     Dashboard
-                </div>
-                <div class="nav-item">
+                </a>
+                <a href="agreements.html" class="nav-item">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M9 12h6M9 16h6M9 8h6" />
                         <rect x="4" y="4" width="16" height="16" rx="2" />
                     </svg>
                     Agreements
-                </div>
-                <div class="nav-item">
+                </a>
+                <a href="create-agreement.html" class="nav-item">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M12 5v14M5 12h14" />
                     </svg>
                     Create Agreement
-                </div>
+                </a>
                 <div class="nav-item">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M3 7l9-4 9 4-9 4-9-4z" />
@@ -151,7 +154,7 @@
                             <h3>Ready to ship something new?</h3>
                             <p>Create a milestone-based escrow agreement and get matched with a verified carrier.</p>
                         </div>
-                        <button class="btn btn-primary">+ Create Agreement</button>
+                        <button class="btn btn-primary" onclick="location.href='create-agreement.html'">+ Create Agreement</button>
                     </div>
 
                     <!-- Chart + Activity -->
@@ -233,7 +236,7 @@
                     <!-- Agreements Table -->
                     <div class="panel">
                         <div class="panel-head">
-                            <h2>Active Agreements</h2><button class="btn btn-ghost">View All</button>
+                            <h2>Active Agreements</h2><button class="btn btn-ghost" onclick="location.href='agreements.html'">View All</button>
                         </div>
                         <table>
                             <thead>
@@ -247,7 +250,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr>
+                                <tr class="clickable" onclick="location.href='agreement-details-shipper.html?id=AG8901'">
                                     <td>#AG8901 — Electronics Shipment</td>
                                     <td>FastTrack Logistics</td>
                                     <td>5.00 ETH</td>
@@ -255,7 +258,7 @@
                                     <td>Jul 15, 12:00 PM</td>
                                     <td><span class="pill amber"><span class="dot"></span>In Transit</span></td>
                                 </tr>
-                                <tr>
+                                <tr class="clickable" onclick="location.href='agreement-details-shipper.html?id=AG8877'">
                                     <td>#AG8877 — Textile Shipment</td>
                                     <td>Meridian Freight Co.</td>
                                     <td>3.20 ETH</td>
@@ -263,7 +266,7 @@
                                     <td>Jul 12, 6:00 PM</td>
                                     <td><span class="pill amber"><span class="dot"></span>At Risk</span></td>
                                 </tr>
-                                <tr>
+                                <tr class="clickable" onclick="location.href='agreement-details-shipper.html?id=AG8804'">
                                     <td>#AG8804 — Machinery Parts</td>
                                     <td>Coastal Cargo Partners</td>
                                     <td>7.50 ETH</td>
