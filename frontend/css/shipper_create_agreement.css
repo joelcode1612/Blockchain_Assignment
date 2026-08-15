@@ -1,0 +1,268 @@
+/* =========================================
+   SHIPPER CREATE AGREEMENT WIZARD
+   ========================================= */
+
+.back-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--text-faint);
+  cursor: pointer;
+  margin-bottom: 16px;
+}
+
+.back-link:hover {
+  color: var(--text-dim);
+}
+
+.wizard {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.stepper {
+  width: 190px;
+  flex-shrink: 0;
+  background: var(--panel);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 6px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text-faint);
+}
+
+.step-num {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text-faint);
+}
+
+.step.done .step-num {
+  background: var(--lime);
+  border-color: var(--lime);
+  color: #0a0b0d;
+}
+.step.current .step-num {
+  background: transparent;
+  border-color: var(--lime);
+  color: var(--lime);
+}
+.step.current {
+  color: var(--text);
+  font-weight: 600;
+}
+.step.done {
+  color: var(--text-dim);
+}
+
+.panel {
+  flex: 1;
+  background: var(--panel);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  padding: 26px;
+}
+
+.panel h2 {
+  margin: 0 0 4px;
+  font-size: 17px;
+  font-weight: 600;
+}
+.panel .desc {
+  color: var(--text-faint);
+  font-size: 13px;
+  margin-bottom: 22px;
+}
+
+.field {
+  margin-bottom: 16px;
+}
+.field label {
+  display: block;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 10px 12px;
+  color: var(--text);
+  font-size: 13.5px;
+  font-family: inherit;
+  outline: none;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  border-color: var(--lime);
+}
+.field textarea {
+  resize: vertical;
+  min-height: 70px;
+}
+
+.row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 24px;
+}
+
+/* Milestone Builder Table */
+.m-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 14px;
+}
+
+.m-table th {
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-faint);
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-soft);
+  font-weight: 600;
+}
+
+.m-table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: 13px;
+  vertical-align: middle;
+}
+
+.m-table input {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 9px;
+  color: var(--text);
+  font-size: 13px;
+  width: 100%;
+}
+
+.m-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+
+.m-remove {
+  color: var(--text-faint);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 6px;
+}
+.m-remove:hover {
+  color: var(--red);
+}
+
+.add-milestone {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--lime);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 8px 4px;
+}
+
+.pct-total {
+  font-size: 12.5px;
+  color: var(--text-faint);
+  margin-top: 4px;
+}
+.pct-total.bad {
+  color: var(--red);
+}
+.pct-total.good {
+  color: var(--lime);
+}
+
+/* Review Step */
+.review-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.review-card {
+  background: var(--panel-2);
+  border: 1px solid var(--border-soft);
+  border-radius: 9px;
+  padding: 18px;
+}
+
+.review-card h3 {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.mini-milestone {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: 13px;
+}
+
+.mini-milestone:last-child {
+  border-bottom: none;
+}
+.mini-milestone .name {
+  font-weight: 600;
+}
+.mini-milestone .sub {
+  color: var(--text-faint);
+  font-size: 11.5px;
+}
+.mini-milestone .pct {
+  color: var(--lime);
+  font-weight: 700;
+  font-size: 12.5px;
+}

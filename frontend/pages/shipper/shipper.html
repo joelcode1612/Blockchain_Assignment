@@ -5,10 +5,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Traxen — Shipper Dashboard</title>
-    <link rel="stylesheet" href="../css/styles.css" />
-    <link rel="stylesheet" href="../css/dashboard.css" />
-    <link rel="stylesheet" href="../css/responsive.css" />
-    <link rel="stylesheet" href="../css/shipper.css" />
+    <link rel="stylesheet" href="../../css/styles.css" />
+    <link rel="stylesheet" href="../../css/dashboard.css" />
+    <link rel="stylesheet" href="../../css/responsive.css" />
+    <link rel="stylesheet" href="../../css/shipper.css" />
 </head>
 
 <body>
@@ -17,11 +17,6 @@
         <!-- SIDEBAR -->
         <aside class="sidebar">
             <div class="brand"><span class="brand-mark">T</span> Traxen</div>
-
-            <div class="role-switch">
-                <a href="shipper.html" class="rs-opt active">Shipper</a>
-                <a href="carrier.html" class="rs-opt">Carrier</a>
-            </div>
 
             <nav class="nav-group">
                 <a href="shipper.html" class="nav-item active">
@@ -40,7 +35,7 @@
                     </svg>
                     Agreements
                 </a>
-                <a href="create-agreement.html" class="nav-item">
+                <a href="create_agreement.html" class="nav-item">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M12 5v14M5 12h14" />
                     </svg>
@@ -154,7 +149,8 @@
                             <h3>Ready to ship something new?</h3>
                             <p>Create a milestone-based escrow agreement and get matched with a verified carrier.</p>
                         </div>
-                        <button class="btn btn-primary" onclick="location.href='create-agreement.html'">+ Create Agreement</button>
+                        <button class="btn btn-primary" onclick="location.href='create_agreement.html'">+ Create
+                            Agreement</button>
                     </div>
 
                     <!-- Chart + Activity -->
@@ -236,7 +232,8 @@
                     <!-- Agreements Table -->
                     <div class="panel">
                         <div class="panel-head">
-                            <h2>Active Agreements</h2><button class="btn btn-ghost" onclick="location.href='agreements.html'">View All</button>
+                            <h2>Active Agreements</h2><button class="btn btn-ghost"
+                                onclick="location.href='agreements.html'">View All</button>
                         </div>
                         <table>
                             <thead>
@@ -250,7 +247,8 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr class="clickable" onclick="location.href='agreement-details-shipper.html?id=AG8901'">
+                                <tr class="clickable"
+                                    onclick="location.href='agreement_details_shipper.html?id=AG8901'">
                                     <td>#AG8901 — Electronics Shipment</td>
                                     <td>FastTrack Logistics</td>
                                     <td>5.00 ETH</td>
@@ -258,7 +256,8 @@
                                     <td>Jul 15, 12:00 PM</td>
                                     <td><span class="pill amber"><span class="dot"></span>In Transit</span></td>
                                 </tr>
-                                <tr class="clickable" onclick="location.href='agreement-details-shipper.html?id=AG8877'">
+                                <tr class="clickable"
+                                    onclick="location.href='agreement_details_shipper.html?id=AG8877'">
                                     <td>#AG8877 — Textile Shipment</td>
                                     <td>Meridian Freight Co.</td>
                                     <td>3.20 ETH</td>
@@ -266,7 +265,8 @@
                                     <td>Jul 12, 6:00 PM</td>
                                     <td><span class="pill amber"><span class="dot"></span>At Risk</span></td>
                                 </tr>
-                                <tr class="clickable" onclick="location.href='agreement-details-shipper.html?id=AG8804'">
+                                <tr class="clickable"
+                                    onclick="location.href='agreement_details_shipper.html?id=AG8804'">
                                     <td>#AG8804 — Machinery Parts</td>
                                     <td>Coastal Cargo Partners</td>
                                     <td>7.50 ETH</td>
@@ -282,8 +282,10 @@
             </div>
         </main>
     </div>
-
-    <script src="../js/app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.15.0/dist/ethers.umd.min.js"></script>
+    <script src="../../js/blockchain/web3_integration.js"></script>
+    <script src="../../js/auth.js"></script>
+    <script src="../../js/shared/app.js"></script>
 </body>
 
 </html>

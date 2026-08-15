@@ -76,7 +76,7 @@ function submitCreateAgreement() {
       "Milestone percentages must total exactly 100% before the contract can be deployed.",
       `<div class="kv"><span class="k">Current Total</span><span class="v">${total}%</span></div><div class="kv"><span class="k">Required</span><span class="v">100%</span></div>`,
       "INVALID_MILESTONE_SPLIT",
-      "create-agreement.html",
+      "create_agreement.html",
     );
     return;
   }
@@ -88,7 +88,7 @@ function submitCreateAgreement() {
     "Agreement Created",
     "Your escrow contract has been deployed on-chain and is now awaiting funding.",
     `<div class="kv"><span class="k">Agreement</span><span class="v">${name}</span></div><div class="kv"><span class="k">Total Value</span><span class="v">${value} ETH</span></div><div class="kv"><span class="k">Contract Address</span><span class="v" style="font-family:var(--mono);font-size:11px">0x9F2c…7B1E</span></div>`,
-    "agreement-details-shipper.html?id=AG8901",
+    "agreement_details_shipper.html?id=AG8901",
   );
 }
 renderMilestones();

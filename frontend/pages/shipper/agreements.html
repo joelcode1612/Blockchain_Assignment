@@ -1,58 +1,249 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Traxen — Agreements</title>
-<link rel="stylesheet" href="../css/styles.css">
-<link rel="stylesheet" href="../css/dashboard.css">
-<link rel="stylesheet" href="../css/agreements.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Traxen — Agreements</title>
+  <link rel="stylesheet" href="../../css/styles.css" />
+  <link rel="stylesheet" href="../../css/dashboard.css" />
+  <link rel="stylesheet" href="../../css/responsive.css" />
+  <link rel="stylesheet" href="../../css/shipper.css" />
+  <link rel="stylesheet" href="../../css/shipper_agreement.css" />
 </head>
+
 <body>
-<div class="app">
-  <div class="sidebar">
-    <div class="brand"><div class="brand-mark">T</div> Traxen</div>
-    <div class="role-switch">
-      <div class="rs-opt active" data-role="shipper" onclick="setRole('shipper')">Shipper</div>
-      <div class="rs-opt " data-role="carrier" onclick="setRole('carrier')">Carrier</div>
-    </div>
-    <div class="nav-group">
-      <a class="nav-item" href="agreements.html">▦ Dashboard</a>
-      <a class="nav-item active" href="agreements.html">▤ Agreements</a>
-      <a class="nav-item active" href="create-agreement.html">＋ Create Agreement</a>
-      <a class="nav-item" href="#">▣ Wallet</a>
-    </div>
-    <div class="sidebar-foot">
-      <div class="mini-avatar">MJ</div>
-      <div><div class="mini-name">Mike Johnson</div><div class="mini-role">Shipper</div></div>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark">T</span> Traxen</div>
+
+      <nav class="nav-group">
+        <a href="shipper.html" class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7" />
+            <rect x="14" y="3" width="7" height="7" />
+            <rect x="14" y="14" width="7" height="7" />
+            <rect x="3" y="14" width="7" height="7" />
+          </svg>
+          Dashboard
+        </a>
+        <a href="agreements.html" class="nav-item active">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 12h6M9 16h6M9 8h6" />
+            <rect x="4" y="4" width="16" height="16" rx="2" />
+          </svg>
+          Agreements
+        </a>
+        <a href="create_agreement.html" class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          Create Agreement
+        </a>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 7l9-4 9 4-9 4-9-4z" />
+            <path d="M3 7v10l9 4 9-4V7" />
+          </svg>
+          Shipments
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 12h16M4 6h16M4 18h16" />
+          </svg>
+          Transactions
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="6" width="18" height="13" rx="2" />
+            <path d="M16 6V4H8v2" />
+          </svg>
+          Wallet
+        </div>
+      </nav>
+
+      <div class="nav-group">
+        <div class="nav-label">Account</div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="8" r="4" />
+            <path d="M4 21c0-4 4-6 8-6s8 2 8 6" />
+          </svg>
+          Profile
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 8v4l3 2" />
+          </svg>
+          Settings
+        </div>
+      </div>
+
+      <div class="sidebar-foot">
+        <div class="mini-avatar">MJ</div>
+        <div>
+          <div class="mini-name">Mike Johnson</div>
+          <div class="mini-role">Shipper</div>
+        </div>
+      </div>
+    </aside>
+    <div class="main">
+      <div class="topbar">
+        <div>
+          <h1>Agreements</h1>
+          <div class="sub">All logistics agreements you're party to as a Shipper</div>
+        </div>
+        <a class="btn btn-primary" href="create_agreement.html">+ Create Agreement</a>
+      </div>
+      <div class="content">
+        <div class="toolbar">
+          <div class="search-box">🔍<input type="text" placeholder="Search agreements by ID or name..."></div>
+          <div class="filter-chips">
+            <div class="chip active">All</div>
+            <div class="chip">Pending</div>
+            <div class="chip">Active</div>
+            <div class="chip">Completed</div>
+            <div class="chip">Refunded</div>
+          </div>
+        </div>
+        <div class="agreement-grid" id="grid-shipper">
+          <div class="agreement-card" onclick="openAgreement('shipper','AG8901')">
+            <div class="ac-top">
+              <div>
+                <div class="ac-id">#AG8901</div>
+                <div class="ac-title">Electronics Shipment to New York</div>
+                <div class="ac-party">Carrier: FastTrack Logistics</div>
+              </div>
+              <div class="ac-value">5.00 ETH</div>
+            </div>
+            <div class="ac-progress">
+              <div class="ac-progress-fill" style="width:25%"></div>
+            </div>
+            <div class="ac-meta"><span>1 / 4 milestones</span><span class="pill amber"><span class="dot"></span>In
+                Transit</span></div>
+          </div>
+          <div class="agreement-card" onclick="openAgreement('shipper','AG8877')">
+            <div class="ac-top">
+              <div>
+                <div class="ac-id">#AG8877</div>
+                <div class="ac-title">Textile Shipment to Chicago</div>
+                <div class="ac-party">Carrier: Meridian Freight Co.</div>
+              </div>
+              <div class="ac-value">3.20 ETH</div>
+            </div>
+            <div class="ac-progress">
+              <div class="ac-progress-fill" style="width:75%"></div>
+            </div>
+            <div class="ac-meta"><span>3 / 4 milestones</span><span class="pill amber"><span class="dot"></span>At
+                Risk</span></div>
+          </div>
+          <div class="agreement-card" onclick="openAgreement('shipper','AG8804')">
+            <div class="ac-top">
+              <div>
+                <div class="ac-id">#AG8804</div>
+                <div class="ac-title">Machinery Parts to Austin</div>
+                <div class="ac-party">Carrier: Coastal Cargo Partners</div>
+              </div>
+              <div class="ac-value">7.50 ETH</div>
+            </div>
+            <div class="ac-progress">
+              <div class="ac-progress-fill" style="width:66%"></div>
+            </div>
+            <div class="ac-meta"><span>2 / 3 milestones</span><span class="pill lime"><span class="dot"></span>On
+                Track</span></div>
+          </div>
+          <div class="agreement-card" onclick="openAgreement('shipper','AG8712')">
+            <div class="ac-top">
+              <div>
+                <div class="ac-id">#AG8712</div>
+                <div class="ac-title">Furniture Batch to Seattle</div>
+                <div class="ac-party">Carrier: Pacific Movers Inc.</div>
+              </div>
+              <div class="ac-value">1.90 ETH</div>
+            </div>
+            <div class="ac-progress">
+              <div class="ac-progress-fill" style="width:100%"></div>
+            </div>
+            <div class="ac-meta"><span>4 / 4 milestones</span><span class="pill gray"><span
+                  class="dot"></span>Completed</span></div>
+          </div>
+        </div>
+        <div class="agreement-grid" id="grid-carrier" style="display:none">
+          <div class="agreement-card" onclick="openAgreement('carrier','AG8901')">
+            <div class="ac-top">
+              <div>
+                <div class="ac-id">#AG8901</div>
+                <div class="ac-title">Electronics Shipment to New York</div>
+                <div class="ac-party">Shipper: Mike Johnson</div>
+              </div>
+              <div class="ac-value">5.00 ETH</div>
+            </div>
+            <div class="ac-progress">
+              <div class="ac-progress-fill" style="width:25%"></div>
+            </div>
+            <div class="ac-meta"><span>1 / 4 milestones</span><span class="pill amber"><span class="dot"></span>In
+                Transit</span></div>
+          </div>
+          <div class="agreement-card" onclick="location.href='agreement-pending.html'">
+            <div class="ac-top">
+              <div>
+                <div class="ac-id">#AG8930</div>
+                <div class="ac-title">Furniture Batch to Seattle</div>
+                <div class="ac-party">Shipper: Alan Cho</div>
+              </div>
+              <div class="ac-value">2.80 ETH</div>
+            </div>
+            <div class="ac-progress">
+              <div class="ac-progress-fill" style="width:0%"></div>
+            </div>
+            <div class="ac-meta"><span>0 / 4 milestones</span><span class="pill gray"><span class="dot"></span>Awaiting
+                Your Response</span></div>
+          </div>
+          <div class="agreement-card" onclick="openAgreement('carrier','AG8877')">
+            <div class="ac-top">
+              <div>
+                <div class="ac-id">#AG8877</div>
+                <div class="ac-title">Textile Shipment to Chicago</div>
+                <div class="ac-party">Shipper: Dana Reyes</div>
+              </div>
+              <div class="ac-value">3.20 ETH</div>
+            </div>
+            <div class="ac-progress">
+              <div class="ac-progress-fill" style="width:75%"></div>
+            </div>
+            <div class="ac-meta"><span>3 / 4 milestones</span><span class="pill amber"><span class="dot"></span>Proof
+                Needed</span></div>
+          </div>
+          <div class="agreement-card" onclick="openAgreement('carrier','AG8712')">
+            <div class="ac-top">
+              <div>
+                <div class="ac-id">#AG8712</div>
+                <div class="ac-title">Furniture Batch to Seattle</div>
+                <div class="ac-party">Shipper: Priya Nair</div>
+              </div>
+              <div class="ac-value">1.90 ETH</div>
+            </div>
+            <div class="ac-progress">
+              <div class="ac-progress-fill" style="width:100%"></div>
+            </div>
+            <div class="ac-meta"><span>4 / 4 milestones</span><span class="pill gray"><span
+                  class="dot"></span>Completed</span></div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
-  <div class="main">
-    <div class="topbar">
-      <div><h1>Agreements</h1><div class="sub">All logistics agreements you're party to as a Shipper</div></div>
-      <a class="btn btn-primary" href="create-agreement.html">+ Create Agreement</a>
-    </div>
-    <div class="content">
-<div class="toolbar">
-  <div class="search-box">🔍<input type="text" placeholder="Search agreements by ID or name..."></div>
-  <div class="filter-chips"><div class="chip active">All</div><div class="chip">Pending</div><div class="chip">Active</div><div class="chip">Completed</div><div class="chip">Refunded</div></div>
-</div>
-<div class="agreement-grid" id="grid-shipper">
-  <div class="agreement-card" onclick="openAgreement('shipper','AG8901')"><div class="ac-top"><div><div class="ac-id">#AG8901</div><div class="ac-title">Electronics Shipment to New York</div><div class="ac-party">Carrier: FastTrack Logistics</div></div><div class="ac-value">5.00 ETH</div></div><div class="ac-progress"><div class="ac-progress-fill" style="width:25%"></div></div><div class="ac-meta"><span>1 / 4 milestones</span><span class="pill amber"><span class="dot"></span>In Transit</span></div></div>
-  <div class="agreement-card" onclick="openAgreement('shipper','AG8877')"><div class="ac-top"><div><div class="ac-id">#AG8877</div><div class="ac-title">Textile Shipment to Chicago</div><div class="ac-party">Carrier: Meridian Freight Co.</div></div><div class="ac-value">3.20 ETH</div></div><div class="ac-progress"><div class="ac-progress-fill" style="width:75%"></div></div><div class="ac-meta"><span>3 / 4 milestones</span><span class="pill amber"><span class="dot"></span>At Risk</span></div></div>
-  <div class="agreement-card" onclick="openAgreement('shipper','AG8804')"><div class="ac-top"><div><div class="ac-id">#AG8804</div><div class="ac-title">Machinery Parts to Austin</div><div class="ac-party">Carrier: Coastal Cargo Partners</div></div><div class="ac-value">7.50 ETH</div></div><div class="ac-progress"><div class="ac-progress-fill" style="width:66%"></div></div><div class="ac-meta"><span>2 / 3 milestones</span><span class="pill lime"><span class="dot"></span>On Track</span></div></div>
-  <div class="agreement-card" onclick="openAgreement('shipper','AG8712')"><div class="ac-top"><div><div class="ac-id">#AG8712</div><div class="ac-title">Furniture Batch to Seattle</div><div class="ac-party">Carrier: Pacific Movers Inc.</div></div><div class="ac-value">1.90 ETH</div></div><div class="ac-progress"><div class="ac-progress-fill" style="width:100%"></div></div><div class="ac-meta"><span>4 / 4 milestones</span><span class="pill gray"><span class="dot"></span>Completed</span></div></div>
-</div>
-<div class="agreement-grid" id="grid-carrier" style="display:none">
-  <div class="agreement-card" onclick="openAgreement('carrier','AG8901')"><div class="ac-top"><div><div class="ac-id">#AG8901</div><div class="ac-title">Electronics Shipment to New York</div><div class="ac-party">Shipper: Mike Johnson</div></div><div class="ac-value">5.00 ETH</div></div><div class="ac-progress"><div class="ac-progress-fill" style="width:25%"></div></div><div class="ac-meta"><span>1 / 4 milestones</span><span class="pill amber"><span class="dot"></span>In Transit</span></div></div>
-  <div class="agreement-card" onclick="location.href='agreement-pending.html'"><div class="ac-top"><div><div class="ac-id">#AG8930</div><div class="ac-title">Furniture Batch to Seattle</div><div class="ac-party">Shipper: Alan Cho</div></div><div class="ac-value">2.80 ETH</div></div><div class="ac-progress"><div class="ac-progress-fill" style="width:0%"></div></div><div class="ac-meta"><span>0 / 4 milestones</span><span class="pill gray"><span class="dot"></span>Awaiting Your Response</span></div></div>
-  <div class="agreement-card" onclick="openAgreement('carrier','AG8877')"><div class="ac-top"><div><div class="ac-id">#AG8877</div><div class="ac-title">Textile Shipment to Chicago</div><div class="ac-party">Shipper: Dana Reyes</div></div><div class="ac-value">3.20 ETH</div></div><div class="ac-progress"><div class="ac-progress-fill" style="width:75%"></div></div><div class="ac-meta"><span>3 / 4 milestones</span><span class="pill amber"><span class="dot"></span>Proof Needed</span></div></div>
-  <div class="agreement-card" onclick="openAgreement('carrier','AG8712')"><div class="ac-top"><div><div class="ac-id">#AG8712</div><div class="ac-title">Furniture Batch to Seattle</div><div class="ac-party">Shipper: Priya Nair</div></div><div class="ac-value">1.90 ETH</div></div><div class="ac-progress"><div class="ac-progress-fill" style="width:100%"></div></div><div class="ac-meta"><span>4 / 4 milestones</span><span class="pill gray"><span class="dot"></span>Completed</span></div></div>
-</div>
-    </div>
-  </div>
-</div>
-<script src="../js/common.js"></script>
-<script src="../js/agreements.js"></script>
+  <script src="../../js/shared/common.js"></script>
+  <script>
+    function openAgreement(role, id) {
+      if (role === "carrier") {
+        location.href = "../carrier/agreement-details-carrier.html?id=" + id;
+      } else {
+        location.href = "agreement_details_shipper.html?id=" + id;
+      }
+    }
+  </script>
 </body>
+
 </html>

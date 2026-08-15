@@ -1,43 +1,340 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Traxen — Transaction Failed</title>
-<link rel="stylesheet" href="../css/styles.css">
-<link rel="stylesheet" href="../css/dashboard.css">
-<link rel="stylesheet" href="../css/agreements.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Traxen — Carrier Agreements</title>
+  <!-- Link to global styles -->
+  <link rel="stylesheet" href="../../css/styles.css" />
+  <link rel="stylesheet" href="../../css/dashboard.css" />
+  <!-- Link to the separated CSS file -->
+  <link rel="stylesheet" href="../../css/carrier-agreements.css" />
 </head>
+
 <body>
-<div class="app">
-  <div class="sidebar">
-    <div class="brand"><div class="brand-mark">T</div> Traxen</div>
-    <div class="role-switch">
-      <div class="rs-opt active" data-role="shipper" onclick="setRole('shipper')">Shipper</div>
-      <div class="rs-opt " data-role="carrier" onclick="setRole('carrier')">Carrier</div>
-    </div>
-    <div class="nav-group">
-      <a class="nav-item" href="agreements.html">▦ Dashboard</a>
-      <a class="nav-item " href="agreements.html">▤ Agreements</a>
-      
-      <a class="nav-item" href="#">▣ Wallet</a>
-    </div>
-    <div class="sidebar-foot">
-      <div class="mini-avatar">MJ</div>
-      <div><div class="mini-name">Mike Johnson</div><div class="mini-role">Shipper</div></div>
-    </div>
+  <div class="app">
+
+    <!-- SIDEBAR (With Consistent Icons) -->
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark">T</span> Traxen</div>
+
+      <div class="role-switch">
+        <a href="#" class="rs-opt">Shipper</a>
+        <a href="#" class="rs-opt active">Carrier</a>
+      </div>
+
+      <nav class="nav-group">
+        <!-- Dashboard (Grid) -->
+        <a href="#" class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+          </svg>
+          Dashboard
+        </a>
+
+        <!-- Available Jobs (Check Circle) -->
+        <a href="#" class="nav-item" onclick="switchTab('available-jobs', this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+          Available Jobs
+        </a>
+
+        <!-- My Deliveries (Package/Box) -->
+        <a href="#" class="nav-item active" onclick="switchTab('my-deliveries', this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line>
+            <path
+              d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
+            </path>
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+            <line x1="12" y1="22.08" x2="12" y2="12"></line>
+          </svg>
+          My Deliveries
+        </a>
+
+        <!-- Agreements (Document) -->
+        <a href="#" class="nav-item" onclick="switchTab('agreement-history', this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+          Agreements
+        </a>
+
+        <!-- Earnings (Lines/List) -->
+        <a href="#" class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+          Earnings
+        </a>
+
+        <!-- Wallet -->
+        <a href="#" class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path>
+            <path d="M3 5v14a2 2 0 0 0 2 2h16v-5H18a2 2 0 0 1 0-4h3z"></path>
+          </svg>
+          Wallet
+        </a>
+      </nav>
+
+      <div class="nav-group">
+        <div class="nav-label">ACCOUNT</div>
+
+        <!-- Profile (User) -->
+        <a href="#" class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+          Profile
+        </a>
+
+        <!-- Settings (Clock/Time) -->
+        <a href="#" class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          Settings
+        </a>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h1 id="page-title">My Deliveries</h1>
+          <div class="sub" id="page-sub">Track and update your active logistics contracts.</div>
+        </div>
+        <div class="topbar-actions">
+          <div class="icon-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.7 21a2 2 0 01-3.4 0" />
+            </svg>
+            <div class="badge-dot"></div>
+          </div>
+          <div class="mini-avatar" style="width:34px; height:34px;">FT</div>
+        </div>
+      </header>
+
+      <div class="content">
+
+        <!-- 1. AVAILABLE JOBS VIEW -->
+        <div id="available-jobs" class="tab-view">
+          <div class="cta-banner">
+            <div>
+              <h3>Marketplace is Active</h3>
+              <p>Escrow funds are pre-locked in smart contracts. Accept a job to secure your payout.</p>
+            </div>
+            <button class="btn btn-ghost" onclick="alert('Filtering jobs...')">Filter Routes</button>
+          </div>
+
+          <div class="job-grid">
+            <!-- Job Card 1 -->
+            <div class="job-card">
+              <div class="job-header">
+                <div>
+                  <div class="job-route">LA → Seattle</div>
+                  <div class="job-shipper">Shipper: Mike Johnson</div>
+                </div>
+                <div class="job-value">
+                  <div class="job-eth">2.80 ETH</div>
+                </div>
+              </div>
+              <div class="job-details">
+                <div>
+                  <div class="detail-label">Payload</div>
+                  <div class="detail-val">Furniture Batch</div>
+                </div>
+                <div>
+                  <div class="detail-label">Deadline</div>
+                  <div class="detail-val">Aug 22, 2026</div>
+                </div>
+                <div>
+                  <div class="detail-label">Milestones</div>
+                  <div class="detail-val">4 Checkpoints</div>
+                </div>
+                <div>
+                  <div class="detail-label">Status</div>
+                  <div class="detail-val" style="color: var(--lime);">Escrow Funded</div>
+                </div>
+              </div>
+              <button class="btn btn-primary btn-block"
+                onclick="alert('Triggering Smart Contract: acceptJob(AG8930)')">Review & Accept Job</button>
+            </div>
+
+            <!-- Job Card 2 -->
+            <div class="job-card">
+              <div class="job-header">
+                <div>
+                  <div class="job-route">Denver → Austin</div>
+                  <div class="job-shipper">Shipper: TechCorp Inc.</div>
+                </div>
+                <div class="job-value">
+                  <div class="job-eth">4.10 ETH</div>
+                </div>
+              </div>
+              <div class="job-details">
+                <div>
+                  <div class="detail-label">Payload</div>
+                  <div class="detail-val">Server Hardware</div>
+                </div>
+                <div>
+                  <div class="detail-label">Deadline</div>
+                  <div class="detail-val">Aug 25, 2026</div>
+                </div>
+                <div>
+                  <div class="detail-label">Milestones</div>
+                  <div class="detail-val">3 Checkpoints</div>
+                </div>
+                <div>
+                  <div class="detail-label">Status</div>
+                  <div class="detail-val" style="color: var(--lime);">Escrow Funded</div>
+                </div>
+              </div>
+              <button class="btn btn-primary btn-block">Review & Accept Job</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. MY DELIVERIES VIEW (ACTIVE) -->
+        <div id="my-deliveries" class="tab-view active">
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Agreement ID</th>
+                  <th>Route / Payload</th>
+                  <th>Total Escrow</th>
+                  <th>Next Milestone</th>
+                  <th>Deadline</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="mono">#AG8901</td>
+                  <td><b>LA → NY</b><br><span style="color:var(--text-dim); font-size:11px;">Electronics</span></td>
+                  <td>5.00 ETH</td>
+                  <td>2. In Transit Checkpoint</td>
+                  <td>Aug 25, 2026</td>
+                  <td><span class="status-badge status-action"><span class="dot"></span> Proof Required</span></td>
+                  <td><button class="btn btn-primary btn-sm" onclick="location.href='carrier_agreement.html'">Submit
+                      Proof</button></td>
+                </tr>
+                <tr>
+                  <td class="mono">#AG8877</td>
+                  <td><b>Miami → Atlanta</b><br><span style="color:var(--text-dim); font-size:11px;">Textiles</span>
+                  </td>
+                  <td>3.20 ETH</td>
+                  <td>3. Out for Delivery</td>
+                  <td>Aug 18, 2026</td>
+                  <td><span class="status-badge status-active"><span class="dot"></span> In Transit</span></td>
+                  <td><button class="btn btn-ghost btn-sm">View Details</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 3. AGREEMENTS VIEW (HISTORY) -->
+        <div id="agreement-history" class="tab-view">
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Agreement ID</th>
+                  <th>Date Completed</th>
+                  <th>Shipper</th>
+                  <th>Payload</th>
+                  <th>Total Earned</th>
+                  <th>Contract Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="mono">#AG8712</td>
+                  <td>July 28, 2026</td>
+                  <td>Global Traders LLC</td>
+                  <td>Auto Parts</td>
+                  <td style="color: var(--lime); font-weight: 600;">6.50 ETH</td>
+                  <td><span class="status-badge status-done">✔ Completed</span></td>
+                </tr>
+                <tr>
+                  <td class="mono">#AG8650</td>
+                  <td>July 15, 2026</td>
+                  <td>Dana Reyes</td>
+                  <td>Raw Materials</td>
+                  <td style="color: var(--lime); font-weight: 600;">2.10 ETH</td>
+                  <td><span class="status-badge status-done">✔ Completed</span></td>
+                </tr>
+                <tr>
+                  <td class="mono">#AG8502</td>
+                  <td>June 10, 2026</td>
+                  <td>Mike Johnson</td>
+                  <td>Perishables</td>
+                  <td style="color: var(--red); font-weight: 600;">1.00 ETH</td>
+                  <td><span class="status-badge status-fail">✖ Failed / Refunded</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </main>
   </div>
-  <div class="main">
-    <div class="topbar">
-      <div><h1>Transaction Failed</h1><div class="sub">Action failed</div></div>
-      
-    </div>
-    <div class="content">
-<div class="state-stage"><div class="state-card"><div class="state-icon error">✕</div><h2 id="errorTitle">Something went wrong</h2><p id="errorMessage">Your transaction could not be completed.</p><div class="state-details" id="errorDetails"></div><div class="state-actions"><a class="btn btn-ghost" href="agreements.html">Back to Agreements</a><a class="btn btn-primary" id="errorRetryBtn" href="agreements.html">Try Again</a></div><div class="error-code" id="errorCode">Error Code: TX_REVERTED</div></div></div>
-    </div>
-  </div>
-</div>
-<script src="../js/common.js"></script>
-<script src="../js/state.js"></script>
+
+  <!-- Included Tab Switching Script -->
+  <script>
+    function switchTab(tabId, element) {
+      event.preventDefault();
+
+      document.querySelectorAll('.tab-view').forEach(tab => {
+        tab.classList.remove('active');
+      });
+
+      document.querySelectorAll('.nav-item').forEach(nav => {
+        nav.classList.remove('active');
+      });
+
+      document.getElementById(tabId).classList.add('active');
+      element.classList.add('active');
+
+      const titles = {
+        'available-jobs': { title: 'Available Jobs', sub: 'Browse and accept decentralized logistics contracts.' },
+        'my-deliveries': { title: 'My Deliveries', sub: 'Track and update your active logistics contracts.' },
+        'agreement-history': { title: 'Agreement History', sub: 'Past contracts and escrow payout logs.' }
+      };
+
+      document.getElementById('page-title').innerText = titles[tabId].title;
+      document.getElementById('page-sub').innerText = titles[tabId].sub;
+    }
+  </script>
 </body>
+
 </html>

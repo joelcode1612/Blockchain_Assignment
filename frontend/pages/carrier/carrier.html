@@ -5,10 +5,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Traxen — Carrier Dashboard</title>
-    <link rel="stylesheet" href="../css/styles.css" />
-    <link rel="stylesheet" href="../css/dashboard.css" />
-    <link rel="stylesheet" href="../css/responsive.css" />
-    <link rel="stylesheet" href="../css/carrier.css" />
+    <link rel="stylesheet" href="../../css/styles.css" />
+    <link rel="stylesheet" href="../../css/dashboard.css" />
+    <link rel="stylesheet" href="../../css/responsive.css" />
+    <link rel="stylesheet" href="../../css/carrier.css" />
 </head>
 
 <body>
@@ -17,11 +17,6 @@
         <!-- SIDEBAR -->
         <aside class="sidebar">
             <div class="brand"><span class="brand-mark">T</span> Traxen</div>
-
-            <div class="role-switch">
-                <a href="shipper.html" class="rs-opt">Shipper</a>
-                <a href="carrier.html" class="rs-opt active">Carrier</a>
-            </div>
 
             <nav class="nav-group">
                 <a href="carrier.html" class="nav-item active">
@@ -33,21 +28,21 @@
                     </svg>
                     Dashboard
                 </a>
-                <a href="agreements.html" class="nav-item">
+                <a href="carrier_available_job.html" class="nav-item">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="9" />
                         <path d="M8 12l3 3 5-6" />
                     </svg>
                     Available Jobs
                 </a>
-                <a href="agreements.html" class="nav-item">
+                <a href="carrier_my_delivery.html" class="nav-item">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M3 7l9-4 9 4-9 4-9-4z" />
                         <path d="M3 7v10l9 4 9-4V7" />
                     </svg>
                     My Deliveries
                 </a>
-                <a href="agreements.html" class="nav-item">
+                <a href="carrier_agreement_history.html" class="nav-item">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M9 12h6M9 16h6M9 8h6" />
                         <rect x="4" y="4" width="16" height="16" rx="2" />
@@ -155,7 +150,9 @@
                             <h3>3 new jobs match your fleet</h3>
                             <p>Browse open agreements from verified shippers and lock in your next delivery.</p>
                         </div>
-                        <button class="btn btn-primary" onclick="location.href='agreements.html'">Browse Available Jobs</button>
+                        <button class="btn btn-primary" onclick="location.href='carrier_available_job.html'">Browse
+                            Available
+                            Jobs</button>
                     </div>
 
                     <!-- Chart + Activity -->
@@ -238,9 +235,11 @@
                     <div class="grid-2col" style="grid-template-columns:1fr 1fr;">
                         <div class="panel">
                             <div class="panel-head">
-                                <h2>My Active Deliveries</h2><button class="btn btn-ghost" onclick="location.href='agreements.html'">View All</button>
+                                <h2>My Active Deliveries</h2><button class="btn btn-ghost"
+                                    onclick="location.href='carrier_my_delivery.html'">View All</button>
                             </div>
-                            <div class="job-card clickable" onclick="location.href='agreement-details-carrier.html?id=AG8901'">
+                            <div class="job-card clickable"
+                                onclick="location.href='agreement-details-carrier.html?id=AG8901'">
                                 <div class="job-top">
                                     <div>
                                         <div class="job-title">#AG8901 — Electronics Shipment</div>
@@ -250,9 +249,12 @@
                                 </div>
                                 <div class="job-meta"><span>Next: <b>In Transit</b></span><span>Deadline: <b>Jul
                                             15</b></span></div>
-                                <button class="btn btn-primary" style="width:100%;" onclick="event.stopPropagation();location.href='agreement-details-carrier.html?id=AG8901'">Submit Milestone Proof</button>
+                                <button class="btn btn-primary" style="width:100%;"
+                                    onclick="event.stopPropagation();location.href='agreement-details-carrier.html?id=AG8901'">Submit
+                                    Milestone Proof</button>
                             </div>
-                            <div class="job-card clickable" onclick="location.href='agreement-details-carrier.html?id=AG8877'">
+                            <div class="job-card clickable"
+                                onclick="location.href='agreement-details-carrier.html?id=AG8877'">
                                 <div class="job-top">
                                     <div>
                                         <div class="job-title">#AG8877 — Textile Shipment</div>
@@ -262,13 +264,16 @@
                                 </div>
                                 <div class="job-meta"><span>Next: <b>Out for Delivery</b></span><span>Deadline: <b>Jul
                                             12</b></span></div>
-                                <button class="btn btn-primary" style="width:100%;" onclick="event.stopPropagation();location.href='agreement-details-carrier.html?id=AG8877'">Submit Milestone Proof</button>
+                                <button class="btn btn-primary" style="width:100%;"
+                                    onclick="event.stopPropagation();location.href='agreement-details-carrier.html?id=AG8877'">Submit
+                                    Milestone Proof</button>
                             </div>
                         </div>
 
                         <div class="panel">
                             <div class="panel-head">
-                                <h2>Available Jobs Nearby</h2><button class="btn btn-ghost" onclick="location.href='agreements.html'">Browse All</button>
+                                <h2>Available Jobs Nearby</h2><button class="btn btn-ghost"
+                                    onclick="location.href='carrier_available_job.html'">Browse All</button>
                             </div>
                             <div class="job-card clickable" onclick="location.href='agreement-pending.html?id=AG8930'">
                                 <div class="job-top">
@@ -280,7 +285,9 @@
                                 </div>
                                 <div class="job-meta"><span>4 milestones</span><span>Deadline: <b>Jul 22</b></span>
                                 </div>
-                                <button class="btn btn-ghost" style="width:100%;" onclick="event.stopPropagation();location.href='agreement-pending.html?id=AG8930'">View &amp; Accept</button>
+                                <button class="btn btn-ghost" style="width:100%;"
+                                    onclick="event.stopPropagation();location.href='agreement-pending.html?id=AG8930'">View
+                                    &amp; Accept</button>
                             </div>
                             <div class="job-card clickable" onclick="location.href='agreement-pending.html?id=AG8930'">
                                 <div class="job-top">
@@ -292,7 +299,9 @@
                                 </div>
                                 <div class="job-meta"><span>3 milestones</span><span>Deadline: <b>Jul 25</b></span>
                                 </div>
-                                <button class="btn btn-ghost" style="width:100%;" onclick="event.stopPropagation();location.href='agreement-pending.html?id=AG8930'">View &amp; Accept</button>
+                                <button class="btn btn-ghost" style="width:100%;"
+                                    onclick="event.stopPropagation();location.href='agreement-pending.html?id=AG8930'">View
+                                    &amp; Accept</button>
                             </div>
                         </div>
                     </div>
@@ -302,7 +311,10 @@
         </main>
     </div>
 
-    <script src="../js/app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.15.0/dist/ethers.umd.min.js"></script>
+    <script src="../../js/blockchain/web3_integration.js"></script>
+    <script src="../../js/auth.js"></script>
+    <script src="../../js/shared/app.js"></script>
 </body>
 
 </html>

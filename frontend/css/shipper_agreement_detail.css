@@ -1,0 +1,214 @@
+/* =========================================
+   SHIPPER AGREEMENT DETAIL
+   ========================================= */
+
+.back-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--text-faint);
+  cursor: pointer;
+  margin-bottom: 16px;
+}
+
+.back-link:hover {
+  color: var(--text-dim);
+}
+
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  background: var(--panel);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  padding: 22px 24px;
+  margin-bottom: 18px;
+}
+
+.detail-header h2 {
+  margin: 0 0 4px;
+  font-size: 19px;
+}
+
+.escrow-box {
+  text-align: right;
+}
+
+.escrow-box .amt {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--lime);
+}
+
+.escrow-box .lbl {
+  font-size: 11.5px;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.info-card {
+  background: var(--panel);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+
+.info-card h3 {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.kv {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: 12.5px;
+}
+
+.kv:last-child {
+  border-bottom: none;
+}
+
+.kv .k {
+  color: var(--text-faint);
+}
+.kv .v {
+  font-weight: 700;
+}
+
+/* Milestone Progress Tracker */
+.track {
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+  margin: 26px 10px 10px;
+}
+
+.track::before {
+  content: "";
+  position: absolute;
+  top: 15px;
+  left: 20px;
+  right: 20px;
+  height: 2px;
+  background: var(--border);
+}
+
+.track-fill {
+  position: absolute;
+  top: 15px;
+  left: 20px;
+  height: 2px;
+  background: var(--lime);
+  z-index: 1;
+}
+
+.tnode {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 80px;
+  text-align: center;
+}
+
+.tdot {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--panel-2);
+  border: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-faint);
+}
+
+.tnode.complete .tdot {
+  background: var(--lime);
+  border-color: var(--lime);
+  color: #0a0b0d;
+}
+
+.tnode.current .tdot {
+  border-color: var(--lime);
+  color: var(--lime);
+}
+
+.tnode .tname {
+  font-size: 12px;
+  font-weight: 600;
+}
+.tnode .tamt {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+/* Milestone Payout Schedule */
+.milestone-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.milestone-row:last-child {
+  border-bottom: none;
+}
+
+.milestone-row .name {
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.milestone-row .sub {
+  font-size: 11.5px;
+  color: var(--text-faint);
+  margin-top: 2px;
+}
+
+.milestone-row .right {
+  text-align: right;
+}
+
+.milestone-row .amt {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--lime);
+}
+
+.upload-box {
+  border: 1.5px dashed var(--border);
+  border-radius: 9px;
+  padding: 22px;
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 12.5px;
+  background: var(--panel-2);
+  margin-bottom: 12px;
+  cursor: pointer;
+}
+
+.upload-box:hover {
+  border-color: var(--lime);
+  color: var(--lime);
+}

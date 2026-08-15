@@ -1,43 +1,63 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Traxen — Success</title>
-<link rel="stylesheet" href="../css/styles.css">
-<link rel="stylesheet" href="../css/dashboard.css">
-<link rel="stylesheet" href="../css/agreements.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Traxen — Success</title>
+  <link rel="stylesheet" href="../../css/styles.css">
+  <link rel="stylesheet" href="../../css/dashboard.css">
+  <link rel="stylesheet" href="../../css/agreements.css">
 </head>
+
 <body>
-<div class="app">
-  <div class="sidebar">
-    <div class="brand"><div class="brand-mark">T</div> Traxen</div>
-    <div class="role-switch">
-      <div class="rs-opt active" data-role="shipper" onclick="setRole('shipper')">Shipper</div>
-      <div class="rs-opt " data-role="carrier" onclick="setRole('carrier')">Carrier</div>
+  <div class="app">
+    <div class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">T</div> Traxen
+      </div>
+      <div class="role-switch">
+        <div class="rs-opt active" data-role="shipper" onclick="setRole('shipper')">Shipper</div>
+        <div class="rs-opt " data-role="carrier" onclick="setRole('carrier')">Carrier</div>
+      </div>
+      <div class="nav-group">
+        <a class="nav-item" href="agreements.html">▦ Dashboard</a>
+        <a class="nav-item " href="agreements.html">▤ Agreements</a>
+
+        <a class="nav-item" href="#">▣ Wallet</a>
+      </div>
+      <div class="sidebar-foot">
+        <div class="mini-avatar">MJ</div>
+        <div>
+          <div class="mini-name">Mike Johnson</div>
+          <div class="mini-role">Shipper</div>
+        </div>
+      </div>
     </div>
-    <div class="nav-group">
-      <a class="nav-item" href="agreements.html">▦ Dashboard</a>
-      <a class="nav-item " href="agreements.html">▤ Agreements</a>
-      
-      <a class="nav-item" href="#">▣ Wallet</a>
-    </div>
-    <div class="sidebar-foot">
-      <div class="mini-avatar">MJ</div>
-      <div><div class="mini-name">Mike Johnson</div><div class="mini-role">Shipper</div></div>
+    <div class="main">
+      <div class="topbar">
+        <div>
+          <h1>Success</h1>
+          <div class="sub">Action completed</div>
+        </div>
+
+      </div>
+      <div class="content">
+        <div class="state-stage">
+          <div class="state-card">
+            <div class="state-icon success">✓</div>
+            <h2 id="successTitle">Success</h2>
+            <p id="successMessage">Your action completed successfully.</p>
+            <div class="state-details" id="successDetails"></div>
+            <div class="state-actions"><a class="btn btn-ghost" href="agreements.html">Back to Agreements</a><a
+                class="btn btn-primary" id="successPrimaryBtn" href="agreements.html">Done</a></div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
-  <div class="main">
-    <div class="topbar">
-      <div><h1>Success</h1><div class="sub">Action completed</div></div>
-      
-    </div>
-    <div class="content">
-<div class="state-stage"><div class="state-card"><div class="state-icon success">✓</div><h2 id="successTitle">Success</h2><p id="successMessage">Your action completed successfully.</p><div class="state-details" id="successDetails"></div><div class="state-actions"><a class="btn btn-ghost" href="agreements.html">Back to Agreements</a><a class="btn btn-primary" id="successPrimaryBtn" href="agreements.html">Done</a></div></div></div>
-    </div>
-  </div>
-</div>
-<script src="../js/common.js"></script>
-<script src="../js/state.js"></script>
+  <script src="../../js/common.js"></script>
+  <script src="../../js/state.js"></script>
 </body>
+
 </html>

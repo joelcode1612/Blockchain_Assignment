@@ -3,7 +3,7 @@ function fundEscrow() {
     "Escrow Funded",
     "Your deposit has been locked into the smart contract for Agreement #AG8901.",
     `<div class="kv"><span class="k">Amount Deposited</span><span class="v">5.00 ETH</span></div><div class="kv"><span class="k">Transaction</span><span class="v" style="font-family:var(--mono);font-size:11px">0x21bd…9f31</span></div>`,
-    "agreement-details-shipper.html?id=AG8901",
+    "agreement_details_shipper.html?id=AG8901",
   );
 }
 function verifyRelease() {
@@ -11,7 +11,7 @@ function verifyRelease() {
     "Milestone Released",
     "Milestone 2 — In Transit has been verified and payment released to the carrier.",
     `<div class="kv"><span class="k">Milestone</span><span class="v">2. In Transit</span></div><div class="kv"><span class="k">Amount Released</span><span class="v">1.00 ETH</span></div><div class="kv"><span class="k">Recipient</span><span class="v">FastTrack Logistics</span></div>`,
-    "agreement-details-shipper.html?id=AG8901",
+    "agreement_details_shipper.html?id=AG8901",
   );
 }
 function raiseDispute() {
@@ -19,7 +19,7 @@ function raiseDispute() {
     "Dispute Raised",
     "Your dispute for Agreement #AG8901 has been logged on-chain and flagged for review.",
     `<div class="kv"><span class="k">Agreement</span><span class="v">#AG8901</span></div><div class="kv"><span class="k">Status</span><span class="v">Under Review</span></div>`,
-    "agreement-details-shipper.html?id=AG8901",
+    "agreement_details_shipper.html?id=AG8901",
   );
 }
 function submitProof() {
