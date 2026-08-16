@@ -64,28 +64,39 @@
 
       <div class="nav-group">
         <div class="nav-label">Account</div>
-        <div class="nav-item">
+        <a href="shipper_profile.html" class="nav-item">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="8" r="4" />
             <path d="M4 21c0-4 4-6 8-6s8 2 8 6" />
           </svg>
           Profile
-        </div>
-        <div class="nav-item">
+        </a>
+        <a href="shipper_settings.html" class="nav-item">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="9" />
             <path d="M12 8v4l3 2" />
           </svg>
           Settings
-        </div>
+        </a>
       </div>
 
-      <div class="sidebar-foot">
-        <div class="mini-avatar">MJ</div>
-        <div>
-          <div class="mini-name">Mike Johnson</div>
-          <div class="mini-role">Shipper</div>
+      <div class="sidebar-foot" style="display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div class="mini-avatar">MJ</div>
+          <div>
+            <div class="mini-name">Mike Johnson</div>
+            <div class="mini-role">Shipper</div>
+          </div>
         </div>
+        <a href="#" onclick="handleLogout(event)" class="logout-btn" title="Log out"
+          style="color: #8892b0; display: flex; padding: 8px; border-radius: 6px; transition: background 0.2s;">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+        </a>
       </div>
     </aside>
     <div class="main">
@@ -111,26 +122,80 @@
             </div>
           </div>
           <div class="panel">
+
+            <!-- STEP 1: Agreement Info -->
             <div class="wstep" id="ws-1">
               <h2>Agreement Information</h2>
               <div class="desc">Enter the basic details of your logistics agreement.</div>
-              <div class="field"><label>Agreement Name</label><input type="text" id="f-name"
-                  placeholder="e.g. Electronics Shipment to New York"></div>
-              <div class="field"><label>Select Carrier</label><select id="f-carrier">
-                  <option>0xA6b7…3F2a (FastTrack Logistics)</option>
-                  <option>0x18cD…9E41 (Meridian Freight Co.)</option>
-                  <option>0x9F02…7Ba4 (Coastal Cargo Partners)</option>
-                </select></div>
-              <div class="row2">
-                <div class="field"><label>Total Payload Value (ETH)</label><input type="number" id="f-value"
-                    value="5.00" step="0.01"></div>
-                <div class="field"><label>Delivery Deadline</label><input type="datetime-local" id="f-deadline"></div>
+
+              <div class="field">
+                <label>Agreement Name</label>
+                <input type="text" id="f-name" placeholder="e.g. Electronics Shipment to New York">
               </div>
-              <div class="field"><label>Description (optional)</label><textarea id="f-desc"
-                  placeholder="Shipment of electronic goods from LA to New York warehouse."></textarea></div>
-              <div class="actions"><a class="btn btn-ghost" href="agreements.html">Cancel</a><button
-                  class="btn btn-primary" onclick="goStep(2)">Next</button></div>
-            </div>
+
+              <div class="field">
+                <label for="f-carrier">Select Carrier</label>
+                <select id="f-carrier" required>
+                  <option value="">Loading carriers...</option>
+                </select>
+                <small id="carrier-status" style="display: block; margin-top: 6px; color: var(--text-faint);">
+                  Loading available carriers...
+                </small>
+              </div>
+
+              <div class="row2">
+                <div class="field">
+                  <label for="f-value">Total Payload Value (ETH)</label>
+                  <input type="number" id="f-value" value="5.00" min="0.000001" step="0.000001"
+                    placeholder="Enter ETH amount">
+                  <div id="eth-balance-info" class="field-hint">Wallet Balance: Checking...</div>
+                  <div id="eth-validation" class="field-error" style="display: none;"></div>
+                </div>
+
+                <div class="field">
+                  <label for="f-deadline">Delivery Deadline</label>
+                  <input type="datetime-local" id="f-deadline">
+                  <div id="deadline-info" class="field-hint">Deadline must be at least 1 hour from now.</div>
+                  <div id="deadline-validation" class="field-error" style="display: none;"></div>
+                </div>
+              </div>
+
+              <hr style="border: 1px solid rgba(255,255,255,0.05); margin: 24px 0;">
+              <h3>Cargo Specifications</h3>
+
+              <div class="row2">
+                <div class="field">
+                  <label>Cargo Type / Commodity</label>
+                  <select id="f-cargo-type">
+                    <option value="" disabled selected>Select Cargo Type</option>
+                    <option value="Electronics">Electronics</option>
+                    <option value="Medical Supplies">Medical Supplies</option>
+                    <option value="Textiles & Apparel">Textiles & Apparel</option>
+                    <option value="Food & Perishables">Food & Perishables</option>
+                    <option value="Machinery & Parts">Machinery & Parts</option>
+                    <option value="Consumer Goods">Consumer Goods</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Total Weight (kg)</label>
+                  <input type="number" id="f-weight" placeholder="e.g. 1500">
+                </div>
+              </div>
+
+              <div class="field">
+                <label>Item Details & Handling Instructions</label>
+                <textarea id="f-desc"
+                  placeholder="List specific items, dimensions, pallets, or temperature requirements..."></textarea>
+              </div>
+
+              <div class="actions">
+                <a class="btn btn-ghost" href="agreements.html">Cancel</a>
+                <button class="btn btn-primary" onclick="nextFromStep1()">Next</button>
+              </div>
+            </div> <!-- ✅ FIXED: This closing div was missing -->
+
+            <!-- STEP 2: Configure Milestones -->
             <div class="wstep" id="ws-2" style="display:none">
               <h2>Configure Milestones</h2>
               <div class="desc">Add milestones and their payment distribution. Percentages must total 100%.</div>
@@ -148,12 +213,17 @@
               </table>
               <div class="pct-total" id="pctTotal">Total allocated: 100%</div>
               <div class="add-milestone" onclick="addMilestone()">+ Add Milestone</div>
-              <div class="actions"><button class="btn btn-ghost" onclick="goStep(1)">Back</button><button
-                  class="btn btn-primary" onclick="goStep(3)">Next</button></div>
+              <div class="actions">
+                <button class="btn btn-ghost" onclick="goStep(1)">Back</button>
+                <button class="btn btn-primary" onclick="nextFromStep2()">Next</button>
+              </div>
             </div>
+
+            <!-- STEP 3: Review Agreement -->
             <div class="wstep" id="ws-3" style="display:none">
               <h2>Review Agreement</h2>
               <div class="desc">Please review all details before creating the escrow contract on-chain.</div>
+
               <div class="review-grid">
                 <div class="review-card">
                   <h3>Agreement Details</h3>
@@ -161,22 +231,36 @@
                   <div class="kv"><span class="k">Carrier</span><span class="v" id="rv-carrier">—</span></div>
                   <div class="kv"><span class="k">Total Value</span><span class="v" id="rv-value">—</span></div>
                   <div class="kv"><span class="k">Deadline</span><span class="v" id="rv-deadline">—</span></div>
+                  <br>
+                  <h3>Cargo Specs</h3>
+                  <div class="kv"><span class="k">Type</span><span class="v" id="rv-cargo-type">—</span></div>
+                  <div class="kv"><span class="k">Weight</span><span class="v" id="rv-weight">—</span></div>
                 </div>
+
                 <div class="review-card">
                   <h3>Milestone &amp; Payment</h3>
                   <div id="rv-milestones"></div>
                 </div>
               </div>
-              <div class="actions"><button class="btn btn-ghost" onclick="goStep(2)">Back</button><button
-                  class="btn btn-primary" onclick="submitCreateAgreement()">Create Agreement</button></div>
+
+              <div class="actions">
+                <button class="btn btn-ghost" onclick="goStep(2)">Back</button>
+                <button class="btn btn-primary" onclick="submitCreateAgreement()">Create Agreement</button>
+              </div>
             </div>
+
           </div>
         </div>
       </div>
     </div>
   </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.15.0/dist/ethers.umd.min.js"></script>
+  <script src="../../js/blockchain/web3_integration.js"></script>
   <script src="../../js/shared/common.js"></script>
+  <script src="../../js/shared/auth.js"></script>
   <script src="../../js/shipper/create-agreement.js"></script>
+
 </body>
 
 </html>

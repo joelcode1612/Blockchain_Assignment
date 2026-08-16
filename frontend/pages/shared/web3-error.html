@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Transaction Failed - Traxen Web3</title>
+
+    <!-- CSS Dependencies -->
+    <link rel="stylesheet" href="../../css/shipper.css" />
+    <link rel="stylesheet" href="../../css/web3_error.css" />
+</head>
+
+<body>
+    <div class="error-card-wrapper">
+        <div class="web3-error-card">
+            <div class="error-badge-icon">✕</div>
+            <h2 class="error-title" id="errorTitle">Blockchain Transaction Failed</h2>
+            <p class="error-subtitle" id="errorDesc">
+                Your transaction could not be processed on the blockchain network.
+            </p>
+
+            <div class="error-box">
+                <strong>Error details:</strong>
+                <div id="errorMessage" style="margin-top: 6px;">User rejected the transaction or RPC failed.</div>
+            </div>
+
+            <div class="troubleshoot-list">
+                <h4>Suggested Fixes</h4>
+                <ul>
+                    <li>Verify your MetaMask wallet is connected to the correct network.</li>
+                    <li>Ensure you have enough ETH/tokens for gas fees.</li>
+                    <li>Reject pending transactions in MetaMask and try again.</li>
+                </ul>
+            </div>
+
+            <div class="state-actions">
+                <button class="btn btn-ghost" onclick="window.history.back()">Go Back</button>
+                <button class="btn btn-primary" onclick="window.location.reload()">Retry Action</button>
+            </div>
+
+            <div class="error-code" id="errorCode">Code: ACTION_REJECTED (4001)</div>
+        </div>
+    </div>
+
+    <!-- JS Scripts -->
+    <script src="../../js/shared/web3_error.js"></script>
+</body>
+
+</html>

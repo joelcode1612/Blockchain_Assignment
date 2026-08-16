@@ -68,28 +68,39 @@
 
             <div class="nav-group">
                 <div class="nav-label">Account</div>
-                <div class="nav-item">
+                <a href="carrier_profile.html" class="nav-item">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="8" r="4" />
                         <path d="M4 21c0-4 4-6 8-6s8 2 8 6" />
                     </svg>
                     Profile
-                </div>
-                <div class="nav-item">
+                </a>
+                <a href="carrier_settings.html" class="nav-item">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="9" />
                         <path d="M12 8v4l3 2" />
                     </svg>
                     Settings
-                </div>
+                </a>
             </div>
 
-            <div class="sidebar-foot">
-                <div class="mini-avatar">MJ</div>
-                <div>
-                    <div class="mini-name">Mike Johnson</div>
-                    <div class="mini-role">Carrier</div>
+            <div class="sidebar-foot" style="display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div class="mini-avatar">MJ</div>
+                    <div>
+                        <div class="mini-name">Mike Johnson</div>
+                        <div class="mini-role">Carrier</div>
+                    </div>
                 </div>
+                <a href="#" onclick="handleLogout(event)" class="logout-btn" title="Log out"
+                    style="color: #8892b0; display: flex; padding: 8px; border-radius: 6px; transition: background 0.2s;">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                </a>
             </div>
         </aside>
 
@@ -263,6 +274,7 @@
 
     </div>
 
+    <script src="../../js/shared/auth.js"></script>
 </body>
 
 </html>

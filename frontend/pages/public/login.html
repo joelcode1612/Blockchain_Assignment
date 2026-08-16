@@ -17,8 +17,12 @@
             <div class="auth-brand">
                 <div class="brand-mark">T</div> Traxen
             </div>
+
+            <div id="authAlert" class="auth-alert hidden"></div>
             <h2 class="title">Welcome back</h2>
-            <p class="subtitle">Log in to your Traxen account to continue</p>
+            <p class="subtitle">Connect your wallet to log in to Traxen</p>
+
+            <!-- MetaMask Option -->
             <div class="wallet-opt" onclick="selectWallet(this,'login')">
                 <div class="wallet-icon metamask">🦊</div>
                 <div>
@@ -26,6 +30,8 @@
                     <div class="wallet-sub">Connect using browser extension</div>
                 </div>
             </div>
+
+            <!-- WalletConnect Option -->
             <div class="wallet-opt" onclick="selectWallet(this,'login')">
                 <div class="wallet-icon walletconnect">◆</div>
                 <div>
@@ -33,25 +39,23 @@
                     <div class="wallet-sub">Scan with a mobile wallet</div>
                 </div>
             </div>
+
+            <!-- Wallet Status Line -->
             <div class="status-line" id="loginWalletStatus">
                 <div class="status-dot"></div><span>No wallet connected</span>
             </div>
-            <div class="divider">or log in with email</div>
-            <div class="field"><label>Email Address</label><input id="loginEmail" type="email"
-                    placeholder="you@company.com"></div>
-            <div class="field"><label>Password</label>
-                <div class="pw-wrap"><input id="loginPw" type="password" placeholder="Your password"><span
-                        class="pw-toggle" onclick="togglePw('loginPw')">SHOW</span></div>
+
+            <!-- Register Link -->
+            <div class="foot-link" style="margin-top: 24px;">
+                Don't have an account? <a href="register.html">Register</a>
             </div>
-            <div class="row-inline"><label class="remember"><input type="checkbox"> Remember me</label><a href="#"
-                    onclick="return false;">Forgot password?</a></div>
-            <button class="btn btn-primary btn-block" onclick="doLogin()">Log In</button>
-            <div class="foot-link">Don't have an account? <a href="register.html">Register</a></div>
+
         </section>
     </main>
+
     <script src="https://cdn.jsdelivr.net/npm/ethers@6.15.0/dist/ethers.umd.min.js"></script>
     <script src="../../js/blockchain/web3_integration.js"></script>
-    <script src="../../js/auth.js"></script>
+    <script src="../../js/shared/auth.js"></script>
 </body>
 
 </html>

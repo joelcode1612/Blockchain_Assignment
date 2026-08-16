@@ -336,3 +336,33 @@ p.subtitle {
     flex-direction: column;
   }
 }
+
+/* =========================================
+   AUTH INLINE ALERT & SUCCESS FEEDBACK
+   ========================================= */
+.auth-alert {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.4;
+}
+
+.auth-alert.hidden {
+  display: none;
+}
+
+.auth-alert.error {
+  background: var(--red-glow);
+  color: var(--red);
+  border: 1px solid rgba(255, 92, 92, 0.3);
+}
+
+.auth-alert.success {
+  background: var(--lime-glow);
+  color: var(--lime);
+  border: 1px solid rgba(205, 250, 63, 0.3);
+}

@@ -1,4 +1,5 @@
 const params = new URLSearchParams(location.search);
+
 function setRole(role) {
   localStorage.setItem("traxenRole", role);
   if (location.pathname.endsWith("agreements.html")) {
@@ -17,10 +18,12 @@ function setRole(role) {
     if (create) create.style.display = role === "shipper" ? "flex" : "none";
   }
 }
+
 function openSuccess(title, message, details, next = "agreements.html") {
   const q = new URLSearchParams({ title, message, details, next });
   location.href = "transaction-success.html?" + q.toString();
 }
+
 function openError(title, message, details, code, retry = "agreements.html") {
   const q = new URLSearchParams({ title, message, details, code, retry });
   location.href = "transaction-error.html?" + q.toString();

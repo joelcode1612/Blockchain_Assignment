@@ -2,223 +2,351 @@
 pragma solidity ^0.8.24;
 
 contract LogisticsEscrow {
-    address public owner;
+
+    // =====================================================
+    // ENUMS
+    // =====================================================
+
+    enum Role {
+        None,
+        Shipper,
+        Carrier
+    }
+
+    enum AgreementStatus {
+        PendingAcceptance,
+        AwaitingFunding,
+        Active,
+        Completed,
+        Rejected,
+        Cancelled,
+        Refunded,
+        Expired
+    }
+
+    enum MilestoneStatus {
+        Pending,
+        Submitted,
+        Verified,
+        Paid
+    }
+
+    // =====================================================
+    // STRUCTS (Optimized for Gas - No Strings)
+    // =====================================================
 
     struct Agreement {
+        uint256 agreementId;
         address shipper;
         address carrier;
-        uint256 totalAmount;
-        uint256 remainingAmount;
-        bool funded;
-        bool completed;
+        uint256 escrowAmount;
+        uint256 releasedAmount;
         uint256 deadline;
-        uint256 milestoneCount;
-        mapping(uint256 => Milestone) milestones;
-        mapping(uint256 => bool) milestonePaid;
         AgreementStatus status;
+        uint256 createdAt;
+        bool carrierAccepted;
+        bool refundExecuted;
+        Milestone[] milestones;
     }
-
-    enum AgreementStatus { Pending, Active, Completed, Refunded }
 
     struct Milestone {
-        string description;
-        uint256 percentage;
-        bool verified;
-        bool paid;
+        uint256 milestoneId;
+        uint256 paymentPercentage;
+        MilestoneStatus status;
+        uint256 submittedAt;
+        uint256 verifiedAt;
+        uint256 paymentReleasedAt;
     }
 
-    mapping(uint256 => Agreement) public agreements;
+    // =====================================================
+    // STATE VARIABLES
+    // =====================================================
+
+    // Replaces the bulky User struct. Maps wallet directly to Role.
+    mapping(address => Role) public userRoles;
+
+    mapping(uint256 => Agreement) private agreements;
+
+    mapping(address => uint256[]) private shipperAgreements;
+    mapping(address => uint256[]) private carrierAgreements;
+
     uint256 public agreementCounter;
 
-    constructor() {
-        owner = msg.sender;
+    // =====================================================
+    // EVENTS (The Ultimate Audit Log)
+    // =====================================================
+
+    event UserRegistered(
+        address indexed walletAddress,
+        Role role
+    );
+
+    event AgreementCreated(
+        uint256 indexed agreementId,
+        address indexed shipper,
+        address indexed carrier,
+        uint256 escrowAmount,
+        uint256 deadline
+    );
+
+    event AgreementAccepted(uint256 indexed agreementId, address indexed carrier);
+    event AgreementRejected(uint256 indexed agreementId, address indexed carrier);
+    event AgreementCancelled(uint256 indexed agreementId, address indexed shipper);
+    
+    event EscrowDeposited(uint256 indexed agreementId, address indexed shipper, uint256 amount);
+    
+    event MilestoneSubmitted(uint256 indexed agreementId, uint256 indexed milestoneId, address indexed carrier);
+    event MilestoneVerified(uint256 indexed agreementId, uint256 indexed milestoneId, address indexed shipper);
+    
+    event PaymentReleased(uint256 indexed agreementId, uint256 indexed milestoneId, address indexed receiver, uint256 amount);
+    event RefundExecuted(uint256 indexed agreementId, address indexed shipper, uint256 amount);
+    event ReputationRewarded(uint256 indexed agreementId, address indexed carrier, uint256 amount);
+
+    // =====================================================
+    // MODIFIERS
+    // =====================================================
+
+    modifier onlyRegistered() {
+        require(userRoles[msg.sender] != Role.None, "User is not registered");
+        _;
     }
 
-    event AgreementCreated(uint256 indexed agreementId, address shipper, address carrier);
-    event EscrowDeposited(uint256 indexed agreementId, uint256 amount);
-    event MilestoneVerified(uint256 indexed agreementId, uint256 milestoneId);
-    event PaymentReleased(uint256 indexed agreementId, uint256 milestoneId, uint256 amount);
-    event Refunded(uint256 indexed agreementId, uint256 amount);
-
-    modifier onlyShipper(uint256 _agreementId) {
-        require(msg.sender == agreements[_agreementId].shipper, "Only shipper");
+    modifier onlyShipper() {
+        require(userRoles[msg.sender] == Role.Shipper, "Only Shipper can perform this action");
         _;
     }
 
     modifier onlyCarrier(uint256 _agreementId) {
-        require(msg.sender == agreements[_agreementId].carrier, "Only carrier");
+        require(userRoles[msg.sender] == Role.Carrier, "Only Carrier can perform this action");
+        require(agreements[_agreementId].carrier == msg.sender, "Not assigned Carrier");
         _;
     }
 
     modifier agreementExists(uint256 _agreementId) {
-        require(agreements[_agreementId].shipper != address(0), "Agreement does not exist");
+        require(_agreementId > 0 && _agreementId <= agreementCounter, "Agreement does not exist");
         _;
     }
 
+    // =====================================================
+    // MODULE 1 — REGISTER & LOGIN
+    // =====================================================
+
+    function registerUser(Role _role) external {
+        require(userRoles[msg.sender] == Role.None, "Wallet already registered");
+        require(_role == Role.Shipper || _role == Role.Carrier, "Invalid role");
+
+        userRoles[msg.sender] = _role;
+
+        emit UserRegistered(msg.sender, _role);
+    }
+
+    function login() external view returns (bool authenticated, Role role) {
+        Role currentRole = userRoles[msg.sender];
+        if (currentRole == Role.None) {
+            return (false, Role.None);
+        }
+        return (true, currentRole);
+    }
+
+    function getRole(address _wallet) external view returns (Role) {
+        return userRoles[_wallet];
+    }
+
+    function isRegistered(address _wallet) external view returns (bool) {
+        return userRoles[_wallet] != Role.None;
+    }
+
+    // =====================================================
+    // MODULE 2 — CREATE AGREEMENT
+    // =====================================================
+
+    // Removed string[] _milestoneDescriptions to save gas. Descriptions live in SQL.
     function createAgreement(
         address _carrier,
-        uint256 _totalAmount,
+        uint256 _escrowAmount,
         uint256 _deadline,
-        string[] memory _milestoneDescriptions,
-        uint256[] memory _milestonePercentages
-    ) external returns (uint256) {
-        require(_carrier != address(0), "Invalid carrier");
-        require(_totalAmount > 0, "Total amount must be > 0");
-        require(_deadline > block.timestamp, "Deadline must be in future");
-        require(_milestoneDescriptions.length == _milestonePercentages.length, "Mismatch");
+        uint256[] calldata _paymentPercentages
+    ) external onlyShipper returns (uint256) {
+
+        require(userRoles[_carrier] == Role.Carrier, "Selected user is not Carrier");
+        require(_carrier != msg.sender, "Cannot assign yourself");
+        require(_escrowAmount > 0, "Escrow amount must be greater than zero");
+        require(_deadline > block.timestamp, "Deadline must be in the future");
+        require(_paymentPercentages.length > 0, "At least one milestone required");
 
         uint256 totalPercentage = 0;
-        for (uint256 i = 0; i < _milestonePercentages.length; i++) {
-            totalPercentage += _milestonePercentages[i];
-        }
-        require(totalPercentage == 100, "Total percentage must be 100%");
 
-        uint256 agreementId = agreementCounter++;
-        Agreement storage agreement = agreements[agreementId];
+        for (uint256 i = 0; i < _paymentPercentages.length; i++) {
+            require(_paymentPercentages[i] > 0, "Invalid milestone percentage");
+            totalPercentage += _paymentPercentages[i];
+        }
+
+        require(totalPercentage == 100, "Percentages must equal 100");
+
+        agreementCounter++;
+        Agreement storage agreement = agreements[agreementCounter];
+
+        agreement.agreementId = agreementCounter;
         agreement.shipper = msg.sender;
         agreement.carrier = _carrier;
-        agreement.totalAmount = _totalAmount;
-        agreement.remainingAmount = 0;
-        agreement.funded = false;
-        agreement.completed = false;
+        agreement.escrowAmount = _escrowAmount;
+        agreement.releasedAmount = 0;
         agreement.deadline = _deadline;
-        agreement.milestoneCount = _milestoneDescriptions.length;
-        agreement.status = AgreementStatus.Pending;
+        agreement.status = AgreementStatus.PendingAcceptance;
+        agreement.createdAt = block.timestamp;
+        agreement.carrierAccepted = false;
+        agreement.refundExecuted = false;
 
-        for (uint256 i = 0; i < _milestoneDescriptions.length; i++) {
-            agreement.milestones[i].description = _milestoneDescriptions[i];
-            agreement.milestones[i].percentage = _milestonePercentages[i];
-            agreement.milestones[i].verified = false;
-            agreement.milestones[i].paid = false;
+        for (uint256 i = 0; i < _paymentPercentages.length; i++) {
+            agreement.milestones.push(
+                Milestone({
+                    milestoneId: i,
+                    paymentPercentage: _paymentPercentages[i],
+                    status: MilestoneStatus.Pending,
+                    submittedAt: 0,
+                    verifiedAt: 0,
+                    paymentReleasedAt: 0
+                })
+            );
         }
 
-        emit AgreementCreated(agreementId, msg.sender, _carrier);
-        return agreementId;
+        shipperAgreements[msg.sender].push(agreementCounter);
+        carrierAgreements[_carrier].push(agreementCounter);
+
+        emit AgreementCreated(agreementCounter, msg.sender, _carrier, _escrowAmount, _deadline);
+
+        return agreementCounter;
     }
 
-    function depositEscrow(uint256 _agreementId) external payable agreementExists(_agreementId) {
+    // =====================================================
+    // MODULE 2 — ACCEPT, REJECT, CANCEL
+    // =====================================================
+
+    function acceptAgreement(uint256 _agreementId) external agreementExists(_agreementId) onlyCarrier(_agreementId) {
         Agreement storage agreement = agreements[_agreementId];
-        require(msg.sender == agreement.shipper, "Only shipper can deposit");
-        require(!agreement.funded, "Already funded");
-        require(msg.value == agreement.totalAmount, "Incorrect amount");
-        require(agreement.status == AgreementStatus.Pending, "Invalid status");
+        require(agreement.status == AgreementStatus.PendingAcceptance, "Agreement is not pending");
 
-        agreement.remainingAmount = msg.value;
-        agreement.funded = true;
-        agreement.status = AgreementStatus.Active;
+        agreement.carrierAccepted = true;
+        agreement.status = AgreementStatus.AwaitingFunding;
 
-        emit EscrowDeposited(_agreementId, msg.value);
+        emit AgreementAccepted(_agreementId, msg.sender);
     }
 
-    function verifyMilestone(uint256 _agreementId, uint256 _milestoneId)
-        external
-        agreementExists(_agreementId)
-        onlyShipper(_agreementId)
-    {
+    function rejectAgreement(uint256 _agreementId) external agreementExists(_agreementId) onlyCarrier(_agreementId) {
         Agreement storage agreement = agreements[_agreementId];
-        require(agreement.funded, "Escrow not funded");
-        require(_milestoneId < agreement.milestoneCount, "Invalid milestone");
-        require(!agreement.milestones[_milestoneId].verified, "Already verified");
-        require(block.timestamp <= agreement.deadline, "Deadline passed");
+        require(agreement.status == AgreementStatus.PendingAcceptance, "Agreement is not pending");
 
-        agreement.milestones[_milestoneId].verified = true;
-        emit MilestoneVerified(_agreementId, _milestoneId);
+        agreement.status = AgreementStatus.Rejected;
+
+        emit AgreementRejected(_agreementId, msg.sender);
     }
 
-    function releasePayment(uint256 _agreementId, uint256 _milestoneId)
-        external
-        agreementExists(_agreementId)
-    {
+    function cancelAgreement(uint256 _agreementId) external agreementExists(_agreementId) onlyShipper {
         Agreement storage agreement = agreements[_agreementId];
-        require(agreement.funded, "Escrow not funded");
-        require(_milestoneId < agreement.milestoneCount, "Invalid milestone");
-        require(agreement.milestones[_milestoneId].verified, "Milestone not verified");
-        require(!agreement.milestones[_milestoneId].paid, "Already paid");
-        require(!agreement.milestonePaid[_milestoneId], "Payment already released");
+        require(agreement.shipper == msg.sender, "Only agreement Shipper");
+        require(
+            agreement.status == AgreementStatus.PendingAcceptance ||
+            agreement.status == AgreementStatus.AwaitingFunding,
+            "Agreement cannot be cancelled"
+        );
 
-        uint256 paymentAmount = (agreement.totalAmount * agreement.milestones[_milestoneId].percentage) / 100;
-        require(paymentAmount <= agreement.remainingAmount, "Insufficient escrow balance");
+        agreement.status = AgreementStatus.Cancelled;
 
-        agreement.milestones[_milestoneId].paid = true;
-        agreement.milestonePaid[_milestoneId] = true;
-        agreement.remainingAmount -= paymentAmount;
-
-        (bool success, ) = payable(agreement.carrier).call{value: paymentAmount}("");
-        require(success, "Payment transfer failed");
-
-        emit PaymentReleased(_agreementId, _milestoneId, paymentAmount);
-
-        bool allComplete = true;
-        for (uint256 i = 0; i < agreement.milestoneCount; i++) {
-            if (!agreement.milestones[i].paid) {
-                allComplete = false;
-                break;
-            }
-        }
-        if (allComplete) {
-            agreement.status = AgreementStatus.Completed;
-            agreement.completed = true;
-        }
+        emit AgreementCancelled(_agreementId, msg.sender);
     }
 
-    function refund(uint256 _agreementId) external agreementExists(_agreementId) {
-        Agreement storage agreement = agreements[_agreementId];
-        require(agreement.funded, "Escrow not funded");
-        require(block.timestamp > agreement.deadline, "Deadline not passed yet");
-        require(agreement.remainingAmount > 0, "No balance to refund");
+    // =====================================================
+    // VIEW FUNCTIONS (GETTERS)
+    // =====================================================
 
-        uint256 refundAmount = agreement.remainingAmount;
-        agreement.remainingAmount = 0;
-        agreement.status = AgreementStatus.Refunded;
-
-        (bool success, ) = payable(agreement.shipper).call{value: refundAmount}("");
-        require(success, "Refund transfer failed");
-
-        emit Refunded(_agreementId, refundAmount);
-    }
-
-    // ✅ View functions – they use uint256 agreementId (same as onchain_id)
-    function getEscrowBalance(uint256 _agreementId) external view agreementExists(_agreementId) returns (uint256) {
-        return agreements[_agreementId].remainingAmount;
-    }
-
-    function getAgreementDetails(uint256 _agreementId)
-        external
-        view
-        agreementExists(_agreementId)
-        returns (
-            address shipper,
-            address carrier,
-            uint256 totalAmount,
-            uint256 remainingAmount,
-            bool funded,
-            bool completed,
-            uint256 deadline,
-            AgreementStatus status
-        )
-    {
+    function getAgreement(uint256 _agreementId) external view agreementExists(_agreementId) returns (
+        uint256 agreementId,
+        address shipper,
+        address carrier,
+        uint256 escrowAmount,
+        uint256 releasedAmount,
+        uint256 deadline,
+        AgreementStatus status,
+        uint256 createdAt,
+        bool carrierAccepted,
+        bool refundExecuted,
+        uint256 milestoneCount
+    ) {
         Agreement storage agreement = agreements[_agreementId];
         return (
+            agreement.agreementId,
             agreement.shipper,
             agreement.carrier,
-            agreement.totalAmount,
-            agreement.remainingAmount,
-            agreement.funded,
-            agreement.completed,
+            agreement.escrowAmount,
+            agreement.releasedAmount,
             agreement.deadline,
-            agreement.status
+            agreement.status,
+            agreement.createdAt,
+            agreement.carrierAccepted,
+            agreement.refundExecuted,
+            agreement.milestones.length
         );
     }
 
-    function getMilestone(uint256 _agreementId, uint256 _milestoneId)
-        external
-        view
-        agreementExists(_agreementId)
-        returns (string memory description, uint256 percentage, bool verified, bool paid)
-    {
+    // Removed the string description return value
+    function getMilestone(uint256 _agreementId, uint256 _milestoneId) external view agreementExists(_agreementId) returns (
+        uint256 milestoneId,
+        uint256 paymentPercentage,
+        MilestoneStatus status,
+        uint256 submittedAt,
+        uint256 verifiedAt,
+        uint256 paymentReleasedAt
+    ) {
+        require(_milestoneId < agreements[_agreementId].milestones.length, "Milestone does not exist");
+        Milestone storage milestone = agreements[_agreementId].milestones[_milestoneId];
+        return (
+            milestone.milestoneId,
+            milestone.paymentPercentage,
+            milestone.status,
+            milestone.submittedAt,
+            milestone.verifiedAt,
+            milestone.paymentReleasedAt
+        );
+    }
+
+    function getAgreementCount() external view returns (uint256) {
+        return agreementCounter;
+    }
+
+    function getShipperAgreements(address _shipper) external view returns (uint256[] memory) {
+        return shipperAgreements[_shipper];
+    }
+
+    function getCarrierAgreements(address _carrier) external view returns (uint256[] memory) {
+        return carrierAgreements[_carrier];
+    }
+
+    function getEscrowBalance(uint256 _agreementId) external view agreementExists(_agreementId) returns (uint256) {
         Agreement storage agreement = agreements[_agreementId];
-        require(_milestoneId < agreement.milestoneCount, "Invalid milestone");
-        Milestone storage milestone = agreement.milestones[_milestoneId];
-        return (milestone.description, milestone.percentage, milestone.verified, milestone.paid);
+        return agreement.escrowAmount - agreement.releasedAmount;
+    }
+
+    function getMilestoneCount(uint256 _agreementId) external view agreementExists(_agreementId) returns (uint256) {
+        return agreements[_agreementId].milestones.length;
+    }
+
+    function getReleasedAmount(uint256 _agreementId) external view agreementExists(_agreementId) returns (uint256) {
+        return agreements[_agreementId].releasedAmount;
+    }
+
+    function isDeadlinePassed(uint256 _agreementId) external view agreementExists(_agreementId) returns (bool) {
+        return block.timestamp > agreements[_agreementId].deadline;
+    }
+
+    // =====================================================
+    // RECEIVE ETH
+    // =====================================================
+
+    receive() external payable {
+        revert("Use escrow deposit function");
+    }
+
+    fallback() external payable {
+        revert("Invalid function");
     }
 }

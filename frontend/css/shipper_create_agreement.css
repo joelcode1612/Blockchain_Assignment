@@ -266,3 +266,23 @@
   font-weight: 700;
   font-size: 12.5px;
 }
+
+.field-hint {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--text-faint);
+}
+
+.field-error {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #ef4444;
+}
+
+.input-valid {
+  border-color: #22c55e !important;
+}
+
+.input-invalid {
+  border-color: #ef4444 !important;
+}

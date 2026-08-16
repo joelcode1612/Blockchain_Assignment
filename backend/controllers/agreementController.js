@@ -1,95 +1,270 @@
-const { ethers } = require('ethers');
-const supabase = require('../config/supabase');
-const blockchainService = require('../services/blockchainService');
+const agreementService = require("../services/agreementService");
 
-/**
- * GET /api/agreements
- * Returns all agreements with shipper/carrier addresses and progress
- */
+// =====================================================
+// GET ALL AGREEMENTS
+// =====================================================
+
 exports.getAgreements = async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from('agreements')
-      .select(`
-        onchain_id,
-        total_amount,
-        status,
-        shipper:users!agreements_shipper_id_fkey(wallet_address),
-        carrier:users!agreements_carrier_id_fkey(wallet_address),
-        milestones (verified, paid)
-      `)
-      .order('onchain_id', { ascending: true });
-
-    if (error) {
-      console.error(error);
-      return res.status(500).json({ error: 'Failed to fetch agreements' });
-    }
-
-    const agreements = data.map(ag => {
-      const milestones = ag.milestones || [];
-      const total = milestones.length;
-      const paid = milestones.filter(m => m.paid).length;
-      const progress = total > 0 ? Math.round((paid / total) * 100) : 0;
-
-      return {
-        onchain_id: ag.onchain_id,
-        shipper: ag.shipper?.wallet_address || 'N/A',
-        carrier: ag.carrier?.wallet_address || 'N/A',
-        total_amount: ag.total_amount,
-        status: ag.status || 'pending',
-        progress: progress
-      };
-    });
+    const agreements = await agreementService.getAllAgreements();
 
     res.json(agreements);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: error.message });
+    console.error("Get agreements error:", error);
+
+    res.status(500).json({
+      error: "Failed to fetch agreements",
+    });
   }
 };
 
-/**
- * POST /api/agreements/create
- * Creates a new agreement and funds the escrow
- */
-exports.createAndFundAgreement = async (req, res) => {
-  try {
-    const { carrier, totalAmountEth, descriptions, percentages, deadlineDays } = req.body;
-    const shipperAddress = req.user.wallet_address;
+// =====================================================
+// GET SINGLE AGREEMENT
+// =====================================================
 
-    if (!carrier || !totalAmountEth || !descriptions || !percentages) {
-      return res.status(400).json({ error: 'Missing required fields' });
+exports.getAgreement = async (req, res) => {
+  try {
+    const agreementId = req.params.id;
+
+    const agreement = await agreementService.getAgreementById(agreementId);
+
+    if (!agreement) {
+      return res.status(404).json({
+        error: "Agreement not found",
+      });
     }
 
-    const totalAmount = ethers.parseEther(totalAmountEth.toString());
-    const deadline = Math.floor(Date.now() / 1000) + (deadlineDays || 30) * 24 * 60 * 60;
+    res.json(agreement);
+  } catch (error) {
+    console.error("Get agreement error:", error);
 
-    const receipt = await blockchainService.createAgreement(
+    res.status(500).json({
+      error: error.message,
+    });
+  }
+};
+
+// =====================================================
+// CREATE AGREEMENT
+// POST /api/agreements/create
+//
+// Does NOT fund escrow.
+// =====================================================
+
+exports.createAgreement = async (req, res) => {
+  try {
+    const {
+      onchainId,
       carrier,
-      totalAmount,
-      deadline,
+      totalAmountEth,
       descriptions,
       percentages,
-      shipperAddress
-    );
+      deadlineTimestamp,
+      createTx,
+    } = req.body;
 
-    const counter = await blockchainService.getAgreementCounter();
-    const agreementId = Number(counter) - 1;
+    const shipperAddress = req.user.wallet_address;
 
-    const depositReceipt = await blockchainService.depositEscrow(
-      agreementId,
-      totalAmount,
-      shipperAddress
-    );
+    // ---------------------------------------------
+    // Validate
+    // ---------------------------------------------
 
-    res.status(200).json({
-      message: 'Agreement created and funded successfully',
-      agreementId,
-      createTx: receipt.transactionHash,
-      depositTx: depositReceipt.transactionHash,
+    if (
+      onchainId === undefined ||
+      !carrier ||
+      !totalAmountEth ||
+      !descriptions ||
+      !percentages ||
+      !deadlineTimestamp ||
+      !createTx
+    ) {
+      return res.status(400).json({
+        error: "Missing required agreement information",
+      });
+    }
+
+    // ---------------------------------------------
+    // Create database record
+    // ---------------------------------------------
+
+    const result = await agreementService.createAgreement({
+      onchainId,
+
+      shipperAddress,
+
+      carrierAddress: carrier,
+
+      totalAmountEth,
+
+      deadlineTimestamp,
+
+      descriptions,
+
+      percentages,
+
+      createTx,
+    });
+
+    res.status(201).json({
+      message:
+        "Agreement created successfully. Waiting for carrier acceptance.",
+
+      agreementId: result.agreementId,
+
+      status: "PendingAcceptance",
+
+      createTx: result.createTx,
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: error.message });
+    console.error("Create agreement error:", error);
+
+    res.status(500).json({
+      error: error.message,
+    });
+  }
+};
+
+// =====================================================
+// ACCEPT AGREEMENT
+// =====================================================
+
+exports.acceptAgreement = async (req, res) => {
+  try {
+    const agreementId = req.params.id;
+
+    const { acceptTx } = req.body;
+
+    const carrierAddress = req.user.wallet_address;
+
+    if (!acceptTx) {
+      return res.status(400).json({
+        error: "Blockchain acceptance transaction is required",
+      });
+    }
+
+    const result = await agreementService.acceptAgreement(
+      agreementId,
+      carrierAddress,
+      acceptTx,
+    );
+
+    res.json({
+      message: "Agreement accepted. Waiting for shipper funding.",
+
+      agreementId,
+
+      status: "AwaitingFunding",
+
+      acceptTx: result.acceptTx,
+    });
+  } catch (error) {
+    console.error("Accept agreement error:", error);
+
+    res.status(500).json({
+      error: error.message,
+    });
+  }
+};
+
+// =====================================================
+// REJECT AGREEMENT
+// =====================================================
+
+exports.rejectAgreement = async (req, res) => {
+  try {
+    const agreementId = req.params.id;
+
+    const { rejectTx } = req.body;
+
+    const carrierAddress = req.user.wallet_address;
+
+    if (!rejectTx) {
+      return res.status(400).json({
+        error: "Blockchain rejection transaction is required",
+      });
+    }
+
+    const result = await agreementService.rejectAgreement(
+      agreementId,
+      carrierAddress,
+      rejectTx,
+    );
+
+    res.json({
+      message: "Agreement rejected",
+
+      agreementId,
+
+      status: "Rejected",
+
+      rejectTx: result.rejectTx,
+    });
+  } catch (error) {
+    console.error("Reject agreement error:", error);
+
+    res.status(500).json({
+      error: error.message,
+    });
+  }
+};
+
+// =====================================================
+// FUND AGREEMENT
+// =====================================================
+
+exports.fundAgreement = async (req, res) => {
+  try {
+    const agreementId = req.params.id;
+
+    const { fundTx } = req.body;
+
+    const shipperAddress = req.user.wallet_address;
+
+    if (!fundTx) {
+      return res.status(400).json({
+        error: "Blockchain funding transaction is required",
+      });
+    }
+
+    const result = await agreementService.fundAgreement(
+      agreementId,
+      shipperAddress,
+      fundTx,
+    );
+
+    res.json({
+      message: "Escrow funded successfully. Agreement is now active.",
+
+      agreementId,
+
+      status: "Active",
+
+      fundTx: result.fundTx,
+    });
+  } catch (error) {
+    console.error("Fund agreement error:", error);
+
+    res.status(500).json({
+      error: error.message,
+    });
+  }
+};
+
+// =====================================================
+// GET ALL CARRIERS
+// GET /api/users/carriers
+// =====================================================
+
+exports.getCarriers = async (req, res) => {
+  try {
+    const carriers = await userModel.findAllCarriers();
+
+    res.json(carriers);
+  } catch (error) {
+    console.error("Get carriers error:", error);
+
+    res.status(500).json({
+      error: "Failed to fetch carriers",
+    });
   }
 };

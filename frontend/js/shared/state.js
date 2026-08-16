@@ -1,3 +1,52 @@
-const p=new URLSearchParams(location.search);document.getElementById('successTitle')?.textContent;
-if(document.getElementById('successTitle')){document.getElementById('successTitle').textContent=p.get('title')||'Success';document.getElementById('successMessage').textContent=p.get('message')||'Your action completed successfully.';const d=p.get('details')||'';document.getElementById('successDetails').innerHTML=d;document.getElementById('successDetails').style.display=d?'block':'none';document.getElementById('successPrimaryBtn').href=p.get('next')||'agreements.html')}
-if(document.getElementById('errorTitle')){document.getElementById('errorTitle').textContent=p.get('title')||'Something went wrong';document.getElementById('errorMessage').textContent=p.get('message')||'Your transaction could not be completed.';const d=p.get('details')||'';document.getElementById('errorDetails').innerHTML=d;document.getElementById('errorDetails').style.display=d?'block':'none';document.getElementById('errorCode').textContent='Error Code: '+(p.get('code')||'TX_REVERTED');document.getElementById('errorRetryBtn').href=p.get('retry')||'agreements.html')}
+document.addEventListener("DOMContentLoaded", function () {
+  const params = new URLSearchParams(window.location.search);
+
+  // --- Success block ---
+  const successTitleEl = document.getElementById("successTitle");
+  const successMsgEl = document.getElementById("successMessage");
+  const successDetailsEl = document.getElementById("successDetails");
+  const successBtnEl = document.getElementById("successPrimaryBtn");
+
+  if (successTitleEl) {
+    successTitleEl.textContent = params.get("title") || "Success";
+  }
+  if (successMsgEl) {
+    successMsgEl.textContent =
+      params.get("message") || "Your action completed successfully.";
+  }
+  if (successDetailsEl) {
+    const details = params.get("details") || "";
+    successDetailsEl.innerHTML = details;
+    successDetailsEl.style.display = details ? "block" : "none";
+  }
+  if (successBtnEl) {
+    successBtnEl.href = params.get("next") || "agreements.html";
+  }
+
+  // --- Error block ---
+  const errorTitleEl = document.getElementById("errorTitle");
+  const errorMsgEl = document.getElementById("errorMessage");
+  const errorDetailsEl = document.getElementById("errorDetails");
+  const errorCodeEl = document.getElementById("errorCode");
+  const errorBtnEl = document.getElementById("errorRetryBtn");
+
+  if (errorTitleEl) {
+    errorTitleEl.textContent = params.get("title") || "Something went wrong";
+  }
+  if (errorMsgEl) {
+    errorMsgEl.textContent =
+      params.get("message") || "Your transaction could not be completed.";
+  }
+  if (errorDetailsEl) {
+    const details = params.get("details") || "";
+    errorDetailsEl.innerHTML = details;
+    errorDetailsEl.style.display = details ? "block" : "none";
+  }
+  if (errorCodeEl) {
+    errorCodeEl.textContent =
+      "Error Code: " + (params.get("code") || "TX_REVERTED");
+  }
+  if (errorBtnEl) {
+    errorBtnEl.href = params.get("retry") || "agreements.html";
+  }
+});
