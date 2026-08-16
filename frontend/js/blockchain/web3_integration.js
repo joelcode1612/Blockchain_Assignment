@@ -20,8 +20,8 @@
    ============================================================ */
 
 const CONFIG = {
-  contractAddress: "0x023ce0eea02279D3488dC293F0514F13B2f3A5fb",
-  ganacheChainId: 1337,
+  contractAddress: "0x14a58F6FFAa80BE8317aB48acd30Fd37f27978F0",
+  ganacheChainId: 11155111,
   abiPath: "/abi/LogisticsEscrow.json",
 };
 

@@ -1,0 +1,13 @@
+/* ==========================================================================
+   shipper_styles.css — Shipper-specific styles
+   ==========================================================================
+   The uploaded source (traxen-escrow.html) contains a single unified
+   <style> block with no CSS that is uniquely Shipper-facing — every
+   selector (.field, .panel, .btn, .progress-track, .kv, etc.) is shared
+   across all views and already lives in styles.css.
+
+   Per the no-duplication rule, nothing was copied here. This file is kept
+   as an empty extension point: add rules for a class like
+   `.shipper-*` (e.g. `.shipper-deposit-panel`) if/when Shipper-only
+   styling is introduced.
+   ========================================================================== */

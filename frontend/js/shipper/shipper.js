@@ -63,3 +63,95 @@ document.addEventListener("DOMContentLoaded", async () => {
     console.error("Error loading dashboard:", error);
   }
 });
+
+(function() {
+  const contentEl = document.querySelector('.content');
+  const navItems = document.querySelectorAll('.nav-item[href]');
+
+  // ─── Load a page into the content area ──────────────────
+  async function loadPage(url) {
+    // Show loading indicator
+    contentEl.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-faint);">Loading...</div>';
+
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const html = await response.text();
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+
+      // Extract the main content (assuming it's inside <div class="content">)
+      const newContent = doc.querySelector('.content');
+      if (newContent) {
+        contentEl.innerHTML = newContent.innerHTML;
+      } else {
+        // fallback: take the entire body
+        contentEl.innerHTML = doc.body.innerHTML;
+      }
+
+      // ─── Update active nav state ──────────────────────
+      navItems.forEach(el => el.classList.remove('active'));
+      const activeLink = Array.from(navItems).find(el => el.getAttribute('href') === url);
+      if (activeLink) activeLink.classList.add('active');
+
+      // ─── Update page title ─────────────────────────────
+      const title = doc.querySelector('title');
+      if (title) document.title = title.textContent;
+
+      // ─── Re‑initialise page‑specific scripts ──────────
+      // If the loaded page exposes an `initPage` function, call it.
+      // This allows each page to re‑attach event listeners and fetch data.
+      if (typeof window.initPage === 'function') {
+        window.initPage();
+      }
+
+      // Also check for a page‑specific init (e.g., window.initDepositBalance)
+      if (typeof window.initDepositBalance === 'function') {
+        window.initDepositBalance();
+      }
+      if (typeof window.initMilestoneRelease === 'function') {
+        window.initMilestoneRelease();
+      }
+      // Add more as needed.
+
+    } catch (error) {
+      console.error('Failed to load page:', error);
+      contentEl.innerHTML = `
+        <div style="padding:40px;text-align:center;color:var(--red);">
+          <h3>❌ Failed to load page</h3>
+          <p>${error.message}</p>
+        </div>
+      `;
+    }
+  }
+
+  // ─── Intercept clicks on nav links ──────────────────────
+  navItems.forEach(item => {
+    item.addEventListener('click', function(e) {
+      const href = this.getAttribute('href');
+      // Intercept internal links only (relative paths, not external or #)
+      if (href && !href.startsWith('http') && !href.startsWith('#')) {
+        e.preventDefault();
+        loadPage(href);
+        // Update browser URL without reloading
+        window.history.pushState({ page: href }, '', href);
+      }
+    });
+  });
+
+  // ─── Handle browser back/forward ────────────────────────
+  window.addEventListener('popstate', function(e) {
+    if (e.state && e.state.page) {
+      loadPage(e.state.page);
+    }
+  });
+
+  // ─── Expose loadPage globally for inline use ────────────
+  window.loadPage = loadPage;
+
+})();
+
+// ─── (Optional) Your existing shipper dashboard logic ──────
+// e.g., handle logout, profile dropdowns, etc.
+console.log('Shipper dashboard loaded.');

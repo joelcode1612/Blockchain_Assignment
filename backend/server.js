@@ -18,11 +18,6 @@ app.use("/abi", express.static(path.join(__dirname, "../abi")));
 app.use("/css", express.static(path.join(__dirname, "../frontend/css")));
 app.use("/js", express.static(path.join(__dirname, "../frontend/js")));
 
-// app.use('/api/escrow', escrowRoutes);
-// app.use('/api/payment', paymentRoutes);
-// app.use('/api/milestones', milestoneRoutes);
-// app.use('/api/agreements', agreementRoutes);
-
 // Page router — maps clean URLs to the existing page files
 const pagesRouter = require("./routes/mainRoutes");
 app.use(pagesRouter);

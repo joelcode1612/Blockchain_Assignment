@@ -1,0 +1,13 @@
+/* ==========================================================================
+   carrier_styles.css — Carrier-specific styles
+   ==========================================================================
+   The uploaded source (traxen-escrow.html) contains a single unified
+   <style> block with no CSS that is uniquely Carrier-facing — the
+   milestone-release table, pills, and buttons on that view reuse the same
+   shared selectors already in styles.css.
+
+   Per the no-duplication rule, nothing was copied here. This file is kept
+   as an empty extension point: add rules for a class like
+   `.carrier-*` (e.g. `.carrier-milestone-row`) if/when Carrier-only
+   styling is introduced.
+   ========================================================================== */

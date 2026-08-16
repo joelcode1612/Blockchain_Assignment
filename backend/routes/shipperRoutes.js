@@ -21,6 +21,12 @@ router.get("/shipper", (req, res) => {
 router.get("/shipper.html", (req, res) => {
   res.sendFile(path.join(SHIPPER_DIR, "shipper.html"));
 });
+router.get("../shipper/shipper_profile.html", (req, res) => {
+  res.sendFile(path.join(SHIPPER_DIR, "shipper_profile.html"));
+});
+router.get("/shipper_settings.html", (req, res) => {
+  res.sendFile(path.join(SHIPPER_DIR, "shipper_settings.html"));
+});
 
 // Also handle other shipper pages if needed – but static middleware already does.
 module.exports = router;

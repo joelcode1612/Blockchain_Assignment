@@ -10,21 +10,19 @@ const router = express.Router();
 const authRoutes = require("./authRoutes");
 const agreementRoutes = require("./agreementRoutes");
 const userRoutes = require("./userRoutes");
-const escrowRoutes = require("./escrowRoutes");
 const shipperRoutes = require("./shipperRoutes");
 const carrierRoutes = require("./carrierRoutes");
 const transactionRoutes = require("./transactionRoutes");
-
-// Add these later when the files are created
-// const milestoneRoutes = require("./milestoneRoutes");
-// const paymentRoutes = require("./paymentRoutes");
+const paymentRoutes = require('./paymentRoutes');
+const milestoneRoutes = require('./milestoneRoutes');
+const historyRoutes = require('./historyRoutes');   
+const depositRoutes = require('./depositRoutes');   
 
 const PAGES_DIR = path.join(__dirname, "../../frontend/pages");
 
 // =====================================================
 // LANDING PAGE
 // =====================================================
-
 router.get("/", (req, res) => {
   res.sendFile(path.join(PAGES_DIR, "public/index.html"));
 });
@@ -32,31 +30,21 @@ router.get("/", (req, res) => {
 // =====================================================
 // API ROUTES
 // =====================================================
-
 router.use("/api/auth", authRoutes);
-
 router.use("/api/agreements", agreementRoutes);
-
 router.use("/api/users", userRoutes);
 
-// Later:
-// router.use("/api/milestones", milestoneRoutes);
-// router.use("/api/payments", paymentRoutes);
+// ✅ FIXED: changed app.use → router.use
+router.use('/api/payment', paymentRoutes);
+router.use('/api/milestones', milestoneRoutes);
+router.use('/api/history', historyRoutes);
+router.use('/api/deposit', depositRoutes);
 
 // =====================================================
 // FRONTEND PAGE ROUTES
 // =====================================================
-
-router.use("/", escrowRoutes);
-
 router.use("/", shipperRoutes);
-
 router.use("/", carrierRoutes);
-
 router.use("/", transactionRoutes);
-
-// =====================================================
-// EXPORT
-// =====================================================
 
 module.exports = router;

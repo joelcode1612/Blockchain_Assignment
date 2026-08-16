@@ -1,458 +1,76 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Transaction History — Traxen</title>
-  <link rel="stylesheet" href="../css/escrow_module.css">
-  <style>
-    :root {
-      --bg: #0a0b0d;
-      --panel: #111318;
-      --panel-2: #15171d;
-      --border: #22252c;
-      --text: #f3f4f6;
-      --text-faint: #5b6270;
-      --lime: #cdfa3f;
-      --radius: 10px;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
-    }
-
-    .app {
-      display: flex;
-      min-height: 100vh;
-    }
-
-    .sidebar {
-      width: 230px;
-      flex-shrink: 0;
-      background: var(--panel);
-      border-right: 1px solid var(--border);
-      padding: 20px 14px;
-    }
-
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-weight: 700;
-      font-size: 15px;
-      padding-bottom: 20px;
-    }
-
-    .brand-mark {
-      width: 22px;
-      height: 22px;
-      border-radius: 6px;
-      background: var(--lime);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #0a0b0d;
-      font-size: 13px;
-      font-weight: 800;
-    }
-
-    .nav-label {
-      font-size: 10px;
-      text-transform: uppercase;
-      color: var(--text-faint);
-      padding: 0 10px;
-      margin: 12px 0 6px;
-    }
-
-    .nav-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 9px 10px;
-      border-radius: 8px;
-      color: #9199a6;
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-    }
-
-    .nav-item:hover {
-      background: var(--panel-2);
-      color: var(--text);
-    }
-
-    .nav-item.active {
-      background: var(--lime);
-      color: #0a0b0d;
-      font-weight: 600;
-    }
-
-    .nav-item svg {
-      width: 15px;
-      height: 15px;
-    }
-
-    .main {
-      flex: 1;
-      padding: 24px 28px;
-    }
-
-    .topbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 20px;
-    }
-
-    .topbar h1 {
-      font-size: 20px;
-      margin: 0;
-    }
-
-    .sub {
-      font-size: 13px;
-      color: var(--text-faint);
-    }
-
-    .panel {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 20px;
-      margin-bottom: 18px;
-    }
-
-    .panel h2 {
-      margin-top: 0;
-    }
-
-    .flex {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .btn {
-      padding: 8px 16px;
-      border-radius: 6px;
-      font-weight: 600;
-      border: 1px solid transparent;
-      cursor: pointer;
-      background: var(--panel-2);
-      color: var(--text);
-      font-size: 12.5px;
-    }
-
-    .btn-primary {
-      background: var(--lime);
-      color: #0a0b0d;
-    }
-
-    .btn-secondary {
-      border-color: var(--border);
-    }
-
-    select {
-      background: var(--panel-2);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 8px 12px;
-      color: var(--text);
-      min-width: 200px;
-    }
-
-    #output {
-      background: rgba(0, 0, 0, 0.3);
-      padding: 12px;
-      border-radius: 6px;
-      font-family: monospace;
-      font-size: 12px;
-      max-height: 120px;
-      overflow-y: auto;
-      white-space: pre-wrap;
-    }
-
-    .tx-item {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      padding: 12px 0;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .tx-item:last-child {
-      border-bottom: none;
-    }
-
-    .tx-icon {
-      font-size: 24px;
-      width: 36px;
-      text-align: center;
-    }
-
-    .tx-info {
-      flex: 1;
-    }
-
-    .tx-title {
-      font-weight: 500;
-    }
-
-    .tx-meta {
-      display: flex;
-      gap: 16px;
-      font-size: 12px;
-      color: var(--text-faint);
-      flex-wrap: wrap;
-    }
-
-    .tx-meta span {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .empty-state {
-      text-align: center;
-      padding: 40px 0;
-      color: var(--text-faint);
-    }
-  </style>
+  <title>Traxen — Transaction History</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/css/shipper_styles.css">
+  <link rel="stylesheet" href="/css/carrier_styles.css">
 </head>
-
 <body>
-  <div class="app">
-    <!-- Main -->
-    <main class="main">
-      <div class="topbar">
-        <div>
-          <h1>📊 Transaction History</h1>
-          <div class="sub">View all payment events</div>
-        </div>
-        <div class="flex">
-          <button class="btn btn-secondary" onclick="exportJSON()">⬇ JSON</button>
-          <button class="btn btn-secondary" onclick="exportCSV()">⬇ CSV</button>
-          <span id="wallet-status" style="color:var(--text-faint);">Not connected</span>
-        </div>
-      </div>
+<div class="app">
 
-      <!-- Agreement Selector -->
-      <div class="panel">
-        <div class="flex" style="justify-content:space-between;">
-          <div class="flex">
-            <label style="font-weight:600;color:var(--text-faint);">Agreement:</label>
-            <select id="agreementSelect" onchange="loadAgreement()">
-              <option value="">— Select —</option>
-            </select>
-          </div>
-          <button class="btn btn-secondary" onclick="refresh()">↻ Refresh</button>
-        </div>
-      </div>
-
-      <!-- Transaction List -->
-      <div class="panel">
-        <h2>Transactions</h2>
-        <div id="txList">
-          <div class="empty-state">Select an agreement to view transactions.</div>
-        </div>
-      </div>
-
-      <!-- Log -->
-      <div class="panel">
-        <h2>📋 Activity Log</h2>
-        <div id="output">Ready...</div>
-      </div>
-    </main>
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="brand"><div class="brand-mark">T</div> Traxen</div>
+    <div class="nav-group">
+      <div class="nav-label">Escrow Engine</div>
+      <a class="nav-item" href="/pages/shipper/deposit_balance.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v14M6 10l6 6 6-6"/><path d="M4 20h16"/></svg> Deposit &amp; Balance</a>
+      <a class="nav-item" href="/pages/shipper/milestone_release.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg> Milestone Release</a>
+      <a class="nav-item" href="/pages/shipper/duplicate_guard.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L14.7 3.86a2 2 0 00-3.4 0z"/></svg> Duplicate Guard</a>
+      <a class="nav-item" href="/pages/shipper/refund_expiry.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg> Refund &amp; Expiry</a>
+      <a class="nav-item active" href="/pages/shipper/history.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 106 5.3L3 8"/><path d="M12 7v5l4 2"/></svg> History</a>
+    </div>
+    <div class="contract-tag"><span class="dot"></span>0x9F2c…7B1E · Sepolia</div>
   </div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
-  <script src="/js/providerManager.js"></script>
-  <script src="/js/toast.js"></script>
-  <script src="/js/web3_integration.js"></script>
-  <script src="/js/api.js"></script>
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <h1 id="pageTitle">Transaction &amp; Payment History</h1>
+        <div class="sub" id="pageSub">Deposits, releases, and refunds for this agreement</div>
+      </div>
+      <div class="agreement-select">
+        Agreement:
+        <select id="agreementSelect" onchange="loadHistory()">
+          <option value="">— Select —</option>
+        </select>
+      </div>
+    </div>
 
-  <script>
-    let currentAgreementId = null;
-    let allTransactions = [];
+    <div class="content">
+      <div class="view active" id="view-history">
+        <!-- Stats -->
+        <div class="stat-row" id="statsRow">
+          <div class="stat-card"><div class="lbl">Total Payments</div><div class="val" id="totalPayments">—</div></div>
+          <div class="stat-card"><div class="lbl">Total ETH Released</div><div class="val lime" id="totalEth">—</div></div>
+          <div class="stat-card"><div class="lbl">Latest Payment</div><div class="val" id="latestPayment">—</div></div>
+          <div class="stat-card"><div class="lbl">Agreement</div><div class="val" id="agreementIdDisplay">—</div></div>
+        </div>
 
-    function log(msg) {
-      const el = document.getElementById('output');
-      el.innerHTML += `\n${new Date().toLocaleTimeString()}: ${msg}`;
-      el.scrollTop = el.scrollHeight;
-    }
-
-    function updateWalletUI() {
-      const btn = document.getElementById('wallet-btn');
-      const status = document.getElementById('wallet-status');
-      if (window.userWalletAddress) {
-        btn.textContent = window.userWalletAddress.slice(0, 6) + '…' + window.userWalletAddress.slice(-4);
-        status.textContent = '✅ ' + window.userWalletAddress.slice(0, 6) + '…' + window.userWalletAddress.slice(-4);
-      } else {
-        btn.textContent = 'Connect Wallet';
-        status.textContent = 'Not connected';
-      }
-    }
-
-    async function loadAgreements() {
-      try {
-        const res = await fetch('/api/agreements', {
-          headers: { 'x-wallet-address': window.userWalletAddress || '' }
-        });
-        if (!res.ok) throw new Error('Failed to fetch');
-        const data = await res.json();
-        const sel = document.getElementById('agreementSelect');
-        sel.innerHTML = '<option value="">— Select —</option>';
-        data.forEach(ag => {
-          const opt = document.createElement('option');
-          opt.value = ag.onchain_id;
-          opt.textContent = `AGR-${String(ag.onchain_id).padStart(4, '0')} (${ag.status})`;
-          sel.appendChild(opt);
-        });
-        if (data.length > 0) sel.value = data[0].onchain_id;
-        return data;
-      } catch (e) {
-        log('❌ Failed to load agreements: ' + e.message);
-        return [];
-      }
-    }
-
-    async function loadAgreement() {
-      const sel = document.getElementById('agreementSelect');
-      const id = parseInt(sel.value);
-      if (isNaN(id)) { currentAgreementId = null; clearUI(); return; }
-      currentAgreementId = id;
-      await refresh();
-    }
-
-    async function refresh() {
-      if (currentAgreementId === null) return;
-      try {
-        const data = await API.getPaymentHistory(currentAgreementId);
-        allTransactions = data.payments || [];
-        renderTransactions(allTransactions);
-        log(`✅ Loaded ${allTransactions.length} transactions for agreement ${currentAgreementId}`);
-      } catch (e) {
-        log('❌ Error: ' + e.message);
-        renderTransactions([]);
-      }
-    }
-
-    function renderTransactions(txs) {
-      const container = document.getElementById('txList');
-      if (!txs || txs.length === 0) {
-        container.innerHTML = '<div class="empty-state">📭 No transactions found for this agreement.</div>';
-        return;
-      }
-      container.innerHTML = txs.map(tx => {
-        const icon = getIcon(tx.type);
-        return `
-        <div class="tx-item">
-          <div class="tx-icon">${icon}</div>
-          <div class="tx-info">
-            <div class="tx-title">${tx.type || 'Transaction'}</div>
-            <div class="tx-meta">
-              ${tx.amount ? `<span>💰 ${tx.amount} ETH</span>` : ''}
-              ${tx.transaction_hash ? `<span>🔗 ${truncateHash(tx.transaction_hash)}</span>` : ''}
-              ${tx.paid_at ? `<span>🕐 ${new Date(tx.paid_at).toLocaleString()}</span>` : ''}
-            </div>
+        <div class="panel">
+          <h2>Transactions</h2>
+          <div class="desc">All recorded on‑chain events for this agreement</div>
+          <div id="historyContent">
+            <div style="color:var(--text-faint);padding:12px 0;">Select an agreement to view transactions.</div>
           </div>
         </div>
-      `;
-      }).join('');
-    }
 
-    function getIcon(type) {
-      if (!type) return '📄';
-      const t = type.toLowerCase();
-      if (t.includes('fund') || t.includes('deposit')) return '💰';
-      if (t.includes('verify') || t.includes('milestone')) return '✅';
-      if (t.includes('payment') || t.includes('release')) return '📤';
-      if (t.includes('refund')) return '↩';
-      return '📄';
-    }
+        <div class="panel" style="background:rgba(0,0,0,0.2);padding:10px 16px;">
+          <div id="output" style="font-family:monospace;font-size:12px;color:var(--text-faint);max-height:100px;overflow-y:auto;white-space:pre-wrap;">Ready...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
-    function truncateHash(hash) {
-      if (!hash) return '';
-      if (hash.length <= 10) return hash;
-      return hash.slice(0, 6) + '…' + hash.slice(-4);
-    }
-
-    function clearUI() {
-      document.getElementById('txList').innerHTML = '<div class="empty-state">Select an agreement to view transactions.</div>';
-    }
-
-    // ─── Export ────────────────────────────────────────────────
-    function exportJSON() {
-      if (allTransactions.length === 0) {
-        showToast('No data to export.', 'warning');
-        return;
-      }
-      const blob = new Blob([JSON.stringify(allTransactions, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `transactions_${currentAgreementId}_${Date.now()}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-      showToast('JSON exported!', 'success');
-    }
-
-    function exportCSV() {
-      if (allTransactions.length === 0) {
-        showToast('No data to export.', 'warning');
-        return;
-      }
-      const headers = ['Type', 'Amount (ETH)', 'Transaction Hash', 'Date'];
-      const rows = allTransactions.map(tx => [
-        tx.type || '',
-        tx.amount || '',
-        tx.transaction_hash || '',
-        tx.paid_at ? new Date(tx.paid_at).toLocaleString() : ''
-      ]);
-      const csv = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `transactions_${currentAgreementId}_${Date.now()}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
-      showToast('CSV exported!', 'success');
-    }
-
-    window.addEventListener('walletConnected', () => {
-      updateWalletUI();
-      loadAgreements().then(() => loadAgreement());
-    });
-
-    document.addEventListener('DOMContentLoaded', () => {
-      updateWalletUI();
-      if (window.userWalletAddress) {
-        loadAgreements().then(() => loadAgreement());
-      } else {
-        log('👛 Connect wallet to start.');
-      }
-      document.querySelector('.nav-item[onclick*="connectWallet"]')?.addEventListener('click', () => {
-        if (!window.userWalletAddress) connectWallet();
-      });
-    });
-
-    window.loadAgreement = loadAgreement;
-    window.refresh = refresh;
-    window.exportJSON = exportJSON;
-    window.exportCSV = exportCSV;
-  </script>
-  <script src="/js/web3_integration.js"></script>
-  <script src="/js/api.js"></script>
+<!-- Scripts -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+<script src="/js/toast.js"></script>
+<script src="/js/blockchain/web3_integration.js"></script>
+<script src="/js/shared/api.js"></script>
+<script src="/shared/history.js"></script>
 </body>
-
 </html>
