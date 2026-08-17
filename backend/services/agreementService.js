@@ -75,6 +75,8 @@ const createAgreement = async ({
   descriptions,
   percentages,
   createTx,
+  cargoType,
+  weightKg,
 }) => {
   // ---------------------------------------------
   // Validate amount
@@ -144,16 +146,13 @@ const createAgreement = async ({
 
   const agreement = await agreementModel.create({
     onchainId,
-
     shipperWallet: shipperAddress,
-
     carrierWallet: carrierAddress,
-
     escrowAmount: totalAmountWei,
-
     deadline,
-
     status: "PendingAcceptance",
+    cargoType,
+    weightKg,
   });
 
   // ---------------------------------------------
@@ -276,6 +275,10 @@ const fundAgreement = async (agreementId, shipperAddress, fundTx) => {
   };
 };
 
+const getAvailableAgreements = async () => {
+  return await agreementModel.findAvailable();
+};
+
 module.exports = {
   getAllAgreements,
   getAgreementById,
@@ -283,4 +286,5 @@ module.exports = {
   acceptAgreement,
   rejectAgreement,
   fundAgreement,
+  getAvailableAgreements,
 };

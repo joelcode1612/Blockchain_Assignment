@@ -96,6 +96,8 @@ const create = async ({
   escrowAmount,
   deadline,
   status = "PendingAcceptance",
+  cargoType,
+  weightKg,
 }) => {
   // ------------------------------------------------------------------
   // 🔍 Check if an agreement with this onchain_id already exists
@@ -135,6 +137,8 @@ const create = async ({
       released_amount: "0",
       deadline,
       status,
+      cargo_type: cargoType, // ✅ new
+      weight_kg: weightKg, // ✅ new
     })
     .select()
     .single();
@@ -201,10 +205,51 @@ const updateStatus = async (onchainId, status) => {
   return data;
 };
 
+// =====================================================
+// GET AVAILABLE AGREEMENTS (PendingAcceptance)
+// =====================================================
+
+const findAvailable = async () => {
+  const { data, error } = await supabase
+    .from("agreements")
+    .select(
+      `
+      *,
+      shipper:users!agreements_shipper_fkey(
+        wallet_address,
+        display_name,
+        role
+      ),
+      carrier:users!agreements_carrier_fkey(
+        wallet_address,
+        display_name,
+        role
+      ),
+      milestones(
+        id,
+        milestone_index,
+        description,
+        payment_percentage,
+        status,
+        submitted_at,
+        verified_at,
+        paid_at
+      )
+    `,
+    )
+    .eq("status", "PendingAcceptance") // only those awaiting carrier acceptance
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return data;
+};
+
+// Don't forget to export it:
 module.exports = {
   findAll,
   findByOnchainId,
   create,
   createMilestones,
   updateStatus,
+  findAvailable,
 };

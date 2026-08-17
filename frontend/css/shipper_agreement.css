@@ -1,14 +1,45 @@
 /* =========================================
-   SHIPPER AGREEMENT LIST
+   AGREEMENT PAGE - WITHOUT SIDEBAR
+   ========================================= */
+
+/* Make the application use the full screen */
+.app {
+  display: block !important;
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* Main content takes the full width */
+.main {
+  width: 100% !important;
+  min-height: 100vh;
+  margin-left: 0 !important;
+}
+
+/* Agreement content */
+.content {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* =========================================
+   AGREEMENT GRID
    ========================================= */
 
 .agreement-grid {
+  width: 100%;
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
 }
 
+/* =========================================
+   AGREEMENT CARD
+   ========================================= */
+
 .agreement-card {
+  width: 100%;
+  box-sizing: border-box;
   background: var(--panel);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius);
@@ -21,11 +52,16 @@
   border-color: rgba(205, 250, 63, 0.3);
 }
 
+/* =========================================
+   CARD CONTENT
+   ========================================= */
+
 .ac-top {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 12px;
+  gap: 15px;
 }
 
 .ac-id {
@@ -51,7 +87,12 @@
   font-weight: 800;
   color: var(--lime);
   text-align: right;
+  white-space: nowrap;
 }
+
+/* =========================================
+   PROGRESS BAR
+   ========================================= */
 
 .ac-progress {
   height: 6px;
@@ -67,9 +108,32 @@
   background: var(--lime);
 }
 
+/* =========================================
+   CARD META
+   ========================================= */
+
 .ac-meta {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   font-size: 11.5px;
   color: var(--text-dim);
+}
+
+/* =========================================
+   RESPONSIVE
+   ========================================= */
+
+@media (max-width: 768px) {
+  .agreement-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ac-top {
+    flex-direction: column;
+  }
+
+  .ac-value {
+    text-align: left;
+  }
 }

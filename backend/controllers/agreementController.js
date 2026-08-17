@@ -52,6 +52,7 @@ exports.getAgreement = async (req, res) => {
 // =====================================================
 
 exports.createAgreement = async (req, res) => {
+  console.log("📦 Received payload:", req.body);
   try {
     const {
       onchainId,
@@ -61,6 +62,8 @@ exports.createAgreement = async (req, res) => {
       percentages,
       deadlineTimestamp,
       createTx,
+      cargoType,
+      weightKg,
     } = req.body;
 
     const shipperAddress = req.user.wallet_address;
@@ -89,20 +92,15 @@ exports.createAgreement = async (req, res) => {
 
     const result = await agreementService.createAgreement({
       onchainId,
-
-      shipperAddress,
-
+      shipperAddress: req.user.wallet_address,
       carrierAddress: carrier,
-
       totalAmountEth,
-
       deadlineTimestamp,
-
       descriptions,
-
       percentages,
-
       createTx,
+      cargoType,
+      weightKg,
     });
 
     res.status(201).json({
@@ -266,5 +264,15 @@ exports.getCarriers = async (req, res) => {
     res.status(500).json({
       error: "Failed to fetch carriers",
     });
+  }
+};
+
+exports.getAvailableAgreements = async (req, res) => {
+  try {
+    const agreements = await agreementService.getAvailableAgreements();
+    res.status(200).json({ agreements });
+  } catch (error) {
+    console.error("Failed to fetch available agreements:", error);
+    res.status(500).json({ error: error.message });
   }
 };

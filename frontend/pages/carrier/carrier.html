@@ -9,6 +9,9 @@
     <link rel="stylesheet" href="../../css/dashboard.css" />
     <link rel="stylesheet" href="../../css/responsive.css" />
     <link rel="stylesheet" href="../../css/carrier.css" />
+    <link rel="stylesheet" href="../../css/carrier-agreements.css" />
+    <link rel="stylesheet" href="../../css/carrier_agreements.css" />
+    <link rel="stylesheet" href="../../css/profile.css" />
 </head>
 
 <body>
@@ -19,7 +22,7 @@
             <div class="brand"><span class="brand-mark">T</span> Traxen</div>
 
             <nav class="nav-group">
-                <a href="carrier.html" class="nav-item active">
+                <a href="#" class="nav-item active" data-page="dashboard">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <rect x="3" y="3" width="7" height="7" />
                         <rect x="14" y="3" width="7" height="7" />
@@ -28,21 +31,21 @@
                     </svg>
                     Dashboard
                 </a>
-                <a href="carrier_available_job.html" class="nav-item">
+                <a href="#" class="nav-item" data-page="available-jobs">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="9" />
                         <path d="M8 12l3 3 5-6" />
                     </svg>
                     Available Jobs
                 </a>
-                <a href="carrier_my_delivery.html" class="nav-item">
+                <a href="#" class="nav-item" data-page="my-deliveries">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M3 7l9-4 9 4-9 4-9-4z" />
                         <path d="M3 7v10l9 4 9-4V7" />
                     </svg>
                     My Deliveries
                 </a>
-                <a href="carrier_agreement_history.html" class="nav-item">
+                <a href="#" class="nav-item" data-page="agreements">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M9 12h6M9 16h6M9 8h6" />
                         <rect x="4" y="4" width="16" height="16" rx="2" />
@@ -67,7 +70,7 @@
             <div class="nav-group">
                 <div class="nav-label">Account</div>
 
-                <a href="carrier_profile.html" class="nav-item">
+                <a href="#" class="nav-item" data-page="profile">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="8" r="4" />
                         <path d="M4 21c0-4 4-6 8-6s8 2 8 6" />
@@ -88,7 +91,7 @@
                 <div style="display: flex; align-items: center; gap: 12px;">
                     <div class="mini-avatar">MJ</div>
                     <div>
-                        <div class="mini-name">Mike Johnson</div>
+                        <div class="mini-name">Carrier</div>
                         <div class="mini-role">Carrier</div>
                     </div>
                 </div>
@@ -110,8 +113,8 @@
         <main class="main">
             <header class="topbar">
                 <div>
-                    <h1>Welcome back, Mike 🚚</h1>
-                    <div class="sub">Here's what's happening with your deliveries</div>
+                    <h1 id="pageTitle">Dashboard</h1>
+                    <div class="sub" id="pageSub">Here's what's happening with your deliveries</div>
                 </div>
                 <div class="topbar-actions">
                     <div class="icon-btn">
@@ -131,119 +134,42 @@
                 </div>
             </header>
 
-            <div class="content">
+            <div class="content" id="contentPlaceholder">
 
                 <!-- CARRIER DASHBOARD -->
-                <div class="view active">
+                <div class="view">
                     <!-- Stats -->
                     <div class="stat-row">
                         <div class="stat-card">
                             <div class="lbl">Active Deliveries</div>
-                            <div class="val">6</div>
-                            <div class="delta up">↑ 2 new this week</div>
+                            <div class="val" id="stat-active">—</div>
+                            <div class="delta up">↑ Updated live</div>
                         </div>
                         <div class="stat-card">
                             <div class="lbl">Total Earned</div>
-                            <div class="val lime">9.65 ETH</div>
-                            <div class="delta">Released across 14 milestones</div>
+                            <div class="val lime" id="stat-earned">— ETH</div>
+                            <div class="delta">Released across milestones</div>
                         </div>
                         <div class="stat-card">
                             <div class="lbl">Pending Milestones</div>
-                            <div class="val">5</div>
+                            <div class="val" id="stat-pending">—</div>
                             <div class="delta">Awaiting verification</div>
                         </div>
                         <div class="stat-card">
                             <div class="lbl">Completed Deliveries</div>
-                            <div class="val">31</div>
-                            <div class="delta up">98% on-time rate</div>
+                            <div class="val" id="stat-completed">—</div>
+                            <div class="delta up">On-time performance</div>
                         </div>
                     </div>
 
                     <!-- CTA -->
                     <div class="cta-banner">
                         <div>
-                            <h3>3 new jobs match your fleet</h3>
+                            <h3>New jobs are waiting</h3>
                             <p>Browse open agreements from verified shippers and lock in your next delivery.</p>
                         </div>
-                        <button class="btn btn-primary" onclick="location.href='carrier_available_job.html'">Browse
-                            Available
+                        <button class="btn btn-primary" onclick="carrierNavigate('available-jobs')">Browse Available
                             Jobs</button>
-                    </div>
-
-                    <!-- Chart + Activity -->
-                    <div class="grid-2col">
-                        <div class="panel">
-                            <div class="panel-head">
-                                <div>
-                                    <h2>Earnings Trend</h2>
-                                    <div class="sub">ETH released per month</div>
-                                </div>
-                                <div class="chip-select"><span class="chip active">2026</span><span
-                                        class="chip">2025</span></div>
-                            </div>
-                            <div class="chart-wrap">
-                                <div class="legend">
-                                    <span class="legend-item"><span class="legend-dot"
-                                            style="background:var(--lime);"></span>Earnings released</span>
-                                    <span class="legend-item"><span class="legend-dot"
-                                            style="background:var(--text-faint);"></span>Deliveries completed</span>
-                                </div>
-                                <svg viewBox="0 0 560 180" width="100%" height="180">
-                                    <defs>
-                                        <linearGradient id="areaFillC" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="0%" stop-color="#cdfa3f" stop-opacity="0.35" />
-                                            <stop offset="100%" stop-color="#cdfa3f" stop-opacity="0" />
-                                        </linearGradient>
-                                    </defs>
-                                    <polyline fill="none" stroke="#3a3f47" stroke-width="2"
-                                        points="10,140 60,125 110,135 160,115 210,120 260,95 310,105 360,80 410,88 460,65 510,72 550,55" />
-                                    <polygon fill="url(#areaFillC)"
-                                        points="10,150 10,115 60,105 110,120 160,80 210,90 260,60 310,72 360,45 410,55 460,30 510,40 550,25 550,150" />
-                                    <polyline fill="none" stroke="#cdfa3f" stroke-width="2.5"
-                                        points="10,115 60,105 110,120 160,80 210,90 260,60 310,72 360,45 410,55 460,30 510,40 550,25" />
-                                </svg>
-                                <div
-                                    style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--text-faint);padding:0 6px;">
-                                    <span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span><span>Nov</span><span>Dec</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="panel">
-                            <div class="panel-head">
-                                <h2>Recent Activity</h2>
-                            </div>
-                            <div class="activity-item"><span class="activity-icon pay">$</span>
-                                <div class="activity-main">
-                                    <div class="activity-title">Milestone payment received</div>
-                                    <div class="activity-sub">1.50 ETH — Pickup, #AG8901</div>
-                                </div><span class="activity-time">2 min ago</span>
-                            </div>
-                            <div class="activity-item"><span class="activity-icon new">+</span>
-                                <div class="activity-main">
-                                    <div class="activity-title">New job assigned</div>
-                                    <div class="activity-sub">#AG8930 — Furniture Batch</div>
-                                </div><span class="activity-time">40 min ago</span>
-                            </div>
-                            <div class="activity-item"><span class="activity-icon warn">!</span>
-                                <div class="activity-main">
-                                    <div class="activity-title">Milestone proof needed</div>
-                                    <div class="activity-sub">#AG8877 — In Transit checkpoint</div>
-                                </div><span class="activity-time">1 hour ago</span>
-                            </div>
-                            <div class="activity-item"><span class="activity-icon ok">✓</span>
-                                <div class="activity-main">
-                                    <div class="activity-title">Delivery marked complete</div>
-                                    <div class="activity-sub">#AG8712 — Furniture Batch</div>
-                                </div><span class="activity-time">5 hours ago</span>
-                            </div>
-                            <div class="activity-item"><span class="activity-icon pay">$</span>
-                                <div class="activity-main">
-                                    <div class="activity-title">Final payout released</div>
-                                    <div class="activity-sub">1.50 ETH — Delivered, #AG8712</div>
-                                </div><span class="activity-time">5 hours ago</span>
-                            </div>
-                        </div>
                     </div>
 
                     <!-- My Deliveries + Available Jobs -->
@@ -251,72 +177,20 @@
                         <div class="panel">
                             <div class="panel-head">
                                 <h2>My Active Deliveries</h2><button class="btn btn-ghost"
-                                    onclick="location.href='carrier_my_delivery.html'">View All</button>
+                                    onclick="carrierNavigate('my-deliveries')">View All</button>
                             </div>
-                            <div class="job-card clickable"
-                                onclick="location.href='agreement-details-carrier.html?id=AG8901'">
-                                <div class="job-top">
-                                    <div>
-                                        <div class="job-title">#AG8901 — Electronics Shipment</div>
-                                        <div class="job-sub">Shipper: Mike Johnson</div>
-                                    </div>
-                                    <div class="job-value">5.00 ETH</div>
-                                </div>
-                                <div class="job-meta"><span>Next: <b>In Transit</b></span><span>Deadline: <b>Jul
-                                            15</b></span></div>
-                                <button class="btn btn-primary" style="width:100%;"
-                                    onclick="event.stopPropagation();location.href='agreement-details-carrier.html?id=AG8901'">Submit
-                                    Milestone Proof</button>
-                            </div>
-                            <div class="job-card clickable"
-                                onclick="location.href='agreement-details-carrier.html?id=AG8877'">
-                                <div class="job-top">
-                                    <div>
-                                        <div class="job-title">#AG8877 — Textile Shipment</div>
-                                        <div class="job-sub">Shipper: Dana Reyes</div>
-                                    </div>
-                                    <div class="job-value">3.20 ETH</div>
-                                </div>
-                                <div class="job-meta"><span>Next: <b>Out for Delivery</b></span><span>Deadline: <b>Jul
-                                            12</b></span></div>
-                                <button class="btn btn-primary" style="width:100%;"
-                                    onclick="event.stopPropagation();location.href='agreement-details-carrier.html?id=AG8877'">Submit
-                                    Milestone Proof</button>
+                            <div id="active-deliveries">
+                                <div style="color:var(--text-faint);padding:12px 0;">Loading deliveries...</div>
                             </div>
                         </div>
 
                         <div class="panel">
                             <div class="panel-head">
                                 <h2>Available Jobs Nearby</h2><button class="btn btn-ghost"
-                                    onclick="location.href='carrier_available_job.html'">Browse All</button>
+                                    onclick="carrierNavigate('available-jobs')">Browse All</button>
                             </div>
-                            <div class="job-card clickable" onclick="location.href='agreement-pending.html?id=AG8930'">
-                                <div class="job-top">
-                                    <div>
-                                        <div class="job-title">Furniture Batch → Seattle, WA</div>
-                                        <div class="job-sub">Posted by Alan Cho</div>
-                                    </div>
-                                    <div class="job-value">2.80 ETH</div>
-                                </div>
-                                <div class="job-meta"><span>4 milestones</span><span>Deadline: <b>Jul 22</b></span>
-                                </div>
-                                <button class="btn btn-ghost" style="width:100%;"
-                                    onclick="event.stopPropagation();location.href='agreement-pending.html?id=AG8930'">View
-                                    &amp; Accept</button>
-                            </div>
-                            <div class="job-card clickable" onclick="location.href='agreement-pending.html?id=AG8930'">
-                                <div class="job-top">
-                                    <div>
-                                        <div class="job-title">Auto Parts → Denver, CO</div>
-                                        <div class="job-sub">Posted by Priya Nair</div>
-                                    </div>
-                                    <div class="job-value">4.10 ETH</div>
-                                </div>
-                                <div class="job-meta"><span>3 milestones</span><span>Deadline: <b>Jul 25</b></span>
-                                </div>
-                                <button class="btn btn-ghost" style="width:100%;"
-                                    onclick="event.stopPropagation();location.href='agreement-pending.html?id=AG8930'">View
-                                    &amp; Accept</button>
+                            <div id="available-jobs">
+                                <div style="color:var(--text-faint);padding:12px 0;">Loading available jobs...</div>
                             </div>
                         </div>
                     </div>
@@ -330,8 +204,9 @@
     <script src="../../js/blockchain/web3_integration.js"></script>
     <script src="../../js/shared/common.js"></script>
     <script src="../../js/shared/auth.js"></script>
-    <script src="../../js/shared/app.js"></script>
+    <script src="../../js/shared/profile.js"></script>
     <script src="../../js/carrier/carrier.js"></script>
+    <script src="../../js/carrier/carrier_available_job.js"></script>
 </body>
 
 </html>

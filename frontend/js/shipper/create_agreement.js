@@ -16,153 +16,69 @@ let milestones = [
   { name: "Delivered", desc: "Successfully delivered", pct: 30 },
 ];
 
-// ─── Load Carriers from Database on Page Load ───────────
+// ─── Load Carriers from Database ──────────────────────────
 async function loadCarriersFromDatabase() {
   const carrierSelect = document.getElementById("f-carrier");
-
   const carrierStatus = document.getElementById("carrier-status");
-
-  if (!carrierSelect) {
-    return;
-  }
+  if (!carrierSelect) return;
 
   try {
-    // ---------------------------------------------
-    // Get logged-in shipper wallet
-    // ---------------------------------------------
-
     const walletAddress = localStorage.getItem("traxenWallet");
-
     if (!walletAddress) {
-      carrierSelect.innerHTML = `
-          <option value="">
-            Please connect your wallet first
-          </option>
-        `;
-
-      if (carrierStatus) {
+      carrierSelect.innerHTML = `<option value="">Please connect your wallet first</option>`;
+      if (carrierStatus)
         carrierStatus.textContent = "Wallet connection required.";
-      }
-
       return;
     }
 
-    // ---------------------------------------------
-    // Loading state
-    // ---------------------------------------------
-
-    carrierSelect.innerHTML = `
-        <option value="">
-          Loading carriers...
-        </option>
-      `;
-
-    if (carrierStatus) {
+    carrierSelect.innerHTML = `<option value="">Loading carriers...</option>`;
+    if (carrierStatus)
       carrierStatus.textContent = "Loading registered carriers...";
-    }
-
-    // ---------------------------------------------
-    // Fetch carriers from backend
-    // ---------------------------------------------
 
     const response = await fetch("/api/users/carriers", {
       method: "GET",
-
       headers: {
         "Content-Type": "application/json",
-
         "x-wallet-address": walletAddress,
       },
     });
 
-    // ---------------------------------------------
-    // Handle HTTP error
-    // ---------------------------------------------
-
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-
       throw new Error(errorData.error || "Failed to load carriers.");
     }
 
-    // ---------------------------------------------
-    // Get carrier data
-    // ---------------------------------------------
-
     const carriers = await response.json();
-
     console.log("Available carriers:", carriers);
 
-    // ---------------------------------------------
-    // No carriers
-    // ---------------------------------------------
-
     if (!Array.isArray(carriers) || carriers.length === 0) {
-      carrierSelect.innerHTML = `
-          <option value="">
-            No carriers available
-          </option>
-        `;
-
-      if (carrierStatus) {
+      carrierSelect.innerHTML = `<option value="">No carriers available</option>`;
+      if (carrierStatus)
         carrierStatus.textContent =
           "No registered carriers are currently available.";
-      }
-
       return;
     }
 
-    // ---------------------------------------------
-    // Clear dropdown
-    // ---------------------------------------------
-
-    carrierSelect.innerHTML = `
-        <option value="">
-          -- Select a carrier --
-        </option>
-      `;
-
-    // ---------------------------------------------
-    // Add carriers
-    // ---------------------------------------------
-
+    carrierSelect.innerHTML = `<option value="">-- Select a carrier --</option>`;
     carriers.forEach((carrier) => {
       const option = document.createElement("option");
-
-      // IMPORTANT:
-      // The actual wallet address is the value.
       option.value = carrier.wallet_address;
-
       const displayName = carrier.display_name || "Unnamed Carrier";
-
       const wallet = carrier.wallet_address;
-
       const shortWallet =
         wallet.length > 12
           ? `${wallet.substring(0, 8)}...${wallet.substring(wallet.length - 6)}`
           : wallet;
-
       option.textContent = `${displayName} (${shortWallet})`;
-
       carrierSelect.appendChild(option);
     });
-
-    // ---------------------------------------------
-    // Update status
-    // ---------------------------------------------
 
     if (carrierStatus) {
       carrierStatus.textContent = `${carriers.length} carrier(s) available.`;
     }
   } catch (error) {
     console.error("❌ Failed to load carriers:", error);
-
-    carrierSelect.innerHTML = `
-        <option value="">
-          Unable to load carriers
-        </option>
-      `;
-
+    carrierSelect.innerHTML = `<option value="">Unable to load carriers</option>`;
     if (carrierStatus) {
       carrierStatus.textContent = error.message || "Failed to load carriers.";
     }
@@ -174,7 +90,6 @@ function goStep(n) {
   [1, 2, 3].forEach((i) => {
     const stepEl = document.getElementById("ws-" + i);
     if (stepEl) stepEl.style.display = i === n ? "block" : "none";
-
     const indicator = document.getElementById("stp-" + i);
     if (indicator) {
       indicator.classList.remove("current", "done");
@@ -498,6 +413,9 @@ async function submitCreateAgreement() {
 
     const carrierOption = carrierSelect?.selectedOptions[0];
 
+    const cargoType = document.getElementById("f-cargo-type")?.value || null;
+    const weightKg = document.getElementById("f-weight")?.value || null;
+
     if (!carrierOption) {
       alert("Please select a carrier.");
 
@@ -605,6 +523,7 @@ async function submitCreateAgreement() {
       carrierAddress,
       totalAmountEth,
       deadlineTimestamp,
+      descriptions,
       paymentPercentages,
     );
 
@@ -634,18 +553,14 @@ async function submitCreateAgreement() {
 
       body: JSON.stringify({
         onchainId: blockchainResult.agreementId,
-
         carrier: carrierAddress,
-
         totalAmountEth: totalAmountEth,
-
         descriptions: descriptions,
-
         percentages: paymentPercentages,
-
         deadlineTimestamp: deadlineTimestamp,
-
         createTx: blockchainResult.transactionHash,
+        cargoType: cargoType,
+        weightKg: weightKg,
       }),
     });
 
@@ -678,7 +593,8 @@ async function submitCreateAgreement() {
     // 12. REDIRECT
     // =====================================================
 
-    window.location.href = "/shipper/deposit_balance.html?agreementId=" + blockchainResult.agreementId;
+    window.location.href =
+      "deposit_balance.html?agreementId=" + blockchainResult.agreementId;
   } catch (error) {
     console.error("❌ Agreement creation error:", error);
 
@@ -998,12 +914,20 @@ function showDeadlineError(message) {
   }
 }
 
-document.addEventListener("DOMContentLoaded", async () => {
+// =====================================================
+// CENTRAL INITIALISATION FUNCTION
+// =====================================================
+
+function initCreateAgreement() {
+  // Set minimum deadline
   setMinimumDeadline();
-  await loadWalletBalance();
-  validatePayloadValue();
-  validateDeadline();
+
+  // Load wallet balance & carriers
+  loadWalletBalance().then(() => {
+    validatePayloadValue(); // revalidate after balance loaded
+  });
   loadCarriersFromDatabase();
+  validateDeadline();
 
   // Attach real‑time validation for ETH amount
   const valueInput = document.getElementById("f-value");
@@ -1021,4 +945,19 @@ document.addEventListener("DOMContentLoaded", async () => {
   window.addEventListener("walletConnected", loadWalletBalance);
 
   console.log("✅ Create Agreement page initialized");
-});
+}
+
+// ─── Expose for SPA Router ──────────────────────────────
+// The router calls this after injecting the HTML fragment.
+window.initPage = initCreateAgreement;
+
+// ─── Auto‑init on direct page load (non‑SPA) ────────────
+// This covers hard refreshes or when the page is loaded directly.
+if (
+  document.readyState === "complete" ||
+  document.readyState === "interactive"
+) {
+  initCreateAgreement();
+} else {
+  document.addEventListener("DOMContentLoaded", initCreateAgreement);
+}

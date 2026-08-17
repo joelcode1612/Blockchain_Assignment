@@ -13,13 +13,13 @@
 
 <body>
     <div class="app">
-
-        <!-- SIDEBAR -->
+        <!-- ─── STATIC SIDEBAR ─────────────────────────────── -->
         <aside class="sidebar">
             <div class="brand"><span class="brand-mark">T</span> Traxen</div>
 
             <nav class="nav-group">
-                <a href="shipper.html" class="nav-item active">
+                <!-- Dashboard -->
+                <a href="#" class="nav-item active" data-page="dashboard">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <rect x="3" y="3" width="7" height="7" />
                         <rect x="14" y="3" width="7" height="7" />
@@ -29,14 +29,8 @@
                     Dashboard
                 </a>
 
-                <a href="create_agreement.html" class="nav-item">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 5v14M5 12h14" />
-                    </svg>
-                    Create Agreement
-                </a>
-
-                <a href="agreements.html" class="nav-item">
+                <!-- Agreements -->
+                <a href="#" class="nav-item" data-page="agreements">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M9 12h6M9 16h6M9 8h6" />
                         <rect x="4" y="4" width="16" height="16" rx="2" />
@@ -44,7 +38,16 @@
                     Agreements
                 </a>
 
-                <a href="deposit_balance.html" class="nav-item">
+                <!-- Create Agreement -->
+                <a href="#" class="nav-item" data-page="create_agreement">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 5v14M5 12h14" />
+                    </svg>
+                    Create Agreement
+                </a>
+
+                <!-- Escrow Overview -->
+                <a href="#" class="nav-item" data-page="deposit_balance">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="9" />
                         <path d="M12 7v5l3 3" />
@@ -52,7 +55,8 @@
                     Escrow Overview
                 </a>
 
-                <a href="milestone_release.html" class="nav-item">
+                <!-- Milestone Tracking -->
+                <a href="#" class="nav-item" data-page="milestone_release">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="9" />
                         <path d="M9 12l2 2 4-4" />
@@ -60,15 +64,8 @@
                     Milestone Tracking
                 </a>
 
-                <!-- <a href="history.html" class="nav-item">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M3 7l9-4 9 4-9 4-9-4z" />
-                        <path d="M3 7v10l9 4 9-4V7" />
-                    </svg>
-                    Payment History
-                </a> -->
-
-                <a href="refund_expiry.html" class="nav-item">
+                <!-- Refund Centre -->
+                <a href="#" class="nav-item" data-page="refund_expiry">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="9" />
                         <path d="M12 7v5l3 3" />
@@ -76,7 +73,8 @@
                     Refund Centre
                 </a>
 
-                <a href="history.html" class="nav-item">
+                <!-- Transaction History -->
+                <a href="#" class="nav-item" data-page="history">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="11" cy="11" r="7" />
                         <path d="M21 21l-4-4" />
@@ -85,10 +83,12 @@
                 </a>
             </nav>
 
+            <!-- Account Section -->
             <div class="nav-group">
                 <div class="nav-label">Account</div>
 
-                <a href="../shipper/shipper_profile.html" class="nav-item">
+                <!-- Profile -->
+                <a href="#" class="nav-item" data-page="profile">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="8" r="4" />
                         <path d="M4 21c0-4 4-6 8-6s8 2 8 6" />
@@ -96,7 +96,8 @@
                     Profile
                 </a>
 
-                <a href="../shipper/shipper_settings.html" class="nav-item">
+                <!-- Settings -->
+                <a href="#" class="nav-item" data-page="settings">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="9" />
                         <path d="M12 8v4l3 2" />
@@ -105,6 +106,7 @@
                 </a>
             </div>
 
+            <!-- Sidebar Footer with Logout Icon -->
             <div class="sidebar-foot" style="display: flex; align-items: center; justify-content: space-between;">
                 <div style="display: flex; align-items: center; gap: 12px;">
                     <div class="mini-avatar">MJ</div>
@@ -113,8 +115,7 @@
                         <div class="mini-role">Shipper</div>
                     </div>
                 </div>
-
-                <!-- Logout Button -->
+                <!-- Logout Button with Icon -->
                 <a href="#" onclick="handleLogout(event)" class="logout-btn" title="Log out"
                     style="color: #8892b0; display: flex; padding: 8px; border-radius: 6px; transition: background 0.2s;">
                     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"
@@ -127,204 +128,33 @@
             </div>
         </aside>
 
-        <!-- MAIN -->
+        <!-- ─── MAIN CONTENT AREA ──────────────────────────── -->
         <main class="main">
             <header class="topbar">
                 <div>
-                    <h1>Welcome back, Mike 👋</h1>
-                    <div class="sub">Here's what's happening with your shipments</div>
+                    <h1 id="pageTitle">Dashboard</h1>
+                    <div class="sub" id="pageSub">Welcome back, Mike</div>
                 </div>
                 <div class="topbar-actions">
-                    <div class="icon-btn">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="11" cy="11" r="7" />
-                            <path d="M21 21l-4-4" />
-                        </svg>
-                    </div>
-                    <div class="icon-btn">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
-                            <path d="M13.7 21a2 2 0 01-3.4 0" />
-                        </svg>
-                        <div class="badge-dot"></div>
-                    </div>
-                    <div class="mini-avatar">MJ</div>
+                    <!-- optional actions -->
                 </div>
             </header>
 
-            <div class="content">
-
-                <!-- SHIPPER DASHBOARD -->
-                <div class="view active">
-                    <!-- Stats -->
-                    <div class="stat-row">
-                        <div class="stat-card">
-                            <div class="lbl">Total Agreements</div>
-                            <div class="val">24</div>
-                            <div class="delta up">↑ 18% this month</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="lbl">Escrow Balance</div>
-                            <div class="val lime">12.45 ETH</div>
-                            <div class="delta">Locked across active agreements</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="lbl">In Transit</div>
-                            <div class="val">8</div>
-                            <div class="delta up">↑ 3% this month</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="lbl">Completed</div>
-                            <div class="val">16</div>
-                            <div class="delta up">↑ 20% this month</div>
-                        </div>
-                    </div>
-
-                    <!-- CTA -->
-                    <div class="cta-banner">
-                        <div>
-                            <h3>Ready to ship something new?</h3>
-                            <p>Create a milestone-based escrow agreement and get matched with a verified carrier.</p>
-                        </div>
-                        <button class="btn btn-primary" onclick="location.href='create_agreement.html'">+ Create
-                            Agreement</button>
-                    </div>
-
-                    <!-- Chart + Activity -->
-                    <div class="grid-2col">
-                        <div class="panel">
-                            <div class="panel-head">
-                                <div>
-                                    <h2>Shipment Volume Trend</h2>
-                                    <div class="sub">Agreements created per month</div>
-                                </div>
-                                <div class="chip-select"><span class="chip active">2026</span><span
-                                        class="chip">2025</span></div>
-                            </div>
-                            <div class="chart-wrap">
-                                <div class="legend">
-                                    <span class="legend-item"><span class="legend-dot"
-                                            style="background:var(--lime);"></span>This period</span>
-                                    <span class="legend-item"><span class="legend-dot"
-                                            style="background:var(--text-faint);"></span>Last period</span>
-                                </div>
-                                <svg viewBox="0 0 560 180" width="100%" height="180">
-                                    <defs>
-                                        <linearGradient id="areaFillS" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="0%" stop-color="#cdfa3f" stop-opacity="0.35" />
-                                            <stop offset="100%" stop-color="#cdfa3f" stop-opacity="0" />
-                                        </linearGradient>
-                                    </defs>
-                                    <polyline fill="none" stroke="#3a3f47" stroke-width="2"
-                                        points="10,120 60,110 110,130 160,90 210,100 260,70 310,85 360,55 410,60 460,40 510,50 550,30" />
-                                    <polygon fill="url(#areaFillS)"
-                                        points="10,150 10,100 60,95 110,110 160,60 210,75 260,45 310,60 360,35 410,42 460,20 510,30 550,15 550,150" />
-                                    <polyline fill="none" stroke="#cdfa3f" stroke-width="2.5"
-                                        points="10,100 60,95 110,110 160,60 210,75 260,45 310,60 360,35 410,42 460,20 510,30 550,15" />
-                                </svg>
-                                <div
-                                    style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--text-faint);padding:0 6px;">
-                                    <span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span><span>Nov</span><span>Dec</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="panel">
-                            <div class="panel-head">
-                                <h2>Recent Activity</h2>
-                            </div>
-                            <div class="activity-item"><span class="activity-icon ok">✓</span>
-                                <div class="activity-main">
-                                    <div class="activity-title">Agreement #AG8901 milestone 2 completed</div>
-                                    <div class="activity-sub">FastTrack Logistics</div>
-                                </div><span class="activity-time">2 min ago</span>
-                            </div>
-                            <div class="activity-item"><span class="activity-icon pay">$</span>
-                                <div class="activity-main">
-                                    <div class="activity-title">Payment released to carrier</div>
-                                    <div class="activity-sub">0.85 ETH to Carrier</div>
-                                </div><span class="activity-time">15 min ago</span>
-                            </div>
-                            <div class="activity-item"><span class="activity-icon new">+</span>
-                                <div class="activity-main">
-                                    <div class="activity-title">New Agreement Created</div>
-                                    <div class="activity-sub">#AG8902</div>
-                                </div><span class="activity-time">1 hour ago</span>
-                            </div>
-                            <div class="activity-item"><span class="activity-icon ok">✓</span>
-                                <div class="activity-main">
-                                    <div class="activity-title">Escrow Funded</div>
-                                    <div class="activity-sub">1.25 ETH locked</div>
-                                </div><span class="activity-time">2 hours ago</span>
-                            </div>
-                            <div class="activity-item"><span class="activity-icon warn">!</span>
-                                <div class="activity-main">
-                                    <div class="activity-title">Milestone deadline approaching</div>
-                                    <div class="activity-sub">#AG8877 — 6h remaining</div>
-                                </div><span class="activity-time">3 hours ago</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Agreements Table -->
-                    <div class="panel">
-                        <div class="panel-head">
-                            <h2>Active Agreements</h2><button class="btn btn-ghost"
-                                onclick="location.href='agreements.html'">View All</button>
-                        </div>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Agreement</th>
-                                    <th>Carrier</th>
-                                    <th>Escrow</th>
-                                    <th>Progress</th>
-                                    <th>Deadline</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr class="clickable"
-                                    onclick="location.href='agreement_details_shipper.html?id=AG8901'">
-                                    <td>#AG8901 — Electronics Shipment</td>
-                                    <td>FastTrack Logistics</td>
-                                    <td>5.00 ETH</td>
-                                    <td>1/4 milestones</td>
-                                    <td>Jul 15, 12:00 PM</td>
-                                    <td><span class="pill amber"><span class="dot"></span>In Transit</span></td>
-                                </tr>
-                                <tr class="clickable"
-                                    onclick="location.href='agreement_details_shipper.html?id=AG8877'">
-                                    <td>#AG8877 — Textile Shipment</td>
-                                    <td>Meridian Freight Co.</td>
-                                    <td>3.20 ETH</td>
-                                    <td>3/4 milestones</td>
-                                    <td>Jul 12, 6:00 PM</td>
-                                    <td><span class="pill amber"><span class="dot"></span>At Risk</span></td>
-                                </tr>
-                                <tr class="clickable"
-                                    onclick="location.href='agreement_details_shipper.html?id=AG8804'">
-                                    <td>#AG8804 — Machinery Parts</td>
-                                    <td>Coastal Cargo Partners</td>
-                                    <td>7.50 ETH</td>
-                                    <td>2/3 milestones</td>
-                                    <td>Jul 20, 9:00 AM</td>
-                                    <td><span class="pill lime"><span class="dot"></span>On Track</span></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
+            <!-- DYNAMIC CONTENT GOES HERE -->
+            <div class="content" id="contentPlaceholder">
+                <!-- Loaded by shipper.js -->
+                <p>Loading...</p>
             </div>
         </main>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/ethers@6.15.0/dist/ethers.umd.min.js"></script>
-    <script src="../../js/blockchain/web3_integration.js"></script>
-    <script src="../../js/shared/auth.js"></script>
-    <script src="../../js/shared/app.js"></script>
-    <script src="../../js/shipper/shipper.js"></script>
-    <script src="/js/shipper/deposit_balance.js"></script>
+
+    <!-- ─── SCRIPTS ────────────────────────────────────────── -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+    <script src="/js/blockchain/web3_integration.js"></script>
+    <script src="../../js/shipper/create_agreement.js"></script>
+    <script src="/js/shared/auth.js"></script>
+    <script src="/js/shipper/shipper.js"></script>
+    <script src="../../js/shipper/agreements.js"></script>
 </body>
 
 </html>

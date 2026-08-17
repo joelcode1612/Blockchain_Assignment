@@ -1,35 +1,34 @@
 const express = require("express");
-
 const router = express.Router();
-
 const agreementController = require("../controllers/agreementController");
-
 const { authenticate, authorize } = require("../middleware/auth");
 
 // =====================================================
 // GET ALL AGREEMENTS
 // GET /api/agreements
 // =====================================================
-
 router.get("/", authenticate, agreementController.getAgreements);
+
+// ✅ NEW: GET AVAILABLE AGREEMENTS
+// GET /api/agreements/available
+// This must come BEFORE the /:id route
+// =====================================================
+router.get(
+  "/available",
+  authenticate,
+  agreementController.getAvailableAgreements,
+);
 
 // =====================================================
 // GET SINGLE AGREEMENT
 // GET /api/agreements/:id
 // =====================================================
-
 router.get("/:id", authenticate, agreementController.getAgreement);
 
 // =====================================================
 // CREATE AGREEMENT
 // POST /api/agreements/create
-//
-// Shipper creates agreement.
-// DOES NOT FUND ESCROW.
-// Initial status:
-// PendingAcceptance
 // =====================================================
-
 router.post(
   "/create",
   authenticate,
@@ -40,12 +39,7 @@ router.post(
 // =====================================================
 // ACCEPT AGREEMENT
 // POST /api/agreements/:id/accept
-//
-// Carrier accepts agreement.
-// Status:
-// PendingAcceptance → AwaitingFunding
 // =====================================================
-
 router.post(
   "/:id/accept",
   authenticate,
@@ -56,12 +50,7 @@ router.post(
 // =====================================================
 // REJECT AGREEMENT
 // POST /api/agreements/:id/reject
-//
-// Carrier rejects agreement.
-// Status:
-// PendingAcceptance → Rejected
 // =====================================================
-
 router.post(
   "/:id/reject",
   authenticate,
@@ -72,12 +61,7 @@ router.post(
 // =====================================================
 // FUND AGREEMENT
 // POST /api/agreements/:id/fund
-//
-// Shipper funds escrow.
-// Status:
-// AwaitingFunding → Active
 // =====================================================
-
 router.post(
   "/:id/fund",
   authenticate,

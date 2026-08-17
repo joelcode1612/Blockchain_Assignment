@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,11 +11,12 @@
   <link rel="stylesheet" href="../../css/carrier_styles.css">
   <link rel="stylesheet" href="../../css/escrow_module.css">
 </head>
-<body>
-<div class="app">
 
-  <!-- SIDEBAR -->
-  <!-- <div class="sidebar">
+<body>
+  <div class="app">
+
+    <!-- SIDEBAR -->
+    <!-- <div class="sidebar">
     <div class="brand"><div class="brand-mark">T</div> Traxen</div>
     <div class="nav-group">
       <div class="nav-label">Escrow Engine</div>
@@ -44,80 +46,102 @@
 
 
 
-  <!-- MAIN -->
-  <div class="main">
-    <div class="content">
+    <!-- MAIN -->
+    <div class="main">
+      <div class="content">
 
-      <div class="agreement-select">
-        Agreement:
-        <select id="agreementSelect" onchange="loadAgreementData()">
-          <option value="">— Select —</option>
-        </select>
-      </div>
-      <div class="view active" id="view-deposit">
-        <!-- Stats -->
-        <div class="stat-row" id="statsRow">
-          <div class="stat-card"><div class="lbl">Total Escrow</div><div class="val lime" id="totalEscrow">—</div></div>
-          <div class="stat-card"><div class="lbl">Remaining Balance</div><div class="val" id="remainingBalance">—</div></div>
-          <div class="stat-card"><div class="lbl">Funded</div><div class="val" id="fundedStatus">—</div></div>
-          <div class="stat-card"><div class="lbl">Agreement Status</div><div class="val" id="agreementStatus">—</div></div>
+        <div class="agreement-select">
+          Agreement:
+          <select id="agreementSelect" onchange="loadAgreementData()">
+            <option value="">— Select —</option>
+          </select>
         </div>
+        <div class="view active" id="view-deposit">
+          <!-- Stats -->
+          <div class="stat-row" id="statsRow">
+            <div class="stat-card">
+              <div class="lbl">Total Escrow</div>
+              <div class="val lime" id="totalEscrow">—</div>
+            </div>
+            <div class="stat-card">
+              <div class="lbl">Remaining Balance</div>
+              <div class="val" id="remainingBalance">—</div>
+            </div>
+            <div class="stat-card">
+              <div class="lbl">Funded</div>
+              <div class="val" id="fundedStatus">—</div>
+            </div>
+            <div class="stat-card">
+              <div class="lbl">Agreement Status</div>
+              <div class="val" id="agreementStatus">—</div>
+            </div>
+          </div>
 
-        <div class="two-col">
-          <div class="panel">
-            <h2>Deposit Funds</h2>
-            <div class="desc" id="depositDesc">Select an agreement to deposit.</div>
-            <div class="field"><label>Wallet Balance</label>
-              <div class="kv" style="border:1px solid var(--border-soft);border-radius:7px;padding:10px 12px;background:var(--panel-2);">
-                <span class="k">Available</span><span class="v" id="walletBalance">—</span>
+          <div class="two-col">
+            <div class="panel">
+              <h2>Deposit Funds</h2>
+              <div class="desc" id="depositDesc">Select an agreement to deposit.</div>
+              <div class="field"><label>Wallet Balance</label>
+                <div class="kv"
+                  style="border:1px solid var(--border-soft);border-radius:7px;padding:10px 12px;background:var(--panel-2);">
+                  <span class="k">Available</span><span class="v" id="walletBalance">—</span>
+                </div>
+              </div>
+              <div class="field field-wrap">
+                <label>Deposit Amount (ETH)</label>
+                <input type="number" id="depositAmt" value="" step="0.001" min="0.001" oninput="updateDepositPreview()">
+                <span class="max-btn"
+                  onclick="document.getElementById('depositAmt').value=document.getElementById('walletBalance').textContent.replace(' ETH','');updateDepositPreview();">MAX</span>
+                <div class="field-hint" id="depositHint">Enter amount to deposit.</div>
+              </div>
+              <button class="btn btn-primary btn-block" id="depositBtn" onclick="doDeposit()" disabled>Deposit to
+                Escrow</button>
+            </div>
+
+            <div class="panel">
+              <h2>Escrow Balance</h2>
+              <div class="desc" id="balanceDesc">Live on-chain balance for the selected agreement.</div>
+              <div class="progress-track">
+                <div class="progress-fill" id="depositProgressFill" style="width:0%;"></div>
+              </div>
+              <div class="progress-labels"><span id="depositProgressLabel">0 / 0 ETH deposited</span><span
+                  id="depositPercent">0%</span></div>
+              <div class="checklist" id="balanceDetails">
+                <div class="kv"><span class="k">Required Total</span><span class="v" id="kvRequired">—</span></div>
+                <div class="kv"><span class="k">Deposited So Far</span><span class="v" id="kvDeposited">—</span></div>
+                <div class="kv"><span class="k">Remaining to Lock</span><span class="v" id="kvRemaining">—</span></div>
+                <div class="kv"><span class="k">Contract Status</span><span class="v" id="contractStatus">—</span></div>
               </div>
             </div>
-            <div class="field field-wrap">
-              <label>Deposit Amount (ETH)</label>
-              <input type="number" id="depositAmt" value="" step="0.001" min="0.001" oninput="updateDepositPreview()">
-              <span class="max-btn" onclick="document.getElementById('depositAmt').value=document.getElementById('walletBalance').textContent.replace(' ETH','');updateDepositPreview();">MAX</span>
-              <div class="field-hint" id="depositHint">Enter amount to deposit.</div>
-            </div>
-            <button class="btn btn-primary btn-block" id="depositBtn" onclick="doDeposit()" disabled>Deposit to Escrow</button>
           </div>
 
           <div class="panel">
-            <h2>Escrow Balance</h2>
-            <div class="desc" id="balanceDesc">Live on-chain balance for the selected agreement.</div>
-            <div class="progress-track"><div class="progress-fill" id="depositProgressFill" style="width:0%;"></div></div>
-            <div class="progress-labels"><span id="depositProgressLabel">0 / 0 ETH deposited</span><span id="depositPercent">0%</span></div>
-            <div class="checklist" id="balanceDetails">
-              <div class="kv"><span class="k">Required Total</span><span class="v" id="kvRequired">—</span></div>
-              <div class="kv"><span class="k">Deposited So Far</span><span class="v" id="kvDeposited">—</span></div>
-              <div class="kv"><span class="k">Remaining to Lock</span><span class="v" id="kvRemaining">—</span></div>
-              <div class="kv"><span class="k">Contract Status</span><span class="v" id="contractStatus">—</span></div>
+            <h2>All Agreement Balances</h2>
+            <div class="desc">Balance tracking across every escrow you're party to.</div>
+            <div id="allAgreementsTable">
+              <div style="color:var(--text-faint);padding:12px 0;">Loading agreements...</div>
             </div>
           </div>
-        </div>
 
-        <div class="panel">
-          <h2>All Agreement Balances</h2>
-          <div class="desc">Balance tracking across every escrow you're party to.</div>
-          <div id="allAgreementsTable">
-            <div style="color:var(--text-faint);padding:12px 0;">Loading agreements...</div>
+          <div class="panel" style="background:rgba(0,0,0,0.2);padding:10px 16px;">
+            <div id="output"
+              style="font-family:monospace;font-size:12px;color:var(--text-faint);max-height:120px;overflow-y:auto;white-space:pre-wrap;">
+              Ready...</div>
           </div>
-        </div>
-
-        <div class="panel" style="background:rgba(0,0,0,0.2);padding:10px 16px;">
-          <div id="output" style="font-family:monospace;font-size:12px;color:var(--text-faint);max-height:120px;overflow-y:auto;white-space:pre-wrap;">Ready...</div>
         </div>
       </div>
     </div>
   </div>
-</div>
 
-<!-- ✅ Scripts – absolute paths from root (served from frontend/) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
-<script src="/js/toast.js"></script>
-<script src="/js/blockchain/web3_integration.js"></script>
-<script src="/js/shared/api.js"></script>
-<script src="/js/shipper/deposit_balance.js"></script>
-<script src="/js/shipper/shipper.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+  <script src="/js/toast.js"></script>
+  <script src="../../js/blockchain/web3_integration.js"></script>
+  <script src="../../js/shared/auth.js"></script>
+  <script src="../../js/shared/app.js"></script>
+  <script src="/js/shared/api.js"></script>
+  <script src="/js/shipper/deposit_balance.js"></script>
+  <script src="/js/shipper/shipper.js"></script>
 
 </body>
+
 </html>

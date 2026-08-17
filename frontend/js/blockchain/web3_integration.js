@@ -20,8 +20,8 @@
    ============================================================ */
 
 const CONFIG = {
-  contractAddress: "0x14a58F6FFAa80BE8317aB48acd30Fd37f27978F0",
-  ganacheChainId: 11155111,
+  contractAddress: "0x45df9dae3F01A35412FCEa1F523c259Ed43A7080", // Update with your deployed contract address
+  ganacheChainId: 1337,
   abiPath: "/abi/LogisticsEscrow.json",
 };
 
@@ -195,9 +195,9 @@ function isConnected() {
 
 async function registerBlockchainUser(role) {
   try {
-    // if (!isConnected()) {
-    //   await connectWallet();
-    // }
+    if (!isConnected()) {
+      await connectWallet();
+    }
     const contract = getContract();
 
     let roleNumber;
@@ -250,9 +250,9 @@ async function registerBlockchainUser(role) {
 
 async function blockchainLogin() {
   try {
-    // if (!isConnected()) {
-    //   await connectWallet();
-    // }
+    if (!isConnected()) {
+      await connectWallet();
+    }
     const contract = getContract();
     const result = await contract.login();
     const authenticated = result[0];
@@ -314,13 +314,49 @@ async function getUserRole(walletAddress = null) {
 }
 
 /* ============================================================
-   AGREEMENT MODULE
-   ============================================================ *
+   ROLE & STATUS CONVERSION HELPERS
+   ============================================================ */
+
+function roleNumberToName(roleNumber) {
+  switch (Number(roleNumber)) {
+    case 1:
+      return "Shipper";
+    case 2:
+      return "Carrier";
+    default:
+      return "None";
+  }
+}
+
+function agreementStatusToName(status) {
+  const statuses = [
+    "PendingAcceptance",
+    "AwaitingFunding",
+    "Active",
+    "Completed",
+    "Rejected",
+    "Cancelled",
+    "Refunded",
+    "Expired",
+  ];
+  return statuses[Number(status)] || "Unknown";
+}
+
+function milestoneStatusToName(status) {
+  const statuses = ["Pending", "Submitted", "Verified", "Paid"];
+  return statuses[Number(status)] || "Unknown";
+}
+
+function paymentStatusToName(status) {
+  const statuses = ["Pending", "Released", "Refunded"];
+  return statuses[Number(status)] || "Unknown";
+}
 
 async function createAgreement(
   carrierAddress,
   escrowAmount,
   deadline,
+  milestoneDescriptions,
   paymentPercentages,
 ) {
   try {
@@ -333,6 +369,7 @@ async function createAgreement(
       carrierAddress,
       escrowWei,
       deadline,
+      milestoneDescriptions, // ← pass it
       paymentPercentages,
     );
 
@@ -477,45 +514,6 @@ async function getEscrowBalance(agreementId) {
     console.error("❌ Failed to get escrow balance:", error);
     throw error;
   }
-}
-
-/* ============================================================
-   ROLE & STATUS CONVERSION HELPERS
-   ============================================================ */
-
-function roleNumberToName(roleNumber) {
-  switch (Number(roleNumber)) {
-    case 1:
-      return "Shipper";
-    case 2:
-      return "Carrier";
-    default:
-      return "None";
-  }
-}
-
-function agreementStatusToName(status) {
-  const statuses = [
-    "PendingAcceptance",
-    "AwaitingFunding",
-    "Active",
-    "Completed",
-    "Rejected",
-    "Cancelled",
-    "Refunded",
-    "Expired",
-  ];
-  return statuses[Number(status)] || "Unknown";
-}
-
-function milestoneStatusToName(status) {
-  const statuses = ["Pending", "Submitted", "Verified", "Paid"];
-  return statuses[Number(status)] || "Unknown";
-}
-
-function paymentStatusToName(status) {
-  const statuses = ["Pending", "Released", "Refunded"];
-  return statuses[Number(status)] || "Unknown";
 }
 
 /* ============================================================

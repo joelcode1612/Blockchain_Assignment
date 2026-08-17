@@ -4,57 +4,84 @@ const path = require("path");
 const router = express.Router();
 
 // =====================================================
+// MIDDLEWARE
+// =====================================================
+const { authenticate, authorize } = require("../middleware/auth");
+
+// =====================================================
 // MODULE ROUTES
 // =====================================================
-
 const authRoutes = require("./authRoutes");
 const agreementRoutes = require("./agreementRoutes");
 const userRoutes = require("./userRoutes");
 const shipperRoutes = require("./shipperRoutes");
 const carrierRoutes = require("./carrierRoutes");
 const transactionRoutes = require("./transactionRoutes");
-const paymentRoutes = require('./paymentRoutes');
-const milestoneRoutes = require('./milestoneRoutes');
-const historyRoutes = require('./historyRoutes');   
-const depositRoutes = require('./depositRoutes');   
+const paymentRoutes = require("./paymentRoutes");
+const milestoneRoutes = require("./milestoneRoutes");
+const historyRoutes = require("./historyRoutes");
+const depositRoutes = require("./depositRoutes");
 
 const PAGES_DIR = path.join(__dirname, "../../frontend/pages");
 
 // =====================================================
-// LANDING PAGE
+// PUBLIC ROUTES (no authentication required)
 // =====================================================
+
+// Landing page
 router.get("/", (req, res) => {
   res.sendFile(path.join(PAGES_DIR, "public/index.html"));
 });
 
-// =====================================================
-// STATIC SHARED PAGES
-// =====================================================
-router.use('/shared', express.static(path.join(__dirname, '../../frontend/pages/shared')));
 
-// Also serve history.html directly at the root
-router.get('/history.html', (req, res) => {
-  res.sendFile(path.join(__dirname, '../../frontend/pages/shared/history.html'));
+
+router.get("/login", (req, res) => {
+  res.sendFile(path.join(PAGES_DIR, "public/login.html"));
 });
 
-// =====================================================
-// API ROUTES
-// =====================================================
+router.get("/register", (req, res) => {
+  res.sendFile(path.join(PAGES_DIR, "public/register.html"));
+});
+
+// Static shared pages
+router.use(
+  "/shared",
+  express.static(path.join(__dirname, "../../frontend/pages/shared")),
+);
+router.get("/history.html", (req, res) => {
+  res.sendFile(
+    path.join(__dirname, "../../frontend/pages/shared/history.html"),
+  );
+});
+
+// Auth routes (login/register) – public
 router.use("/api/auth", authRoutes);
+
+// =====================================================
+// PROTECTED API ROUTES (all require authentication)
+// =====================================================
+router.use("/api", authenticate); // 🔒 applies to all routes below
+
 router.use("/api/agreements", agreementRoutes);
 router.use("/api/users", userRoutes);
-
-// ✅ FIXED: changed app.use → router.use
-router.use('/api/payment', paymentRoutes);
-router.use('/api/milestones', milestoneRoutes);
-router.use('/api/history', historyRoutes);
-router.use('/api/deposit', depositRoutes);
+router.use("/api/payment", paymentRoutes);
+router.use("/api/milestones", milestoneRoutes);
+router.use("/api/history", historyRoutes);
+router.use("/api/deposit", depositRoutes);
 
 // =====================================================
-// FRONTEND PAGE ROUTES
+// FRONTEND PAGE ROUTES (public – they will call protected APIs)
 // =====================================================
 router.use("/", shipperRoutes);
 router.use("/", carrierRoutes);
 router.use("/", transactionRoutes);
+
+// =====================================================
+// 404 HANDLER – catches all unmatched routes
+// =====================================================
+router.use((req, res) => {
+  const errorPagePath = path.join(PAGES_DIR, "shared", "404.html");
+  res.status(404).sendFile(errorPagePath);
+});
 
 module.exports = router;
