@@ -86,7 +86,7 @@ const findByOnchainId = async (onchainId) => {
 };
 
 // =====================================================
-// CREATE AGREEMENT
+// CREATE AGREEMENT (with duplicate check)
 // =====================================================
 
 const create = async ({
@@ -97,19 +97,43 @@ const create = async ({
   deadline,
   status = "PendingAcceptance",
 }) => {
-  const { data, error } = await supabase
+  // ------------------------------------------------------------------
+  // 🔍 Check if an agreement with this onchain_id already exists
+  // ------------------------------------------------------------------
+  const { data: existing, error: findError } = await supabase
+    .from("agreements")
+    .select("*")
+    .eq("onchain_id", onchainId)
+    .maybeSingle();
+
+  if (findError) {
+    throw findError;
+  }
+
+  // ------------------------------------------------------------------
+  // ✅ Already exists – return it without inserting again
+  // ------------------------------------------------------------------
+  if (existing) {
+    console.log(`⚠️ Agreement ${onchainId} already exists in database.`);
+    return {
+      success: true,
+      alreadyExists: true,
+      agreement: existing,
+    };
+  }
+
+  // ------------------------------------------------------------------
+  // ➕ Insert new agreement
+  // ------------------------------------------------------------------
+  const { data: agreement, error } = await supabase
     .from("agreements")
     .insert({
       onchain_id: onchainId,
-
       shipper_wallet: shipperWallet.toLowerCase(),
-
       carrier_wallet: carrierWallet.toLowerCase(),
-
       escrow_amount: escrowAmount.toString(),
-
+      released_amount: "0",
       deadline,
-
       status,
     })
     .select()
@@ -119,7 +143,11 @@ const create = async ({
     throw error;
   }
 
-  return data;
+  return {
+    success: true,
+    alreadyExists: false,
+    agreement,
+  };
 };
 
 // =====================================================
@@ -133,13 +161,9 @@ const createMilestones = async ({
 }) => {
   const milestones = descriptions.map((description, index) => ({
     agreement_onchain_id: agreementOnchainId,
-
     milestone_index: index,
-
     description: description,
-
     payment_percentage: Number(percentages[index]),
-
     status: "Pending",
   }));
 

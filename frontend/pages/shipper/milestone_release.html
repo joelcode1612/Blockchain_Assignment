@@ -4,15 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Traxen — Milestone Release</title>
-  <link rel="stylesheet" href="../css/styles.css">
-  <link rel="stylesheet" href="../css/shipper_styles.css">
-  <link rel="stylesheet" href="../css/carrier_styles.css">
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/css/shipper_styles.css">
+  <link rel="stylesheet" href="/css/carrier_styles.css">
 </head>
 <body>
 <div class="app">
 
   <!-- SIDEBAR -->
-  <div class="sidebar">
+  <!-- <div class="sidebar">
     <div class="brand"><div class="brand-mark">T</div> Traxen</div>
     <div class="nav-group">
       <div class="nav-label">Escrow Engine</div>
@@ -23,7 +23,7 @@
       <a class="nav-item" href="history.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 106 5.3L3 8"/><path d="M12 7v5l4 2"/></svg> History</a>
     </div>
     <div class="contract-tag"><span class="dot"></span>0x9F2c…7B1E · Sepolia</div>
-  </div>
+  </div> -->
 
   <!-- MAIN -->
   <div class="main">
@@ -32,15 +32,15 @@
         <h1 id="pageTitle">🏁 Milestone Release</h1>
         <div class="sub" id="pageSub">Verify and release milestone payments on-chain</div>
       </div>
+    </div>
+    
+    <div class="content">
       <div class="agreement-select">
         Agreement:
         <select id="agreementSelect" onchange="loadMilestones()">
           <option value="">— Select —</option>
         </select>
       </div>
-    </div>
-
-    <div class="content">
 
       <!-- ============ MILESTONE RELEASE ============ -->
       <div class="view active" id="view-release">

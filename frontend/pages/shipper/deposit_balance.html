@@ -14,7 +14,7 @@
 <div class="app">
 
   <!-- SIDEBAR -->
-  <div class="sidebar">
+  <!-- <div class="sidebar">
     <div class="brand"><div class="brand-mark">T</div> Traxen</div>
     <div class="nav-group">
       <div class="nav-label">Escrow Engine</div>
@@ -40,24 +40,20 @@
       </a>
     </div>
     <div class="contract-tag"><span class="dot"></span>0x9F2c…7B1E · Sepolia</div>
-  </div>
+  </div> -->
+
+
 
   <!-- MAIN -->
   <div class="main">
-    <div class="topbar">
-      <div>
-        <h1 id="pageTitle">💰 Escrow Deposit &amp; Balance</h1>
-        <div class="sub" id="pageSub">Monitor deposits and locked balances across your agreements</div>
-      </div>
+    <div class="content">
+
       <div class="agreement-select">
         Agreement:
         <select id="agreementSelect" onchange="loadAgreementData()">
           <option value="">— Select —</option>
         </select>
       </div>
-    </div>
-
-    <div class="content">
       <div class="view active" id="view-deposit">
         <!-- Stats -->
         <div class="stat-row" id="statsRow">
@@ -121,6 +117,7 @@
 <script src="/js/blockchain/web3_integration.js"></script>
 <script src="/js/shared/api.js"></script>
 <script src="/js/shipper/deposit_balance.js"></script>
+<script src="/js/shipper/shipper.js"></script>
 
 </body>
 </html>

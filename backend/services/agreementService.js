@@ -11,12 +11,9 @@ const getAllAgreements = async () => {
 
   return agreements.map((agreement) => {
     const milestones = agreement.milestones || [];
-
     const total = milestones.length;
 
-    // IMPORTANT:
-    // Your milestone table uses status,
-    // not paid / verified boolean fields.
+    // IMPORTANT: Your milestone table uses status, not paid / verified boolean fields.
     const paid = milestones.filter(
       (milestone) => milestone.status === "Paid",
     ).length;
@@ -26,17 +23,26 @@ const getAllAgreements = async () => {
     return {
       onchain_id: agreement.onchain_id,
 
-      shipper: agreement.shipper?.wallet_address || "N/A",
+      // ✅ ADDED: Include the new agreement name
+      agreement_name: agreement.agreement_name || "Logistics Agreement",
 
-      carrier: agreement.carrier?.wallet_address || "N/A",
+      shipper:
+        agreement.shipper?.display_name ||
+        agreement.shipper?.wallet_address ||
+        "N/A",
+      carrier:
+        agreement.carrier?.display_name ||
+        agreement.carrier?.wallet_address ||
+        "N/A",
 
-      total_amount: agreement.escrow_amount,
+      // ✅ ADDED: Convert Wei to ETH for the frontend dashboard
+      total_amount_eth: ethers.formatEther(agreement.escrow_amount.toString()),
 
       status: agreement.status || "PendingAcceptance",
-
       deadline: agreement.deadline,
-
       progress,
+      milestone_count: total,
+      paid_count: paid,
     };
   });
 };

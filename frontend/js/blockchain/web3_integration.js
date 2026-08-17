@@ -195,9 +195,9 @@ function isConnected() {
 
 async function registerBlockchainUser(role) {
   try {
-    if (!isConnected()) {
-      await connectWallet();
-    }
+    // if (!isConnected()) {
+    //   await connectWallet();
+    // }
     const contract = getContract();
 
     let roleNumber;
@@ -250,9 +250,9 @@ async function registerBlockchainUser(role) {
 
 async function blockchainLogin() {
   try {
-    if (!isConnected()) {
-      await connectWallet();
-    }
+    // if (!isConnected()) {
+    //   await connectWallet();
+    // }
     const contract = getContract();
     const result = await contract.login();
     const authenticated = result[0];
@@ -315,7 +315,7 @@ async function getUserRole(walletAddress = null) {
 
 /* ============================================================
    AGREEMENT MODULE
-   ============================================================ */
+   ============================================================ *
 
 async function createAgreement(
   carrierAddress,

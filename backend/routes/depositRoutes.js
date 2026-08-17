@@ -11,6 +11,10 @@ router.get('/:agreementId/balance', authenticate, escrowController.viewEscrowBal
 // Shipper deposits funds into the escrow (requires authentication).
 router.post('/:agreementId/deposit', authenticate, escrowController.depositEscrow);
 
+router.get('/deposit_balance.html', (req, res) => {
+  res.sendFile(path.join(__dirname, '../../frontend/pages/shipper/deposit_balance.html'));
+});
+
 // (Optional) GET /api/escrow/:agreementId/lock
 // Confirm that funds are locked (if needed).
 // router.get('/:agreementId/lock', authenticate, escrowController.lockEscrowFunds);

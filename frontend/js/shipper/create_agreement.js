@@ -212,15 +212,81 @@ function nextFromStep1() {
 }
 
 function nextFromStep2() {
-  const totalPct = milestones.reduce((sum, m) => sum + Number(m.pct || 0), 0);
+  // ==========================================
+  // Make sure milestones exist
+  // ==========================================
+  console.table(milestones);
+  if (!Array.isArray(milestones) || milestones.length === 0) {
+    alert("Please add at least one milestone.");
 
-  if (totalPct !== 100) {
-    alert(
-      `Milestone percentages must total exactly 100%. Current total: ${totalPct}%`,
-    );
     goStep(2);
     return;
   }
+
+  // ==========================================
+  // Validate every milestone
+  // ==========================================
+
+  for (let i = 0; i < milestones.length; i++) {
+    const milestone = milestones[i];
+
+    const percentage = Number(milestone.pct);
+
+    console.log(`Milestone ${i + 1}:`, milestone.pct, "=>", percentage);
+
+    // Invalid number
+    if (!Number.isFinite(percentage)) {
+      alert(
+        `Milestone ${i + 1} has an invalid percentage. Please enter a number.`,
+      );
+
+      goStep(2);
+      return;
+    }
+
+    // Must be greater than zero
+    if (percentage <= 0) {
+      alert(`Milestone ${i + 1} must have a percentage greater than 0%.`);
+
+      goStep(2);
+      return;
+    }
+
+    // Cannot exceed 100
+    if (percentage > 100) {
+      alert(`Milestone ${i + 1} cannot exceed 100%.`);
+
+      goStep(2);
+      return;
+    }
+  }
+
+  // ==========================================
+  // Calculate total
+  // ==========================================
+
+  const totalPct = milestones.reduce((sum, milestone) => {
+    return sum + Number(milestone.pct);
+  }, 0);
+
+  console.log("Milestone total:", totalPct);
+
+  // ==========================================
+  // Must equal exactly 100
+  // ==========================================
+
+  if (Math.abs(totalPct - 100) > 0.000001) {
+    alert(
+      `Milestone percentages must total exactly 100%. Current total: ${totalPct}%.`,
+    );
+
+    goStep(2);
+    return;
+  }
+
+  // ==========================================
+  // Continue to review
+  // ==========================================
 
   goStep(3);
 }
@@ -234,18 +300,94 @@ function renderMilestones() {
   milestones.forEach((m, i) => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td><div class="m-badge">${i + 1}</div></td>
-      <td><input type="text" value="${m.name}" class="m-name-input"></td>
-      <td><input type="text" value="${m.desc}" class="m-desc-input"></td>
-      <td><input type="number" value="${m.pct}" min="0" max="100" class="m-pct-input"></td>
-      <td><span class="m-remove" style="cursor:pointer; color:var(--error, red);">✕</span></td>
-    `;
+  <td>
+    <div class="m-badge">
+      ${i + 1}
+    </div>
+  </td>
+
+  <td>
+    <input
+      type="text"
+      value="${m.name || ""}"
+      class="m-name-input"
+    >
+  </td>
+
+  <td>
+    <input
+      type="text"
+      value="${m.desc || ""}"
+      class="m-desc-input"
+    >
+  </td>
+
+  <td>
+    <input
+      type="number"
+      value="${m.pct ?? 0}"
+      min="0"
+      max="100"
+      step="0.01"
+      class="m-pct-input"
+    >
+  </td>
+
+  <td>
+    <span
+      class="m-remove"
+      style="
+        cursor:pointer;
+        color:var(--error, red);
+      "
+    >
+      ✕
+    </span>
+  </td>
+`;
 
     const inputs = tr.querySelectorAll("input");
     inputs[0].onchange = (e) => (m.name = e.target.value);
     inputs[1].onchange = (e) => (m.desc = e.target.value);
-    inputs[2].onchange = (e) => {
-      m.pct = Number(e.target.value);
+    inputs[2].oninput = (e) => {
+      const rawValue = e.target.value.trim();
+
+      // ==========================================
+      // Empty input
+      // ==========================================
+
+      if (rawValue === "") {
+        m.pct = 0;
+
+        updatePct();
+
+        return;
+      }
+
+      // ==========================================
+      // Convert to number
+      // ==========================================
+
+      const value = Number(rawValue);
+
+      // ==========================================
+      // Invalid number
+      // ==========================================
+
+      if (!Number.isFinite(value)) {
+        m.pct = NaN;
+
+        updatePct();
+
+        return;
+      }
+
+      // ==========================================
+      // Valid number
+      // ==========================================
+
+      m.pct = value;
+
       updatePct();
     };
 
@@ -264,12 +406,26 @@ function addMilestone() {
 }
 
 function updatePct() {
-  const total = milestones.reduce((s, m) => s + Number(m.pct || 0), 0);
+  const total = milestones.reduce((sum, milestone) => {
+    const value = Number(milestone.pct);
+
+    if (!Number.isFinite(value)) {
+      return sum;
+    }
+
+    return sum + value;
+  }, 0);
+
   const el = document.getElementById("pctTotal");
-  if (!el) return;
+
+  if (!el) {
+    return;
+  }
 
   el.textContent = `Total allocated: ${total}%`;
-  el.className = "pct-total " + (total === 100 ? "good" : "bad");
+
+  el.className =
+    "pct-total " + (Math.abs(total - 100) < 0.000001 ? "good" : "bad");
 }
 
 // ─── Main Submit & Blockchain Execution ─────────────────
@@ -279,14 +435,52 @@ async function submitCreateAgreement() {
     // 1. VALIDATE MILESTONES
     // =====================================================
 
-    const totalPct = milestones.reduce(
-      (sum, milestone) => sum + Number(milestone.pct || 0),
-      0,
-    );
+    if (!Array.isArray(milestones) || milestones.length === 0) {
+      alert("Please add at least one milestone.");
 
-    if (totalPct !== 100) {
+      goStep(2);
+
+      return;
+    }
+
+    // Check every milestone
+    for (let i = 0; i < milestones.length; i++) {
+      const milestone = milestones[i];
+
+      const percentage = parseFloat(milestone.pct);
+
+      if (!Number.isFinite(percentage)) {
+        alert(`Milestone ${i + 1} has an invalid payment percentage.`);
+
+        goStep(2);
+
+        return;
+      }
+
+      if (percentage <= 0 || percentage > 100) {
+        alert(`Milestone ${i + 1} percentage must be between 0% and 100%.`);
+
+        goStep(2);
+
+        return;
+      }
+    }
+
+    // =====================================================
+    // 2. CALCULATE TOTAL PERCENTAGE
+    // =====================================================
+
+    const totalPct = milestones.reduce((sum, milestone) => {
+      return sum + parseFloat(milestone.pct);
+    }, 0);
+
+    // =====================================================
+    // 3. TOTAL MUST EQUAL 100%
+    // =====================================================
+
+    if (Math.abs(totalPct - 100) > 0.000001) {
       alert(
-        `Milestone percentages must total exactly 100%. Current total: ${totalPct}%`,
+        `Milestone percentages must total exactly 100%. Current total: ${totalPct}%.`,
       );
 
       goStep(2);
@@ -376,6 +570,10 @@ async function submitCreateAgreement() {
       (milestone) => milestone.desc || milestone.name,
     );
 
+    console.log("Payment percentages:", paymentPercentages);
+
+    console.log("Milestone descriptions:", descriptions);
+
     // =====================================================
     // 7. GET SHIPPER WALLET
     // =====================================================
@@ -392,24 +590,23 @@ async function submitCreateAgreement() {
 
     // =====================================================
     // 8. CREATE AGREEMENT ON BLOCKCHAIN
-    //
-    // IMPORTANT:
-    // This transaction ONLY creates the agreement.
-    //
-    // It does NOT send escrow ETH.
     // =====================================================
 
     console.log("⏳ Creating agreement on blockchain...");
+
+    // IMPORTANT:
+    // createAgreement() accepts ONLY:
+    // 1. carrierAddress
+    // 2. totalAmountEth
+    // 3. deadlineTimestamp
+    // 4. paymentPercentages
 
     const blockchainResult = await createAgreement(
       carrierAddress,
       totalAmountEth,
       deadlineTimestamp,
-      descriptions,
       paymentPercentages,
     );
-
-    
 
     console.log("✅ Agreement created on blockchain:", blockchainResult);
 
@@ -481,7 +678,7 @@ async function submitCreateAgreement() {
     // 12. REDIRECT
     // =====================================================
 
-    window.location.href = "/shipper/agreements";
+    window.location.href = "/shipper/deposit_balance.html?agreementId=" + blockchainResult.agreementId;
   } catch (error) {
     console.error("❌ Agreement creation error:", error);
 

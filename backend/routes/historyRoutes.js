@@ -5,6 +5,6 @@ const { authenticate } = require('../middleware/auth');
 
 // GET /api/history/:agreementId
 router.get('/:agreementId', authenticate, historyController.getHistory);
-router.get('/', authenticate, historyController.getHistory);
+
 
 module.exports = router;

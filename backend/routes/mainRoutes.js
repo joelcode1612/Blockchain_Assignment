@@ -28,6 +28,16 @@ router.get("/", (req, res) => {
 });
 
 // =====================================================
+// STATIC SHARED PAGES
+// =====================================================
+router.use('/shared', express.static(path.join(__dirname, '../../frontend/pages/shared')));
+
+// Also serve history.html directly at the root
+router.get('/history.html', (req, res) => {
+  res.sendFile(path.join(__dirname, '../../frontend/pages/shared/history.html'));
+});
+
+// =====================================================
 // API ROUTES
 // =====================================================
 router.use("/api/auth", authRoutes);
