@@ -6,12 +6,16 @@ const agreementService = require("../services/agreementService");
 
 exports.getAgreements = async (req, res) => {
   try {
-    const agreements = await agreementService.getAllAgreements();
+    // Get the authenticated user's wallet from the JWT (set by auth middleware)
+    const walletAddress = req.user.wallet_address;
+
+    // Fetch only agreements where user is shipper OR carrier
+    const agreements =
+      await agreementService.getAgreementsByWallet(walletAddress);
 
     res.json(agreements);
   } catch (error) {
     console.error("Get agreements error:", error);
-
     res.status(500).json({
       error: "Failed to fetch agreements",
     });

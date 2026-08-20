@@ -44,8 +44,6 @@
     <div class="contract-tag"><span class="dot"></span>0x9F2c…7B1E · Sepolia</div>
   </div> -->
 
-
-
     <!-- MAIN -->
     <div class="main">
       <div class="content">
@@ -94,7 +92,7 @@
                   onclick="document.getElementById('depositAmt').value=document.getElementById('walletBalance').textContent.replace(' ETH','');updateDepositPreview();">MAX</span>
                 <div class="field-hint" id="depositHint">Enter amount to deposit.</div>
               </div>
-              <button class="btn btn-primary btn-block" id="depositBtn" onclick="doDeposit()" disabled>Deposit to
+              <button class="btn btn-primary btn-block" id="depositBtn" onclick="doDeposit()" >Deposit to
                 Escrow</button>
             </div>
 
@@ -135,12 +133,11 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
   <script src="/js/toast.js"></script>
-  <script src="../../js/blockchain/web3_integration.js"></script>
-  <script src="../../js/shared/auth.js"></script>
-  <script src="../../js/shared/app.js"></script>
-  <script src="/js/shared/api.js"></script>
-  <script src="/js/shipper/deposit_balance.js"></script>
-  <script src="/js/shipper/shipper.js"></script>
+  <script src="/js/blockchain/web3_integration.js"></script>
+  <script src="/js/shared/auth.js"></script>
+  <script src="/js/shared/app.js"></script>
+  <script src="../../js/shipper/deposit_balance.js"></script>
+  <script src="../../js/shipper/shipper.js"></script>
 
 </body>
 

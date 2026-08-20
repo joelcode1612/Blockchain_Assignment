@@ -79,9 +79,9 @@ router.use("/", transactionRoutes);
 // =====================================================
 // 404 HANDLER – catches all unmatched routes
 // =====================================================
-router.use((req, res) => {
-  const errorPagePath = path.join(PAGES_DIR, "shared", "404.html");
-  res.status(404).sendFile(errorPagePath);
-});
+// router.use((req, res) => {
+//   const errorPagePath = path.join(PAGES_DIR, "shared", "404.html");
+//   res.status(404).sendFile(errorPagePath);
+// });
 
 module.exports = router;

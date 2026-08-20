@@ -70,13 +70,9 @@ class AuthService {
       .from("users")
       .insert({
         wallet_address: walletAddress.toLowerCase(),
-
         display_name: displayName,
-
         role: role,
-
         email: email,
-
         reputation_balance: 0,
       })
       .select()

@@ -105,7 +105,7 @@ window.Auth = {
 };
 
 // ============================================================
-// LOGIN / REGISTRATION UI (unchanged, but using central helpers)
+// LOGIN / REGISTRATION UI (using central helpers)
 // ============================================================
 
 let selectedRole = null;
@@ -140,20 +140,20 @@ async function finishRegister() {
     const email = document.getElementById("regEmail").value.trim();
 
     if (!name) {
-      alert("Please enter your display name.");
+      showToast("Please enter your display name.", "warning");
       return;
     }
     if (!email) {
-      alert("Please enter your email.");
+      showToast("Please enter your email.", "warning");
       return;
     }
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailPattern.test(email)) {
-      alert("Please enter a valid email address.");
+      showToast("Please enter a valid email address.", "warning");
       return;
     }
     if (!selectedRole) {
-      alert("Please select a role.");
+      showToast("Please select a role.", "warning");
       goRegStep(2);
       return;
     }
@@ -187,18 +187,23 @@ async function finishRegister() {
     // ─── Use central helper to store session ──────────────
     setAuthData(walletAddress, selectedRole, name, email);
 
-    alert("Account created successfully as " + selectedRole + "!");
-    window.location.href = "/" + selectedRole.toLowerCase();
+    showToast(
+      "Account created successfully as " + selectedRole + "!",
+      "success",
+    );
+    setTimeout(() => {
+      window.location.href = "/" + selectedRole.toLowerCase();
+    }, 1500);
   } catch (error) {
     console.error("Registration error:", error);
-    alert(error.reason || error.message || "Registration failed.");
+    showToast(error.reason || error.message || "Registration failed.", "error");
   }
 }
 
 function doLogin() {
   const address = localStorage.getItem("traxenWallet");
   if (!address) {
-    alert("Please connect your wallet first.");
+    showToast("Please connect your wallet first.", "warning");
     return;
   }
   localStorage.setItem("traxenWallet", address);
@@ -234,9 +239,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function handleLogout(event) {
   if (event) event.preventDefault();
-  // ─── Use central helper ─────────────────────────────────
+  // Reset blockchain state
+  if (typeof window.resetWalletState === "function") {
+    window.resetWalletState();
+  }
   clearAuthData();
-  if (window.userWalletAddress) window.userWalletAddress = null;
   window.location.href = "/";
 }
 
@@ -262,51 +269,40 @@ async function handleRegisterWalletConnection(element) {
     setTimeout(() => goRegStep(2), 500);
   } catch (error) {
     console.error(error);
+    showToast("Failed to connect wallet: " + error.message, "error");
   }
-}
-
-function showAuthFeedback(message, type = "error") {
-  const alertEl = document.getElementById("authAlert");
-  if (!alertEl) return;
-  alertEl.className = `auth-alert ${type}`;
-  alertEl.innerHTML =
-    type === "error"
-      ? `<span>⚠️ ${message}</span>`
-      : `<span>✓ ${message}</span>`;
 }
 
 async function handleLogin() {
   try {
-    if (!window.ethereum) {
-      showAuthFeedback(
-        "MetaMask is not installed. Please install it.",
-        "error",
-      );
-      return;
-    }
-
     const loginResult = await blockchainLogin();
-
     if (loginResult.success && loginResult.authenticated) {
-      showAuthFeedback("Login successful! Redirecting...", "success");
+      showToast("Login successful! Redirecting...", "success");
 
-      // ─── Use central helper ─────────────────────────────
-      setAuthData(
-        loginResult.wallet,
-        loginResult.role,
-        loginResult.name || "User",
-      );
+      // Fetch user details from database
+      let displayName = "User";
+      let email = "";
+      try {
+        const meResponse = await fetch("/api/users/me", {
+          headers: { "x-wallet-address": loginResult.wallet },
+        });
+        if (meResponse.ok) {
+          const userData = await meResponse.json();
+          displayName = userData.display_name || displayName;
+          email = userData.email || "";
+        }
+      } catch (e) {
+        console.warn("Could not fetch user details", e);
+      }
 
+      setAuthData(loginResult.wallet, loginResult.role, displayName, email);
       setTimeout(() => {
         window.location.href = "/" + loginResult.role.toLowerCase();
       }, 1200);
     } else {
-      showAuthFeedback(
-        "Wallet not recognized. Please register first.",
-        "error",
-      );
+      showToast("Wallet not recognized. Please register first.", "error");
     }
   } catch (err) {
-    showAuthFeedback(err.message || "Failed to authenticate.", "error");
+    showToast(err.message || "Failed to authenticate.", "error");
   }
 }

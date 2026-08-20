@@ -11,6 +11,9 @@
 </head>
 
 <body>
+    <div id="toast-container"
+        style="position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px;">
+    </div>
     <main class="auth-stage">
         <a class="auth-back" href="/">← Back to Home</a>
         <section class="auth-card">
@@ -18,7 +21,6 @@
                 <div class="brand-mark">T</div> Traxen
             </div>
 
-            <div id="authAlert" class="auth-alert hidden"></div>
             <h2 class="title">Welcome back</h2>
             <p class="subtitle">Connect your wallet to log in to Traxen</p>
 
@@ -56,6 +58,7 @@
     <script src="https://cdn.jsdelivr.net/npm/ethers@6.15.0/dist/ethers.umd.min.js"></script>
     <script src="../../js/blockchain/web3_integration.js"></script>
     <script src="../../js/shared/auth.js"></script>
+    <script src="../../js/shared/common.js"></script>
 </body>
 
 </html>

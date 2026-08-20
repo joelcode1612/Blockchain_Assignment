@@ -89,6 +89,45 @@ const userController = {
   },
 
   /**
+   * Update the current user's profile (display_name / email)
+   */
+  async updateProfile(req, res) {
+    try {
+      const walletAddress =
+        (req.user && req.user.wallet_address) ||
+        req.headers["x-wallet-address"];
+
+      if (!walletAddress) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Wallet address required" });
+      }
+
+      const { display_name, email } = req.body;
+      if (display_name === undefined && email === undefined) {
+        return res.status(400).json({
+          success: false,
+          message: "No fields provided to update",
+        });
+      }
+
+      const user = await User.update(walletAddress, { display_name, email });
+      if (!user) {
+        return res
+          .status(404)
+          .json({ success: false, message: "User not found" });
+      }
+
+      return res.status(200).json({ success: true, ...user });
+    } catch (error) {
+      console.error("Update Profile Error:", error);
+      return res
+        .status(500)
+        .json({ success: false, message: "Internal server error" });
+    }
+  },
+
+  /**
    * Get all registered carriers (for the shipper's carrier dropdown)
    */
   async listCarriers(req, res) {
