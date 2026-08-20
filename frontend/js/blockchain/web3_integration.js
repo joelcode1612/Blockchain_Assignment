@@ -20,7 +20,7 @@
    ============================================================ */
 
 const CONFIG = {
-  contractAddress: "0x1Cd9d20e281796d846740B954BcEb8680753C276", // Update with your deployed contract address
+  contractAddress: "0x9972D19Df7884931a12146C66D89e126A643FC4F", // Update with your deployed contract address
   ganacheChainId: 11155111,
   abiPath: "/abi/LogisticsEscrow.json",
 };
