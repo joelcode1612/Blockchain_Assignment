@@ -75,8 +75,10 @@
         <div class="info-card" style="margin-bottom:18px">
           <h3>Submit Proof — Milestone 2: In Transit</h3>
           <div class="upload-box" onclick="alert('Opens file picker / GPS checkpoint capture.')">📎 Click to upload
-            proof (photo, GPS checkpoint, or signed receipt)</div><button class="btn btn-primary btn-block"
-            onclick="submitProof()">Submit Milestone Proof</button>
+            proof (photo, GPS checkpoint, or signed receipt)</div>
+            <button class="btn btn-primary btn-block" onclick="submitProof(3)">
+                Submit Milestone Proof
+            </button>
         </div>
         <div class="info-card">
           <h3>Milestone &amp; Payout Schedule</h3>
@@ -124,8 +126,11 @@
       </div>
     </div>
   </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+
   <script src="../../js/shared/common.js"></script>
   <script src="../../js/shared/auth.js"></script>
+  <script src="../../js/blockchain/web3_integration.js"></script>
   <script src="../../js/shared/actions.js"></script>
 </body>
 

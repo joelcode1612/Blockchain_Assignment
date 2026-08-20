@@ -647,6 +647,188 @@ function showToast(message, type = "info") {
   console.log(`[${type.toUpperCase()}]`, message);
 }
 
+/* ============================================================
+   BoonBoon
+   ============================================================ */
+async function submitMilestone(agreementId, milestoneId) {
+  try {
+    if (!isConnected()) await connectWallet();
+
+    const contract = getContract();
+
+    const transaction = await contract.submitMilestone(
+      agreementId,
+      milestoneId
+    );
+
+    console.log("Submit milestone transaction:", transaction.hash);
+
+    const receipt = await transaction.wait();
+
+    console.log("Milestone submitted.");
+
+    return {
+      success: true,
+      transactionHash: transaction.hash,
+      receipt: receipt,
+    };
+  } catch (error) {
+    console.error("Submit milestone failed:", error);
+    handleBlockchainError(error, "Failed to submit milestone.");
+    throw error;
+  }
+}
+
+async function verifyMilestone(agreementId, milestoneId) {
+  try {
+    if (!isConnected()) await connectWallet();
+
+    const contract = getContract();
+
+    const transaction = await contract.verifyMilestone(
+      agreementId,
+      milestoneId
+    );
+
+    console.log("Verify milestone transaction:", transaction.hash);
+
+    const receipt = await transaction.wait();
+
+    console.log("Milestone verified.");
+
+    return {
+      success: true,
+      transactionHash: transaction.hash,
+      receipt: receipt,
+    };
+  } catch (error) {
+    console.error("Verify milestone failed:", error);
+    handleBlockchainError(error, "Failed to verify milestone.");
+    throw error;
+  }
+}
+
+async function releasePayment(agreementId, milestoneId) {
+  try {
+    if (!isConnected()) await connectWallet();
+
+    const contract = getContract();
+
+    const transaction = await contract.releasePayment(
+      agreementId,
+      milestoneId
+    );
+
+    console.log("Release payment transaction:", transaction.hash);
+
+    const receipt = await transaction.wait();
+
+    console.log("Payment released.");
+
+    return {
+      success: true,
+      transactionHash: transaction.hash,
+      receipt: receipt,
+    };
+  } catch (error) {
+    console.error("Release payment failed:", error);
+    handleBlockchainError(error, "Failed to release payment.");
+    throw error;
+  }
+}
+
+
+/* ============================================================
+   BoonBoon
+   ============================================================ */
+async function submitMilestone(agreementId, milestoneId) {
+  try {
+    if (!isConnected()) await connectWallet();
+
+    const contract = getContract();
+
+    const transaction = await contract.submitMilestone(
+      agreementId,
+      milestoneId
+    );
+
+    console.log("Submit milestone transaction:", transaction.hash);
+
+    const receipt = await transaction.wait();
+
+    console.log("Milestone submitted.");
+
+    return {
+      success: true,
+      transactionHash: transaction.hash,
+      receipt: receipt,
+    };
+  } catch (error) {
+    console.error("Submit milestone failed:", error);
+    handleBlockchainError(error, "Failed to submit milestone.");
+    throw error;
+  }
+}
+
+async function verifyMilestone(agreementId, milestoneId) {
+  try {
+    if (!isConnected()) await connectWallet();
+
+    const contract = getContract();
+
+    const transaction = await contract.verifyMilestone(
+      agreementId,
+      milestoneId
+    );
+
+    console.log("Verify milestone transaction:", transaction.hash);
+
+    const receipt = await transaction.wait();
+
+    console.log("Milestone verified.");
+
+    return {
+      success: true,
+      transactionHash: transaction.hash,
+      receipt: receipt,
+    };
+  } catch (error) {
+    console.error("Verify milestone failed:", error);
+    handleBlockchainError(error, "Failed to verify milestone.");
+    throw error;
+  }
+}
+
+async function releasePayment(agreementId, milestoneId) {
+  try {
+    if (!isConnected()) await connectWallet();
+
+    const contract = getContract();
+
+    const transaction = await contract.releasePayment(
+      agreementId,
+      milestoneId
+    );
+
+    console.log("Release payment transaction:", transaction.hash);
+
+    const receipt = await transaction.wait();
+
+    console.log("Payment released.");
+
+    return {
+      success: true,
+      transactionHash: transaction.hash,
+      receipt: receipt,
+    };
+  } catch (error) {
+    console.error("Release payment failed:", error);
+    handleBlockchainError(error, "Failed to release payment.");
+    throw error;
+  }
+}
+
+
 // ─── GET ALL AGREEMENTS FOR A SHIPPER (on‑chain) ──────
 async function getAgreementsByShipper(shipperAddress) {
   try {
@@ -820,6 +1002,9 @@ window.acceptAgreement = acceptAgreement;
 window.rejectAgreement = rejectAgreement;
 window.cancelAgreement = cancelAgreement;
 window.getMilestone = getMilestone;
+window.submitMilestone = submitMilestone;
+window.verifyMilestone = verifyMilestone;
+window.releasePayment = releasePayment;
 window.getEscrowBalance = getEscrowBalance;
 window.truncateAddress = truncateAddress;
 window.roleNumberToName = roleNumberToName;

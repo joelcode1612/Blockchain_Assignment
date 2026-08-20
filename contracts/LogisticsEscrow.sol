@@ -276,10 +276,37 @@ contract LogisticsEscrow {
     // MODULE 5 — MILESTONE SUBMIT, VERIFY, RELEASE
     // =====================================================
 
-    function submitMilestone(uint256 _agreementId, uint256 _milestoneId) external agreementExists(_agreementId) onlyCarrier(_agreementId) {
+    // function submitMilestone(uint256 _agreementId, uint256 _milestoneId) external agreementExists(_agreementId) onlyCarrier(_agreementId) {
+    //     Agreement storage agreement = agreements[_agreementId];
+    //     require(agreement.status == AgreementStatus.Active, "Agreement not active");
+    //     require(_milestoneId < agreement.milestoneCount, "Invalid milestone");
+    //     require(agreement.milestones[_milestoneId].status == MilestoneStatus.Pending, "Milestone not pending");
+
+    //     agreement.milestones[_milestoneId].status = MilestoneStatus.Submitted;
+    //     agreement.milestones[_milestoneId].submittedAt = block.timestamp;
+
+    //     emit MilestoneSubmitted(_agreementId, _milestoneId, msg.sender);
+    // }
+
+    function submitMilestone(uint256 _agreementId,uint256 _milestoneId) external agreementExists(_agreementId) onlyCarrier(_agreementId) {
         Agreement storage agreement = agreements[_agreementId];
+
         require(agreement.status == AgreementStatus.Active, "Agreement not active");
+
         require(_milestoneId < agreement.milestoneCount, "Invalid milestone");
+
+        // Milestones must be completed sequentially.
+        // The first milestone can be submitted immediately.
+        // Every later milestone requires the previous milestone
+        // to have been verified by the shipper.
+        if (_milestoneId > 0) {
+        require(
+            agreement.milestones[_milestoneId - 1].status == MilestoneStatus.Verified ||
+            agreement.milestones[_milestoneId - 1].status == MilestoneStatus.Paid,
+            "Previous milestone not verified or paid"
+        );
+    }
+
         require(agreement.milestones[_milestoneId].status == MilestoneStatus.Pending, "Milestone not pending");
 
         agreement.milestones[_milestoneId].status = MilestoneStatus.Submitted;

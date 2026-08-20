@@ -22,14 +22,30 @@ function raiseDispute() {
     "agreement_details_shipper.html?id=AG8901",
   );
 }
-function submitProof() {
-  openSuccess(
-    "Proof Submitted",
-    "Your milestone proof has been uploaded and sent to the shipper for verification.",
-    `<div class="kv"><span class="k">Milestone</span><span class="v">2. In Transit</span></div><div class="kv"><span class="k">Status</span><span class="v">Pending Verification</span></div>`,
-    "agreement-details-carrier.html?id=AG8901",
-  );
+async function submitProof(milestoneId) {
+    try {
+        const params = new URLSearchParams(window.location.search);
+        const agreementId = Number(params.get("id"));
+
+        if (!agreementId) {
+            throw new Error("Invalid agreement ID.");
+        }
+
+        await window.submitMilestone(agreementId, milestoneId);
+
+        openSuccess(
+            "Proof Submitted",
+            "Your milestone proof has been uploaded and sent to the shipper for verification.",
+            `<div class="kv"><span class="k">Milestone</span><span class="v">#${milestoneId + 1}</span></div>
+             <div class="kv"><span class="k">Agreement</span><span class="v">#AG${agreementId}</span></div>`,
+            `agreement_details_carrier.html?id=${agreementId}`
+        );
+
+    } catch (error) {
+        console.error("Submit proof failed:", error);
+    }
 }
+
 function acceptJob() {
   openSuccess(
     "Job Accepted",
