@@ -279,6 +279,11 @@ const getAvailableAgreements = async () => {
   return await agreementModel.findAvailable();
 };
 
+// In agreementService.js
+const getAgreementsByWallet = async (walletAddress) => {
+  return await agreementModel.findByWallet(walletAddress);
+};
+
 module.exports = {
   getAllAgreements,
   getAgreementById,
@@ -287,4 +292,5 @@ module.exports = {
   rejectAgreement,
   fundAgreement,
   getAvailableAgreements,
+  getAgreementsByWallet,
 };

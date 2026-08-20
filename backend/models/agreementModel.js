@@ -244,10 +244,52 @@ const findAvailable = async () => {
   return data;
 };
 
-// Don't forget to export it:
-module.exports = {
+// =====================================================
+// GET AGREEMENTS BY WALLET (as shipper OR carrier)
+// =====================================================
+
+const findByWallet = async (walletAddress) => {
+  // ✅ Correct .or() syntax using template literals
+  const { data, error } = await supabase
+    .from("agreements")
+    .select(
+      `
+      *,
+      shipper:users!agreements_shipper_fkey(
+        wallet_address,
+        display_name,
+        role
+      ),
+      carrier:users!agreements_carrier_fkey(
+        wallet_address,
+        display_name,
+        role
+      ),
+      milestones(
+        id,
+        milestone_index,
+        description,
+        payment_percentage,
+        status,
+        submitted_at,
+        verified_at,
+        paid_at
+      )
+    `,
+    )
+    .or(
+      `shipper_wallet.eq.${walletAddress}, carrier_wallet.eq.${walletAddress}`,
+    )
+    .order("onchain_id", { ascending: true });
+
+  if (error) throw error;
+  return data;
+};
+
+  module.exports = {
   findAll,
   findByOnchainId,
+  findByWallet,
   create,
   createMilestones,
   updateStatus,

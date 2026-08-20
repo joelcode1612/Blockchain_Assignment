@@ -1,13 +1,13 @@
 /**
  * ============================================================
- * Carrier Available Jobs – Debug version with verbose logging
+ * Carrier Available Jobs – Blockchain version
  * ============================================================
  */
-console.log("✅ carrier_available_jobs.js loaded.");
+console.log("✅ carrier_available_jobs.js (blockchain) loaded.");
 
 let availableAgreements = [];
 
-// ─── Fetch available jobs ─────────────────────────────────
+// ─── Fetch available jobs from blockchain ─────────────────
 async function loadAvailableJobs() {
   console.log("⏳ loadAvailableJobs() called.");
 
@@ -16,7 +16,6 @@ async function loadAvailableJobs() {
 
   if (!container) {
     console.error("❌ Container #available-jobs-list not found in DOM!");
-    // Show fallback in the .content area (if it exists)
     const content = document.querySelector(".content");
     if (content) {
       content.innerHTML = `
@@ -29,10 +28,9 @@ async function loadAvailableJobs() {
     return;
   }
 
-  // Show loading state
   container.innerHTML = `
     <div style="padding: 60px 20px; text-align: center; color: var(--text-faint);">
-      <span>⏳ Loading available jobs...</span>
+      <span>⏳ Loading available jobs from blockchain...</span>
     </div>
   `;
 
@@ -50,36 +48,23 @@ async function loadAvailableJobs() {
       return;
     }
 
-    const url = "/api/agreements/available";
-    console.log(`🌐 Fetching ${url}...`);
-
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "x-wallet-address": walletAddress,
-      },
-    });
-
-    console.log("📡 Response status:", response.status);
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error("❌ API error:", errorData);
-      throw new Error(errorData.error || `HTTP ${response.status}`);
+    // ─── Fetch from blockchain ────────────────────────────
+    if (typeof window.getPendingAgreementsForCarrier !== "function") {
+      throw new Error(
+        "getPendingAgreementsForCarrier not available. Is web3_integration loaded?",
+      );
     }
 
-    const data = await response.json();
-    console.log("📦 Received data:", data);
+    const pending = await window.getPendingAgreementsForCarrier(walletAddress);
+    console.log("📦 Pending agreements from blockchain:", pending);
 
-    availableAgreements = data.agreements || [];
-    console.log(`📊 Found ${availableAgreements.length} agreements.`);
+    availableAgreements = pending;
 
     if (availableAgreements.length === 0) {
       container.innerHTML = `
         <div style="padding: 60px 20px; text-align: center; color: var(--text-faint);">
           <h3>📭 No available jobs</h3>
-          <p>Check back later – new agreements will appear here.</p>
+          <p>You have no pending agreements to accept at the moment.</p>
         </div>
       `;
       return;
@@ -100,46 +85,40 @@ async function loadAvailableJobs() {
   }
 }
 
-// ─── Render jobs (same as before) ────────────────────────
+// ─── Render jobs ──────────────────────────────────────────
 function renderJobs(container, agreements) {
   console.log("🎨 Rendering jobs...");
   container.innerHTML = "";
 
-  agreements.forEach((agreement) => {
+  agreements.forEach((ag) => {
     const card = document.createElement("div");
     card.className = "job-card";
-    card.dataset.id = agreement.onchain_id;
+    card.dataset.id = ag.id;
 
-    // === DEFINE ALL VARIABLES ===
-    const shipper = agreement.shipper?.display_name || "Unknown Shipper";
+    const shipper = ag.shipper
+      ? `${ag.shipper.slice(0, 6)}…${ag.shipper.slice(-4)}`
+      : "Unknown Shipper";
 
-    let value = "0.00";
-    try {
-      const wei = agreement.escrow_amount || "0";
-      value = parseFloat(ethers.formatEther(String(wei))).toFixed(2);
-    } catch (e) {
-      console.warn("ETH format error:", e);
-    }
+    const value = ag.escrowAmountETH || "0.00";
 
-    const cargoType = agreement.cargo_type || "Not specified";
-    const weight = agreement.weight_kg ? `${agreement.weight_kg} kg` : "";
-    const payload = weight ? `${cargoType} (${weight})` : cargoType;
+    // On-chain data doesn't have cargo/weight – we'll show placeholders
+    const cargo = "—";
+    const weight = "";
+    const payload = cargo;
 
-    const deadline = agreement.deadline
-      ? new Date(agreement.deadline).toLocaleDateString("en-US", {
+    const deadline = ag.deadline
+      ? new Date(ag.deadline * 1000).toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
           year: "numeric",
         })
       : "Not set";
 
-    const milestones = agreement.milestones ? agreement.milestones.length : "—";
+    const milestones = ag.milestoneCount || "—";
 
-    // ✅ ADD THIS LINE
-    const route =
-      agreement.route || `Agreement #${agreement.onchain_id || agreement.id}`;
+    // Route – can't get from contract, use agreement ID
+    const route = `Agreement #${ag.id}`;
 
-    // Now use route in the template
     card.innerHTML = `
       <div>
         <div class="job-header">
@@ -167,12 +146,12 @@ function renderJobs(container, agreements) {
           </div>
           <div>
             <div class="detail-label">Status</div>
-            <div class="detail-val" style="color:var(--lime);">Escrow Funded</div>
+            <div class="detail-val" style="color:var(--lime);">Pending Acceptance</div>
           </div>
         </div>
       </div>
 
-      <button class="btn btn-primary btn-block accept-job-btn" data-id="${agreement.onchain_id}">
+      <button class="btn btn-primary btn-block accept-job-btn" data-id="${ag.id}">
         Review & Accept Job
       </button>
     `;
@@ -180,15 +159,16 @@ function renderJobs(container, agreements) {
     container.appendChild(card);
   });
 
+  // ─── Accept button listeners ──────────────────────────
   document.querySelectorAll(".accept-job-btn").forEach((btn) => {
     btn.addEventListener("click", async function (e) {
-      const agreementId = this.dataset.id; // now it's the integer onchain_id
+      const agreementId = this.dataset.id;
       await acceptJob(agreementId);
     });
   });
 }
 
-// ─── Accept job (same as before) ─────────────────────────
+// ─── Accept job (blockchain + optional DB sync) ──────────
 async function acceptJob(agreementId) {
   try {
     const walletAddress = localStorage.getItem("traxenWallet");
@@ -203,28 +183,34 @@ async function acceptJob(agreementId) {
       return;
     }
 
+    // ─── Blockchain accept ──────────────────────────────
     if (typeof acceptAgreement !== "function") {
       throw new Error("Blockchain accept function not available.");
     }
     const tx = await acceptAgreement(agreementId);
     console.log("✅ Blockchain acceptance tx:", tx);
 
-    const response = await fetch(`/api/agreements/${agreementId}/accept`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-wallet-address": walletAddress,
-      },
-      body: JSON.stringify({ acceptTx: tx.hash }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || "Failed to update agreement status.");
+    // ─── (Optional) Sync with database ──────────────────
+    // You can keep this if you still use DB for metadata.
+    // If you want pure on-chain, comment or remove this block.
+    try {
+      const response = await fetch(`/api/agreements/${agreementId}/accept`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-wallet-address": walletAddress,
+        },
+        body: JSON.stringify({ acceptTx: tx.transactionHash || tx.hash }),
+      });
+      if (!response.ok) {
+        console.warn("⚠️ DB sync failed, but blockchain tx succeeded.");
+      }
+    } catch (dbError) {
+      console.warn("⚠️ DB sync error:", dbError);
     }
 
     alert("✅ Job accepted successfully!");
-    await loadAvailableJobs();
+    await loadAvailableJobs(); // refresh list
   } catch (error) {
     console.error("❌ Accept job error:", error);
     alert(`Failed to accept job: ${error.message || "Unknown error"}`);
@@ -237,16 +223,14 @@ function initAvailableJobs() {
   loadAvailableJobs();
 }
 
-// Expose to SPA router
-console.log("📌 Setting window.initPage = initAvailableJobs");
 window.initPage = initAvailableJobs;
 
-// Auto-init on direct page load (non‑SPA)
+// Auto-init on direct page load
 if (
   document.readyState === "complete" ||
   document.readyState === "interactive"
 ) {
-  console.log("📄 Direct load – DOM ready, calling initAvailableJobs()");
+  console.log("📄 Direct load – calling initAvailableJobs()");
   initAvailableJobs();
 } else {
   document.addEventListener("DOMContentLoaded", () => {

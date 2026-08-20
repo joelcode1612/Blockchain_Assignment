@@ -1,6 +1,6 @@
 /**
  * ============================================================
- * Create Agreement Frontend Logic (Database Carriers & Threshold Validation)
+ * Create Agreement Frontend Logic (Blockchain Carriers)
  * ============================================================
  */
 
@@ -16,8 +16,8 @@ let milestones = [
   { name: "Delivered", desc: "Successfully delivered", pct: 30 },
 ];
 
-// ─── Load Carriers from Database ──────────────────────────
-async function loadCarriersFromDatabase() {
+// ─── Load Carriers from Blockchain ──────────────────────────
+async function loadCarriersFromBlockchain() {
   const carrierSelect = document.getElementById("f-carrier");
   const carrierStatus = document.getElementById("carrier-status");
   if (!carrierSelect) return;
@@ -33,48 +33,41 @@ async function loadCarriersFromDatabase() {
 
     carrierSelect.innerHTML = `<option value="">Loading carriers...</option>`;
     if (carrierStatus)
-      carrierStatus.textContent = "Loading registered carriers...";
+      carrierStatus.textContent = "Loading carriers from blockchain...";
 
-    const response = await fetch("/api/users/carriers", {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "x-wallet-address": walletAddress,
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || "Failed to load carriers.");
+    // ─── Fetch carriers from contract ──────────────────────
+    if (typeof window.getCarriersFromAgreements !== "function") {
+      throw new Error(
+        "getCarriersFromAgreements not available. Is web3_integration loaded?",
+      );
     }
 
-    const carriers = await response.json();
-    console.log("Available carriers:", carriers);
+    const carrierAddresses = await window.getCarriersFromAgreements();
 
-    if (!Array.isArray(carriers) || carriers.length === 0) {
+    console.log("Available carriers (on-chain):", carrierAddresses);
+
+    if (!Array.isArray(carrierAddresses) || carrierAddresses.length === 0) {
       carrierSelect.innerHTML = `<option value="">No carriers available</option>`;
       if (carrierStatus)
         carrierStatus.textContent =
-          "No registered carriers are currently available.";
+          "No carriers have participated in any agreement yet.";
       return;
     }
 
     carrierSelect.innerHTML = `<option value="">-- Select a carrier --</option>`;
-    carriers.forEach((carrier) => {
+    carrierAddresses.forEach((address) => {
       const option = document.createElement("option");
-      option.value = carrier.wallet_address;
-      const displayName = carrier.display_name || "Unnamed Carrier";
-      const wallet = carrier.wallet_address;
+      option.value = address;
       const shortWallet =
-        wallet.length > 12
-          ? `${wallet.substring(0, 8)}...${wallet.substring(wallet.length - 6)}`
-          : wallet;
-      option.textContent = `${displayName} (${shortWallet})`;
+        address.length > 12
+          ? `${address.substring(0, 8)}...${address.substring(address.length - 6)}`
+          : address;
+      option.textContent = `Carrier (${shortWallet})`;
       carrierSelect.appendChild(option);
     });
 
     if (carrierStatus) {
-      carrierStatus.textContent = `${carriers.length} carrier(s) available.`;
+      carrierStatus.textContent = `${carrierAddresses.length} carrier(s) available.`;
     }
   } catch (error) {
     console.error("❌ Failed to load carriers:", error);
@@ -919,45 +912,39 @@ function showDeadlineError(message) {
 // =====================================================
 
 function initCreateAgreement() {
-  // Set minimum deadline
   setMinimumDeadline();
-
-  // Load wallet balance & carriers
   loadWalletBalance().then(() => {
-    validatePayloadValue(); // revalidate after balance loaded
+    validatePayloadValue();
   });
-  loadCarriersFromDatabase();
+  loadCarriersFromBlockchain(); 
   validateDeadline();
 
-  // Attach real‑time validation for ETH amount
   const valueInput = document.getElementById("f-value");
   if (valueInput) {
     valueInput.addEventListener("input", validatePayloadValue);
   }
 
-  // Attach real‑time validation for deadline
   const deadlineInput = document.getElementById("f-deadline");
   if (deadlineInput) {
     deadlineInput.addEventListener("input", validateDeadline);
   }
 
-  // Also refresh balance when user changes account
   window.addEventListener("walletConnected", loadWalletBalance);
 
-  console.log("✅ Create Agreement page initialized");
+  console.log("✅ Create Agreement page initialized (blockchain carriers)");
 }
 
 // ─── Expose for SPA Router ──────────────────────────────
-// The router calls this after injecting the HTML fragment.
-window.initPage = initCreateAgreement;
+window.initCreateAgreement = initCreateAgreement;
 
-// ─── Auto‑init on direct page load (non‑SPA) ────────────
-// This covers hard refreshes or when the page is loaded directly.
-if (
-  document.readyState === "complete" ||
-  document.readyState === "interactive"
-) {
-  initCreateAgreement();
-} else {
-  document.addEventListener("DOMContentLoaded", initCreateAgreement);
+// ─── Auto‑init on direct page load ────────────────────
+if (document.getElementById("f-carrier")) {
+  if (
+    document.readyState === "complete" ||
+    document.readyState === "interactive"
+  ) {
+    initCreateAgreement();
+  } else {
+    document.addEventListener("DOMContentLoaded", initCreateAgreement);
+  }
 }

@@ -1,4 +1,4 @@
-// ─── AGREEMENTS PAGE SCRIPT ──────────────────────────────
+// ─── AGREEMENTS PAGE SCRIPT (Blockchain‑only) ──────────
 // This file is loaded by the SPA router when navigating to "agreements".
 
 (function () {
@@ -14,25 +14,30 @@
 
     container.innerHTML = `
       <div style="padding: 40px; text-align: center; color: var(--text-faint);">
-        <span>⏳ Loading your agreements...</span>
+        <span>⏳ Loading your agreements from blockchain...</span>
       </div>
     `;
 
     try {
       const walletAddress = localStorage.getItem("traxenWallet");
-      const response = await fetch("/api/agreements", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "x-wallet-address": walletAddress,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status} - ${response.statusText}`);
+      if (!walletAddress) {
+        container.innerHTML = `
+          <div style="padding: 60px 20px; text-align: center; color: var(--text-faint);">
+            <h3>🔑 Please connect your wallet</h3>
+            <p>You need to be logged in to view your agreements.</p>
+          </div>
+        `;
+        return;
       }
 
-      const agreements = await response.json();
+      // ─── Fetch from blockchain ──────────────────────────
+      if (typeof window.getAgreementsByShipper !== "function") {
+        throw new Error(
+          "getAgreementsByShipper not available. Is web3_integration loaded?",
+        );
+      }
+
+      const agreements = await window.getAgreementsByShipper(walletAddress);
 
       if (!agreements || agreements.length === 0) {
         container.innerHTML = `
@@ -44,6 +49,7 @@
         return;
       }
 
+      // ─── Build table ─────────────────────────────────────
       let tableHtml = `
         <div style="overflow-x: auto; margin-top: 16px;">
           <table style="width: 100%; border-collapse: collapse; font-size: 0.95rem;">
@@ -52,7 +58,6 @@
                 <th style="padding: 12px 16px;">ID</th>
                 <th style="padding: 12px 16px;">Shipper</th>
                 <th style="padding: 12px 16px;">Carrier</th>
-                <th style="padding: 12px 16px;">Cargo</th>
                 <th style="padding: 12px 16px;">Value (ETH)</th>
                 <th style="padding: 12px 16px;">Status</th>
                 <th style="padding: 12px 16px;">Deadline</th>
@@ -62,12 +67,12 @@
             <tbody>
       `;
 
-      agreements.forEach((agreement) => {
+      agreements.forEach((ag) => {
         // Map status to badge
         let statusColor = "var(--text-faint, #6b7280)";
         let statusBg = "var(--bg-muted, #f3f4f6)";
-        const status = agreement.status || "Unknown";
-        if (status === "Active" || status === "active") {
+        const status = ag.statusName || "Unknown";
+        if (status === "Active") {
           statusColor = "#0b6e4f";
           statusBg = "#d1fae5";
         } else if (
@@ -88,53 +93,31 @@
           statusBg = "#fee2e2";
         }
 
-        // Extract shipper name
-        const shipperName =
-          agreement.shipper?.display_name ||
-          agreement.shipper?.wallet_address ||
-          "N/A";
-        const carrierName =
-          agreement.carrier?.display_name ||
-          agreement.carrier?.wallet_address ||
-          "N/A";
-
-        // Convert escrow amount from Wei to ETH
-        let valueEth = "0.00";
-        try {
-          const wei = agreement.escrow_amount || "0";
-          valueEth = parseFloat(ethers.formatEther(String(wei))).toFixed(2);
-        } catch (e) {
-          console.warn("ETH format error:", e);
-        }
-
-        // Format deadline
-        const deadline = agreement.deadline
-          ? new Date(agreement.deadline).toLocaleDateString("en-US", {
+        const shipperAddr = ag.shipper || "N/A";
+        const carrierAddr = ag.carrier || "N/A";
+        const valueEth = ag.escrowAmountETH || "0.00";
+        const deadline = ag.deadline
+          ? new Date(ag.deadline * 1000).toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",
               year: "numeric",
             })
           : "—";
 
-        // Use cargo_type and weight_kg if available, else fallback
-        const cargo = agreement.cargo_type
-          ? `${agreement.cargo_type}${agreement.weight_kg ? ` (${agreement.weight_kg} kg)` : ""}`
-          : "—";
-
-        // Use onchain_id as the ID
-        const agreementId = agreement.onchain_id || "—";
+        const agreementId = ag.id || "—";
 
         tableHtml += `
           <tr style="border-bottom: 1px solid var(--border-color, #e2e8f0);">
             <td style="padding: 12px 16px; font-weight: 500; color: var(--primary, #2563eb);">
               ${agreementId}
             </td>
-            <td style="padding: 12px 16px;">${shipperName}</td>
-            <td style="padding: 12px 16px;">${carrierName}</td>
-            <td style="padding: 12px 16px;">${cargo}</td>
-            <td style="padding: 12px 16px; font-weight: 500;">
-              ${valueEth}
+            <td style="padding: 12px 16px; font-family: monospace; font-size: 0.85rem;">
+              ${shipperAddr.slice(0, 6)}…${shipperAddr.slice(-4)}
             </td>
+            <td style="padding: 12px 16px; font-family: monospace; font-size: 0.85rem;">
+              ${carrierAddr.slice(0, 6)}…${carrierAddr.slice(-4)}
+            </td>
+            <td style="padding: 12px 16px; font-weight: 500;">${valueEth}</td>
             <td style="padding: 12px 16px;">
               <span style="
                 background: ${statusBg};
@@ -181,7 +164,7 @@
 
       container.innerHTML = tableHtml;
 
-      // Attach click listeners to "View" buttons
+      // ─── View button listeners ──────────────────────────
       document.querySelectorAll(".view-agreement-btn").forEach((btn) => {
         btn.addEventListener("click", function (e) {
           e.preventDefault();
@@ -201,7 +184,7 @@
         <div style="padding: 40px; text-align: center; color: var(--red, #dc2626);">
           <h3>❌ Failed to load agreements</h3>
           <p style="margin-top: 4px;">${error.message}</p>
-          <button onclick="window.initPage()" class="btn btn-primary" style="margin-top: 12px;">
+          <button onclick="window.initAgreements()" class="btn btn-primary" style="margin-top: 12px;">
             Retry
           </button>
         </div>
@@ -209,27 +192,17 @@
     }
   }
 
-  window.initPage = renderAgreements;
+  window.initAgreements = renderAgreements;
 
-  // Auto-init on direct page load
-  if (
-    document.readyState === "complete" ||
-    document.readyState === "interactive"
-  ) {
+  // Auto-init if page is loaded directly (non‑SPA fallback)
+  if (document.getElementById("agreements-list")) {
     if (
-      document.getElementById("agreements-list") ||
-      document.querySelector(".content")
+      document.readyState === "complete" ||
+      document.readyState === "interactive"
     ) {
       renderAgreements();
+    } else {
+      document.addEventListener("DOMContentLoaded", renderAgreements);
     }
-  } else {
-    document.addEventListener("DOMContentLoaded", () => {
-      if (
-        document.getElementById("agreements-list") ||
-        document.querySelector(".content")
-      ) {
-        renderAgreements();
-      }
-    });
   }
 })();
