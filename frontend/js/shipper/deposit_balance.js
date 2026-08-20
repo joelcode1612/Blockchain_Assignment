@@ -6,7 +6,25 @@ console.log('🚀 deposit_balance.js loaded');
   let allAgreements = [];
   let agreementData = {};
   let isProcessing = false;
-  let initialised = false;
+
+  // ─── Toast helper ──────────────────────────────────────────
+  function showToast(message, type = "info", duration = 4000) {
+    const container = document.getElementById("toast-container");
+    if (!container) {
+      console.warn("Toast container not found.");
+      return;
+    }
+    const toast = document.createElement("div");
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+    setTimeout(() => {
+      toast.classList.add("toast-hidden");
+      setTimeout(() => {
+        if (toast.parentNode) toast.remove();
+      }, 300);
+    }, duration);
+  }
 
   function log(msg) {
     const el = document.getElementById('output');
@@ -166,7 +184,6 @@ console.log('🚀 deposit_balance.js loaded');
     // Ensure contract is ready
     if (window.contract) {
       try {
-        // ✅ Use getAgreement (not getAgreementDetails)
         const contractData = await window.contract.getAgreement(currentAgreementId);
         const contractStatusNum = Number(contractData[6]);
         const statusNames = ['PendingAcceptance','AwaitingFunding','Active','Completed','Rejected','Cancelled','Refunded','Expired'];
@@ -367,7 +384,7 @@ console.log('🚀 deposit_balance.js loaded');
 
     const total = parseFloat(agreementData.totalAmount);
     if (Math.abs(amount - total) > 0.000001) {
-      showToast(`Amount must be exactly ${total.toFixed(4)} ETH.`, 'error');
+      showToast(`Amount must be exactly ${total.toFixed(6)} ETH.`, 'error');
       return;
     }
 
@@ -389,6 +406,11 @@ console.log('🚀 deposit_balance.js loaded');
       log(`✅ Deposit successful!`);
       showToast(`✅ ${amount} ETH deposited successfully!`, 'success');
 
+      // ─── Reset button ──────────────────────────────────
+      depositBtn.textContent = 'Deposit to Escrow';
+      depositBtn.disabled = false;
+
+      // ─── Sync with backend ──────────────────────────────
       try {
         await fetch(`/api/escrow/${currentAgreementId}/deposit`, {
           method: 'POST',
@@ -405,13 +427,14 @@ console.log('🚀 deposit_balance.js loaded');
         console.warn('Backend sync failed:', e);
       }
 
+      // ─── Reload UI data ──────────────────────────────────
       await loadAgreementData();
       await refreshAllAgreements();
     } catch (e) {
       log('❌ Deposit failed: ' + e.message);
       showToast('❌ Deposit failed: ' + e.message, 'error');
-      depositBtn.disabled = false;
       depositBtn.textContent = 'Deposit to Escrow';
+      depositBtn.disabled = false;
     } finally {
       isProcessing = false;
     }
@@ -424,12 +447,7 @@ console.log('🚀 deposit_balance.js loaded');
       console.log('⏭️ Not on deposit page – skipping init.');
       return;
     }
-    if (initialised) {
-      console.log('⏭️ Already initialised – skipping.');
-      return;
-    }
-
-    console.log('🚀 initDepositBalance() called');
+    console.log('🚀 initDepositBalance() called (always reload)');
     // Do NOT auto-connect – just check if contract exists
     if (!window.contract) {
       showToast('Please connect your wallet manually.', 'error');
@@ -439,14 +457,13 @@ console.log('🚀 deposit_balance.js loaded');
     sel.removeEventListener('change', loadAgreementData);
     sel.addEventListener('change', loadAgreementData);
 
+    // Always reload data
     await loadAgreements();
-    initialised = true;
   }
 
   window.addEventListener('walletConnected', async function() {
     if (document.getElementById('agreementSelect')) {
-      initialised = false;
-      await initDepositBalance();
+      await initDepositBalance(); // always refresh
     }
   });
 
@@ -458,5 +475,5 @@ console.log('🚀 deposit_balance.js loaded');
   window.debugInit = initDepositBalance;
   window.doDeposit = window.doDeposit;
 
-  console.log('✅ deposit_balance.js ready – uses getAgreement, no auto‑connect.');
+  console.log('✅ deposit_balance.js ready – always reloads on init.');
 })();

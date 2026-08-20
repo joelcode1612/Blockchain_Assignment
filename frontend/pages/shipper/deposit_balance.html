@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="../../css/shipper_styles.css">
   <link rel="stylesheet" href="../../css/carrier_styles.css">
   <link rel="stylesheet" href="../../css/escrow_module.css">
+  <link rel="stylesheet" href="../../css/responsive.css">
 </head>
 
 <body>
@@ -49,11 +50,13 @@
       <div class="content">
 
         <div class="agreement-select">
-          Agreement:
+          <label for="agreementSelect">Agreement:</label>
+
           <select id="agreementSelect" onchange="loadAgreementData()">
             <option value="">— Select —</option>
           </select>
         </div>
+        
         <div class="view active" id="view-deposit">
           <!-- Stats -->
           <div class="stat-row" id="statsRow">
@@ -132,10 +135,10 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
-  <script src="/js/toast.js"></script>
-  <script src="/js/blockchain/web3_integration.js"></script>
-  <script src="/js/shared/auth.js"></script>
-  <script src="/js/shared/app.js"></script>
+  <script src="../../js/toast.js"></script>
+  <script src="../../js/blockchain/web3_integration.js"></script>
+  <script src="../../js/shared/auth.js"></script>
+  <script src="../../js/shared/app.js"></script>
   <script src="../../js/shipper/deposit_balance.js"></script>
   <script src="../../js/shipper/shipper.js"></script>
 

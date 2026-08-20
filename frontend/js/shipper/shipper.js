@@ -1,10 +1,16 @@
 // ─── SPA ROUTER ──────────────────────────────────────────
+const ROLE_PATH = '/shipper';
+
 document.addEventListener("DOMContentLoaded", function () {
   (function () {
     const contentEl = document.getElementById("contentPlaceholder");
     if (!contentEl) {
       console.error("❌ contentPlaceholder not found. Router cannot start.");
       return;
+    }
+
+    if (window.Auth && typeof window.Auth.ensureFullSession === 'function') {
+      window.Auth.ensureFullSession();
     }
 
     const navItems = document.querySelectorAll(".nav-item[data-page]");
@@ -232,73 +238,6 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     }
 
-    // ─── SILENT CONTRACT RESTORATION (no pop‑up) ──────────
-    async function restoreContractFromSession() {
-      if (window.contract) return window.contract;
-      if (!window.ethereum) {
-        console.warn('MetaMask not available.');
-        return null;
-      }
-
-      // Try to get the already connected account – silent, no pop‑up.
-      let accounts;
-      try {
-        accounts = await window.ethereum.request({ method: 'eth_accounts' });
-      } catch (e) {
-        console.warn('eth_accounts failed:', e);
-        return null;
-      }
-
-      if (!accounts || accounts.length === 0) {
-        console.warn('No connected account found. User must connect manually.');
-        return null;
-      }
-
-      // We have an account – rebuild the contract silently.
-      try {
-        const config = window.__CONFIG;
-        if (!config) {
-          console.error('__CONFIG not set – ensure web3_integration exposes it.');
-          return null;
-        }
-
-        let abi;
-        if (typeof window.__loadContractABI === 'function') {
-          abi = await window.__loadContractABI();
-        } else {
-          const res = await fetch(config.abiPath);
-          if (!res.ok) throw new Error('ABI fetch failed');
-          const artifact = await res.json();
-          abi = artifact.abi;
-        }
-
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        const signer = await provider.getSigner(); // silent – already connected
-        const contract = new ethers.Contract(config.contractAddress, abi, signer);
-        window.contract = contract;
-        window.userWalletAddress = accounts[0];
-        console.log('✅ Contract restored silently from session.');
-        return contract;
-      } catch (e) {
-        console.error('Failed to restore contract:', e);
-        return null;
-      }
-    }
-
-    // ─── Ensure contract is available (no auto‑connect) ──
-    async function ensureContract() {
-      if (window.contract) return true;
-      const restored = await restoreContractFromSession();
-      if (restored) return true;
-      // If we couldn't restore silently, we do NOT call connectWallet().
-      // Instead, we log and let the user connect manually.
-      console.warn('No contract available – please connect your wallet manually.');
-      if (typeof showToast === 'function') {
-        showToast('Please connect your wallet to use blockchain features.', 'info');
-      }
-      return false;
-    }
-
     // ─── Load a page ────────────────────────────────────────
     async function loadPage(pageKey) {
       if (pageKey === "dashboard") {
@@ -307,10 +246,16 @@ document.addEventListener("DOMContentLoaded", function () {
         navItems.forEach(el => el.classList.remove("active"));
         const active = Array.from(navItems).find(el => el.dataset.page === "dashboard");
         if (active) active.classList.add("active");
-        if (pageTitleEl) pageTitleEl.textContent = dashboardTitles.title;
-        if (pageSubEl) pageSubEl.textContent = dashboardTitles.sub;
+
+        // ✅ Dynamic welcome message with user's name
+        if (pageTitleEl) pageTitleEl.textContent = "Dashboard";
+        const userName = localStorage.getItem("traxenUserName") || "User";
+        if (pageSubEl) pageSubEl.textContent = `Welcome back, ${userName}!`;
+
         await loadDashboardStats();
-        await ensureContract(); // silent attempt
+        if (window.Auth && typeof window.Auth.ensureFullSession === 'function') {
+          window.Auth.ensureFullSession();
+        }
         return;
       }
 
@@ -360,7 +305,9 @@ document.addEventListener("DOMContentLoaded", function () {
           window[initName]();
         }
 
-        await ensureContract(); // silent attempt
+        if (window.Auth && typeof window.Auth.ensureFullSession === 'function') {
+          await window.Auth.ensureFullSession();
+        }
       } catch (error) {
         console.error("Load error:", error);
         contentEl.innerHTML = `<div style="padding:40px;color:var(--red);">❌ Failed to load page: ${error.message}</div>`;
@@ -373,34 +320,29 @@ document.addEventListener("DOMContentLoaded", function () {
         e.preventDefault();
         const page = this.dataset.page;
         loadPage(page);
-        window.history.pushState({ page }, "", `/${page}`);
+        window.history.pushState({ page }, "", `${ROLE_PATH}/${page}`);
       });
     });
 
     // ─── BACK/FORWARD ──────────────────────────────────────
-    window.addEventListener("popstate", function (e) {
-      if (e.state && e.state.page) loadPage(e.state.page);
-    });
-
-    // ─── LOAD INITIAL PAGE ────────────────────────────────
     const path = window.location.pathname;
-    const pageKey = path.split("/").pop() || "dashboard";
-    const cleanPage = pageKey.split("?")[0];
-    const availablePages = ["dashboard", ...Object.keys(pageMap)];
-    const initialPage = availablePages.includes(cleanPage) ? cleanPage : "dashboard";
-    loadPage(initialPage);
-
-    // ─── Auto‑restore contract on full reload (silent) ──
-    if (window.Auth?.getWallet?.()) {
-      (async function() {
-        if (!window.contract) {
-          await restoreContractFromSession(); // silent – no pop‑up
-        }
-      })();
+    const segments = path.split('/').filter(s => s.length > 0);
+    // If the first segment is 'shipper', take the second; otherwise default to 'dashboard'
+    let pageKey = 'dashboard';
+    if (segments.length >= 2 && segments[0] === 'shipper') {
+      pageKey = segments[1];
+    } else if (segments.length === 1 && segments[0] !== 'shipper') {
+      // If we are at /profile (without prefix), redirect to /shipper/profile
+      window.location.href = `${ROLE_PATH}/${segments[0]}`;
+      return;
     }
+    // Remove .html if present
+    pageKey = pageKey.replace('.html', '');
+    const availablePages = ["dashboard", ...Object.keys(pageMap)];
+    const initialPage = availablePages.includes(pageKey) ? pageKey : "dashboard";
+    loadPage(initialPage);
 
     // ─── EXPOSE loadPage GLOBALLY ──────────────────────────
     window.loadPage = loadPage;
   })();
 });
-console.log("Shipper SPA router loaded.");

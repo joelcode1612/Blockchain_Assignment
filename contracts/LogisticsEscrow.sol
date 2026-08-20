@@ -389,6 +389,7 @@ contract LogisticsEscrow {
         emit RefundExecuted(_agreementId, agreement.shipper, remainingBalance);
     }
 
+
     // =====================================================
     // MODULE 7 — VIEW FUNCTIONS (GETTERS)
     // =====================================================
@@ -420,6 +421,15 @@ contract LogisticsEscrow {
             agreement.refundExecuted,
             agreement.milestoneCount
         );
+    }
+
+    // NEW FUNCTION: Enforce Expired Status
+    function markExpired(uint256 _agreementId) external agreementExists(_agreementId) {
+        Agreement storage agreement = agreements[_agreementId];
+        require(block.timestamp > agreement.deadline, "Deadline not passed");
+        require(agreement.status == AgreementStatus.Active, "Agreement not active");
+        
+        agreement.status = AgreementStatus.Expired;
     }
 
     function getMilestone(uint256 _agreementId, uint256 _milestoneId) external view agreementExists(_agreementId) returns (

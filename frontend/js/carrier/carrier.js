@@ -13,15 +13,25 @@
       title: "Available Jobs",
       sub: "Browse and accept decentralized logistics contracts.",
     },
+    agreements: {
+      file: "carrier_agreement_history.html",
+      title: "Agreement History",
+      sub: "Past contracts and escrow payout logs.",
+    },
     "my-deliveries": {
       file: "carrier_my_delivery.html",
       title: "My Deliveries",
       sub: "Track and update your active logistics contracts.",
     },
-    agreements: {
-      file: "carrier_agreement_history.html",
-      title: "Agreement History",
-      sub: "Past contracts and escrow payout logs.",
+    milestone_release: {
+      file: "milestone_release.html",
+      title: "Milestone Tracking",
+      sub: "Submit and verify delivery milestones.",
+    },
+    history: {
+      file: "../../pages/shared/history.html",
+      title: "Transaction History",
+      sub: "Complete record of all your transactions.",
     },
     profile: {
       file: "carrier_profile.html",
@@ -69,6 +79,10 @@
         window.initPage();
       }
       await loadDashboard();
+      // 🟢 Validate session after dashboard loads
+      if (window.Auth && typeof window.Auth.ensureFullSession === 'function') {
+        window.Auth.ensureFullSession();
+      }
       return;
     }
 
@@ -101,6 +115,11 @@
 
       if (typeof window.initPage === "function") {
         window.initPage();
+      }
+
+      // 🟢 Validate session after loading any page
+      if (window.Auth && typeof window.Auth.ensureFullSession === 'function') {
+        window.Auth.ensureFullSession();
       }
     } catch (error) {
       console.error("Failed to load page:", error);
@@ -269,12 +288,20 @@
   document.addEventListener("DOMContentLoaded", async () => {
     const walletAddress = localStorage.getItem("traxenWallet");
     if (!walletAddress) {
-      alert("Please log in first.");
-      window.location.href = "/login";
+      // 🟢 Use Auth.ensureFullSession to handle missing session
+      if (window.Auth && typeof window.Auth.ensureFullSession === 'function') {
+        window.Auth.ensureFullSession();
+      } else {
+        window.location.href = "/login";
+      }
       return;
     }
     await fillUserInfo();
     await loadPage(initial);
+    // 🟢 Validate session after the initial page load
+    if (window.Auth && typeof window.Auth.ensureFullSession === 'function') {
+      window.Auth.ensureFullSession();
+    }
   });
 
   // ─── Expose for inline onclick handlers ───────────────────

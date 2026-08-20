@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,62 +9,73 @@
   <link rel="stylesheet" href="/css/shipper_styles.css">
   <link rel="stylesheet" href="/css/carrier_styles.css">
 </head>
+
 <body>
-<div class="app">
+  <div class="app">
+    <div class="content">
+      <!-- Agreement Selector & Toggle -->
+      <div class="agreement-select history-agreement-select">
 
-  <!-- MAIN -->
-  <div class="main">
-  </div>
-  
-  <div class="content">
-      <div class="topbar">
-        <div>
-          <h1 id="pageTitle">Transaction &amp; Payment History</h1>
-          <div class="sub" id="pageSub">Deposits, releases, and refunds for your agreements</div>
-        </div>
-        <div class="agreement-select" style="display:flex; align-items:center; gap:12px;">
-          <!-- Toggle: All vs Specific -->
-          <label style="display:flex; align-items:center; gap:6px; font-size:0.9rem; color:var(--text-faint);">
-            <input type="checkbox" id="showAllToggle" checked> Show all agreements
-          </label>
-          <span style="color:var(--text-faint);">|</span>
-          <label style="display:flex; align-items:center; gap:6px; font-size:0.9rem;">
-            Agreement:
-            <select id="agreementSelect" onchange="loadHistory()">
-              <option value="">— Select —</option>
-            </select>
-          </label>
-        </div>
-      <div class="view active" id="view-history">
-        <!-- Stats -->
-        <div class="stat-row" id="statsRow">
-          <div class="stat-card"><div class="lbl">Total Payments</div><div class="val" id="totalPayments">—</div></div>
-          <div class="stat-card"><div class="lbl">Total ETH Released</div><div class="val lime" id="totalEth">—</div></div>
-          <div class="stat-card"><div class="lbl">Latest Payment</div><div class="val" id="latestPayment">—</div></div>
-          <div class="stat-card"><div class="lbl">Agreement</div><div class="val" id="agreementIdDisplay">—</div></div>
+        <label class="show-all-option">
+          <input type="checkbox" id="showAllToggle" checked>
+          <span>Show all agreements</span>
+        </label>
+
+        <span class="agreement-divider">|</span>
+
+        <div class="agreement-picker">
+          <label for="agreementSelect">Agreement:</label>
+
+          <select id="agreementSelect" onchange="loadHistory()">
+            <option value="">— Select —</option>
+          </select>
         </div>
 
-        <div class="panel">
-          <h2>Transactions</h2>
-          <div class="desc" id="historyDesc">All recorded on‑chain events</div>
-          <div id="historyContent">
-            <div style="color:var(--text-faint);padding:12px 0;">Loading transactions...</div>
-          </div>
-        </div>
+      </div>
 
-        <div class="panel" style="background:rgba(0,0,0,0.2);padding:10px 16px;">
-          <div id="output" style="font-family:monospace;font-size:12px;color:var(--text-faint);max-height:100px;overflow-y:auto;white-space:pre-wrap;">Ready...</div>
+      <!-- Stats Row -->
+      <div class="stat-row" id="statsRow">
+        <div class="stat-card">
+          <div class="lbl">Total Payments</div>
+          <div class="val" id="totalPayments">—</div>
         </div>
+        <div class="stat-card">
+          <div class="lbl">Total ETH Released</div>
+          <div class="val lime" id="totalEth">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="lbl">Latest Payment</div>
+          <div class="val" id="latestPayment">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="lbl">Agreement</div>
+          <div class="val" id="agreementIdDisplay">—</div>
+        </div>
+      </div>
+
+      <!-- Transactions Table -->
+      <div class="panel">
+        <h2>Transactions</h2>
+        <div class="desc" id="historyDesc">All recorded on‑chain events</div>
+        <div id="historyContent">
+          <div style="color:var(--text-faint);padding:12px 0;">Loading transactions...</div>
+        </div>
+      </div>
+
+      <!-- Log Panel -->
+      <div class="panel" style="background:rgba(0,0,0,0.2);padding:10px 16px;">
+        <div id="output"
+          style="font-family:monospace;font-size:12px;color:var(--text-faint);max-height:100px;overflow-y:auto;white-space:pre-wrap;">
+          Ready...</div>
       </div>
     </div>
   </div>
-</div>
-
-<!-- Scripts - absolute paths -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
-<script src="/js/toast.js"></script>
-<script src="/js/blockchain/web3_integration.js"></script>
-<script src="/js/shared/history.js"></script>
-<script src="/js/shared/shipper.js"></script>
+  <!-- Scripts - absolute paths -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+  <script src="/js/toast.js"></script>
+  <script src="/js/blockchain/web3_integration.js"></script>
+  <script src="/js/shared/history.js"></script>
+  <script src="/js/shared/shipper.js"></script>
 </body>
+
 </html>

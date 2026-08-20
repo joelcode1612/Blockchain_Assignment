@@ -8,7 +8,6 @@
  * Technology:
  * - MetaMask
  * - ethers.js v6
- * - Ganache
  * - Truffle
  * - LogisticsEscrow.sol
  *
@@ -20,8 +19,7 @@
    ============================================================ */
 
 const CONFIG = {
-  contractAddress: "0x9972D19Df7884931a12146C66D89e126A643FC4F", // Update with your deployed contract address
-  ganacheChainId: 11155111,
+  contractAddress: "0x9972D19Df7884931a12146C66D89e126A643FC4F", // Update with your deployed contract address (public network)
   abiPath: "/abi/LogisticsEscrow.json",
 };
 
@@ -34,29 +32,44 @@ let signer = null;
 let contractInstance = null;
 let userWalletAddress = null;
 let isWalletConnected = false;
+let isInitializing = false;
+
+async function reconnectWeb3() {
+  if (isConnected()) return true;
+  if (userWalletAddress && !contractInstance) {
+    try { await initContract(); return true; } catch (e) { return false; }
+  }
+  if (!window.ethereum) return false;
+  try {
+    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+    if (accounts && accounts.length > 0) {
+      provider = new ethers.BrowserProvider(window.ethereum);
+      signer = await provider.getSigner();
+      userWalletAddress = accounts[0];
+      isWalletConnected = true;
+      syncWalletToStorage(userWalletAddress);
+      updateWalletUI(userWalletAddress);
+      window.dispatchEvent(new CustomEvent("walletConnected", { detail: { address: userWalletAddress } }));
+      await initContract();
+      return true;
+    }
+  } catch (e) { console.error("Reconnect failed:", e); }
+  return false;
+}
+window.reconnectWeb3 = reconnectWeb3;
 
 /* ============================================================
    LOAD TRUFFLE ABI
    ============================================================ */
 
 async function loadContractABI() {
-  try {
-    const response = await fetch(CONFIG.abiPath);
-    if (!response.ok) {
-      throw new Error("Unable to load LogisticsEscrow ABI.");
-    }
-    const artifact = await response.json();
-
-    if (!artifact.abi || !Array.isArray(artifact.abi)) {
-      throw new Error("Invalid Truffle ABI format.");
-    }
-
-    console.log("✅ LogisticsEscrow ABI loaded.");
-    return artifact.abi;
-  } catch (error) {
-    console.error("❌ Failed to load ABI:", error);
-    throw error;
+  const response = await fetch(CONFIG.abiPath);
+  if (!response.ok) throw new Error("Unable to load LogisticsEscrow ABI.");
+  const artifact = await response.json();
+  if (!artifact.abi || !Array.isArray(artifact.abi)) {
+    throw new Error("Invalid Truffle ABI format.");
   }
+  return artifact.abi;
 }
 
 /* ============================================================
@@ -84,64 +97,48 @@ async function getNetwork() {
 }
 
 /* ============================================================
-   CHECK GANACHE NETWORK
+   NETWORK CHECK (optional – commented out for public networks)
    ============================================================ */
-
-async function checkGanacheNetwork() {
+/*
+async function checkNetwork() {
   const network = await getNetwork();
   const chainId = Number(network.chainId);
   console.log("🌐 Current Chain ID:", chainId);
 
-  if (chainId !== CONFIG.ganacheChainId) {
-    throw new Error(
-      "Wrong network. Please switch MetaMask to Ganache (Chain ID: " +
-        CONFIG.ganacheChainId +
-        ").",
-    );
-  }
+  // You may add a list of supported public chain IDs here if needed.
+  // For public networks, this check is often omitted.
   return true;
 }
+*/
 
 /* ============================================================
    CONNECT METAMASK
    ============================================================ */
-
 async function connectWallet() {
-  try {
-    checkMetaMask();
-    provider = new ethers.BrowserProvider(window.ethereum);
-    await provider.send("wallet_requestPermissions", [{ eth_accounts: {} }]);
-    const accounts = await provider.send("eth_requestAccounts", []);
+  if (!window.ethereum) throw new Error("MetaMask not installed.");
+  provider = new ethers.BrowserProvider(window.ethereum);
+  await provider.send("wallet_requestPermissions", [{ eth_accounts: {} }]);
+  const accounts = await provider.send("eth_requestAccounts", []);
+  if (!accounts || accounts.length === 0) throw new Error("No account selected.");
 
-    if (!accounts || accounts.length === 0) {
-      throw new Error("No MetaMask account selected.");
-    }
+  signer = await provider.getSigner();
+  userWalletAddress = await signer.getAddress();
+  isWalletConnected = true;
+  syncWalletToStorage(userWalletAddress);
+  await initContract();
+  updateWalletUI(userWalletAddress);
+  showToast("Wallet connected: " + truncateAddress(userWalletAddress), "success");
+  window.dispatchEvent(new CustomEvent("walletConnected", { detail: { address: userWalletAddress } }));
+  return userWalletAddress;
+}
 
-    signer = await provider.getSigner();
-    userWalletAddress = await signer.getAddress();
-    isWalletConnected = true;
 
-    console.log("✅ MetaMask connected:", userWalletAddress);
-    await checkGanacheNetwork();
-    await initContract();
-    updateWalletUI(userWalletAddress);
-
-    showToast(
-      "Wallet connected: " + truncateAddress(userWalletAddress),
-      "success",
-    );
-
-    window.dispatchEvent(
-      new CustomEvent("walletConnected", {
-        detail: { address: userWalletAddress },
-      }),
-    );
-
-    return userWalletAddress;
-  } catch (error) {
-    console.error("❌ Wallet connection failed:", error);
-    handleBlockchainError(error, "Wallet connection failed.");
-    throw error;
+// ─── Sync wallet to localStorage (for auth.js) ──────────
+function syncWalletToStorage(address) {
+  if (address) {
+    localStorage.setItem('traxenWallet', address);
+  } else {
+    localStorage.removeItem('traxenWallet');
   }
 }
 
@@ -150,44 +147,34 @@ async function connectWallet() {
    ============================================================ */
 
 async function initContract() {
+  isInitializing = true;
   try {
-    if (!provider) {
-      provider = new ethers.BrowserProvider(window.ethereum);
-    }
-    if (!signer) {
-      signer = await provider.getSigner();
-    }
+    if (!provider) provider = new ethers.BrowserProvider(window.ethereum);
+    if (!signer) signer = await provider.getSigner();
     const abi = await loadContractABI();
     contractInstance = new ethers.Contract(CONFIG.contractAddress, abi, signer);
     window.contract = contractInstance;
-
-    console.log("✅ LogisticsEscrow initialized.");
-    console.log("📍 Contract:", CONFIG.contractAddress);
+    console.log("✅ Contract initialised.");
     return contractInstance;
-  } catch (error) {
-    console.error("❌ Contract initialization failed:", error);
-    throw error;
+  } catch (e) {
+    console.error("Contract init failed:", e);
+    throw e;
+  } finally {
+    isInitializing = false;
   }
 }
+
 
 /* ============================================================
    GETTERS
    ============================================================ */
 
 function getContract() {
-  if (!contractInstance) throw new Error("Smart contract is not initialized.");
+  if (!contractInstance) throw new Error("Contract not initialised.");
   return contractInstance;
 }
-
-function getWalletAddress() {
-  return userWalletAddress;
-}
-
-function isConnected() {
-  return (
-    isWalletConnected && userWalletAddress !== null && contractInstance !== null
-  );
-}
+function getWalletAddress() { return userWalletAddress; }
+function isConnected() { return userWalletAddress !== null && contractInstance !== null; }
 
 /* ============================================================
    USER MODULE
@@ -223,7 +210,6 @@ async function registerBlockchainUser(role) {
     console.log("Wallet:", userWalletAddress);
     console.log("Role:", roleNumber);
 
-    // FIXED: Only passing roleNumber. Strings belong in Supabase!
     const transaction = await contract.registerUser(roleNumber);
 
     console.log("⏳ Registration transaction:", transaction.hash);
@@ -357,20 +343,19 @@ async function createAgreement(
   escrowAmount,
   deadline,
   milestoneDescriptions,
-  paymentPercentages,
+  paymentPercentages
 ) {
   try {
     if (!isConnected()) await connectWallet();
     const contract = getContract();
     const escrowWei = ethers.parseEther(String(escrowAmount));
 
-    // FIXED: Removed milestoneDescriptions to match gas-optimized contract
     const transaction = await contract.createAgreement(
       carrierAddress,
       escrowWei,
       deadline,
-      milestoneDescriptions, // ← pass it
-      paymentPercentages,
+      milestoneDescriptions,
+      paymentPercentages
     );
 
     console.log("⏳ Agreement transaction:", transaction.hash);
@@ -483,6 +468,56 @@ async function cancelAgreement(agreementId) {
   }
 }
 
+/* ============================================================
+   EXPIRY & REFUND
+   ============================================================ */
+
+async function markExpired(agreementId) {
+  try {
+    if (!isConnected()) await connectWallet();
+    const contract = getContract();
+
+    const transaction = await contract.markExpired(agreementId);
+    console.log("⏳ Mark expired transaction:", transaction.hash);
+
+    const receipt = await transaction.wait();
+    console.log("✅ Agreement marked as expired.");
+
+    return {
+      success: true,
+      transactionHash: transaction.hash,
+      receipt: receipt,
+    };
+  } catch (error) {
+    console.error("❌ Mark expired failed:", error);
+    handleBlockchainError(error, "Failed to mark agreement as expired.");
+    throw error;
+  }
+}
+
+async function refund(agreementId) {
+  try {
+    if (!isConnected()) await connectWallet();
+    const contract = getContract();
+
+    const transaction = await contract.refund(agreementId);
+    console.log("⏳ Refund transaction:", transaction.hash);
+
+    const receipt = await transaction.wait();
+    console.log("✅ Refund executed successfully.");
+
+    return {
+      success: true,
+      transactionHash: transaction.hash,
+      receipt: receipt,
+    };
+  } catch (error) {
+    console.error("❌ Refund failed:", error);
+    handleBlockchainError(error, "Failed to execute refund.");
+    throw error;
+  }
+}
+
 async function getMilestone(agreementId, milestoneId) {
   try {
     if (!isConnected()) await connectWallet();
@@ -521,98 +556,124 @@ async function getEscrowBalance(agreementId) {
    ============================================================ */
 
 function updateWalletUI(address) {
-  const walletElements = document.querySelectorAll(
-    ".wallet-chip, .connect-wallet-btn, .wallet-addr",
-  );
-  walletElements.forEach((element) => {
+  const els = document.querySelectorAll(".wallet-addr, .wallet-chip, .connect-wallet-btn");
+  els.forEach(el => {
     if (address) {
-      element.classList.remove("disconnected");
-      element.classList.add("connected");
-      const addressElement = element.querySelector(".wallet-addr");
-      if (addressElement) addressElement.textContent = truncateAddress(address);
+      el.classList.remove("disconnected");
+      el.classList.add("connected");
+      if (el.classList.contains("wallet-addr")) el.textContent = truncateAddress(address);
     } else {
-      element.classList.remove("connected");
-      element.classList.add("disconnected");
+      el.classList.remove("connected");
+      el.classList.add("disconnected");
     }
   });
-
-  document.querySelectorAll("[data-wallet-address]").forEach((element) => {
-    element.textContent = address ? truncateAddress(address) : "Not connected";
+  document.querySelectorAll("[data-wallet-address]").forEach(e => {
+    e.textContent = address ? truncateAddress(address) : "Not connected";
   });
 }
 
 function truncateAddress(address) {
   if (!address) return "";
   if (address.length <= 10) return address;
-  return (
-    address.substring(0, 6) + "..." + address.substring(address.length - 4)
-  );
+  return address.substring(0, 6) + "..." + address.substring(address.length - 4);
 }
 
-function setupWalletListeners() {
+function setupListeners() {
   if (!window.ethereum) return;
+
   window.ethereum.on("accountsChanged", async (accounts) => {
-    console.log("🔄 MetaMask account changed:", accounts);
+    console.log("🔄 Account changed:", accounts);
+
+    // If no accounts -> disconnected
     if (accounts.length === 0) {
+      if (typeof window.Auth?.clearAuthData === 'function') {
+        window.Auth.clearAuthData();
+      }
       userWalletAddress = null;
       signer = null;
       contractInstance = null;
       isWalletConnected = false;
+      syncWalletToStorage(null);
       updateWalletUI(null);
-      window.dispatchEvent(new CustomEvent("walletDisconnected"));
+      const current = window.location.pathname;
+      if (!['/login', '/register', '/'].includes(current)) {
+        window.location.href = '/login';
+      }
       return;
     }
-    try {
-      provider = new ethers.BrowserProvider(window.ethereum);
-      signer = await provider.getSigner();
-      userWalletAddress = await signer.getAddress();
-      isWalletConnected = true;
-      await checkGanacheNetwork();
-      await initContract();
-      updateWalletUI(userWalletAddress);
-      window.dispatchEvent(
-        new CustomEvent("walletConnected", {
-          detail: { address: userWalletAddress },
-        }),
-      );
-    } catch (error) {
-      console.error("Account change error:", error);
+
+    const newAddress = accounts[0];
+    // ✅ Ignore if it's the same account we already have
+    if (userWalletAddress && newAddress.toLowerCase() === userWalletAddress.toLowerCase()) {
+      console.log("Same account, ignoring.");
+      return;
+    }
+
+    // New account – clear session and redirect
+    console.log("New account detected – clearing session.");
+    if (typeof window.Auth?.clearAuthData === 'function') {
+      window.Auth.clearAuthData();
+    }
+    userWalletAddress = null;
+    signer = null;
+    contractInstance = null;
+    isWalletConnected = false;
+    syncWalletToStorage(null);
+    updateWalletUI(null);
+    if (!['/login', '/register', '/'].includes(window.location.pathname)) {
+      window.location.href = '/login';
     }
   });
 
-  window.ethereum.on("chainChanged", async () => {
-    console.log("⛓️ MetaMask network changed.");
+  window.ethereum.on("chainChanged", () => {
+    console.log("⛓️ Network changed – reloading.");
+    if (typeof window.Auth?.clearAuthData === 'function') {
+      window.Auth.clearAuthData();
+    }
     window.location.reload();
   });
 }
 
 async function initializeWeb3() {
-  try {
-    if (!window.ethereum) {
-      console.warn("MetaMask not installed.");
-      return;
-    }
-    setupWalletListeners();
-    if (window.ethereum.selectedAddress) {
+  if (!window.ethereum) {
+    console.warn("MetaMask not installed.");
+    return;
+  }
+  setupListeners();
+
+  const currentPath = window.location.pathname;
+  const isPublic = ['/', '/login', '/register'].includes(currentPath) ||
+    currentPath.startsWith('/login') || currentPath.startsWith('/register');
+
+  if (isPublic) {
+    console.log("Public page – no auto-connect.");
+    return;
+  }
+
+  // Protected page – try silent restore
+  const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+  if (accounts && accounts.length > 0) {
+    try {
       provider = new ethers.BrowserProvider(window.ethereum);
       signer = await provider.getSigner();
-      userWalletAddress = await signer.getAddress();
+      userWalletAddress = accounts[0];
       isWalletConnected = true;
-      try {
-        await checkGanacheNetwork();
-        await initContract();
-        updateWalletUI(userWalletAddress);
-        window.dispatchEvent(
-          new CustomEvent("walletConnected", {
-            detail: { address: userWalletAddress },
-          }),
-        );
-      } catch (error) {
-        console.error("Auto initialization failed:", error);
+      syncWalletToStorage(userWalletAddress);
+      updateWalletUI(userWalletAddress);
+      await initContract();
+      console.log("✅ Session restored.");
+    } catch (err) {
+      console.error("Session restoration failed:", err);
+      // Clear auth and redirect
+      if (typeof window.Auth?.clearAuthData === 'function') {
+        window.Auth.clearAuthData();
       }
+      syncWalletToStorage(null);
+      if (!isPublic) window.location.href = '/login';
     }
-  } catch (error) {
-    console.error("Web3 initialization failed:", error);
+  } else {
+    console.log("No account – redirect to login.");
+    if (!isPublic) window.location.href = '/login';
   }
 }
 
@@ -636,30 +697,25 @@ function handleBlockchainError(error, defaultMessage) {
   showToast(message, "error");
 }
 
-function showToast(message, type = "info") {
-  if (
-    typeof window.showToast === "function" &&
-    window.showToast !== showToast
-  ) {
-    window.showToast(message, type);
-    return;
+function showToast(msg, type = "info") {
+  if (typeof window.showToast === 'function') {
+    window.showToast(msg, type);
+  } else {
+    console.log(`[${type}] ${msg}`);
   }
-  console.log(`[${type.toUpperCase()}]`, message);
 }
 
 /* ============================================================
-   BoonBoon
+   MILESTONE OPERATIONS
    ============================================================ */
+
 async function submitMilestone(agreementId, milestoneId) {
   try {
     if (!isConnected()) await connectWallet();
 
     const contract = getContract();
 
-    const transaction = await contract.submitMilestone(
-      agreementId,
-      milestoneId
-    );
+    const transaction = await contract.submitMilestone(agreementId, milestoneId);
 
     console.log("Submit milestone transaction:", transaction.hash);
 
@@ -685,10 +741,7 @@ async function verifyMilestone(agreementId, milestoneId) {
 
     const contract = getContract();
 
-    const transaction = await contract.verifyMilestone(
-      agreementId,
-      milestoneId
-    );
+    const transaction = await contract.verifyMilestone(agreementId, milestoneId);
 
     console.log("Verify milestone transaction:", transaction.hash);
 
@@ -714,10 +767,7 @@ async function releasePayment(agreementId, milestoneId) {
 
     const contract = getContract();
 
-    const transaction = await contract.releasePayment(
-      agreementId,
-      milestoneId
-    );
+    const transaction = await contract.releasePayment(agreementId, milestoneId);
 
     console.log("Release payment transaction:", transaction.hash);
 
@@ -736,248 +786,174 @@ async function releasePayment(agreementId, milestoneId) {
     throw error;
   }
 }
-
 
 /* ============================================================
-   BoonBoon
+   ADDITIONAL QUERY FUNCTIONS (public network ready)
    ============================================================ */
-async function submitMilestone(agreementId, milestoneId) {
-  try {
-    if (!isConnected()) await connectWallet();
 
-    const contract = getContract();
-
-    const transaction = await contract.submitMilestone(
-      agreementId,
-      milestoneId
-    );
-
-    console.log("Submit milestone transaction:", transaction.hash);
-
-    const receipt = await transaction.wait();
-
-    console.log("Milestone submitted.");
-
-    return {
-      success: true,
-      transactionHash: transaction.hash,
-      receipt: receipt,
-    };
-  } catch (error) {
-    console.error("Submit milestone failed:", error);
-    handleBlockchainError(error, "Failed to submit milestone.");
-    throw error;
-  }
-}
-
-async function verifyMilestone(agreementId, milestoneId) {
-  try {
-    if (!isConnected()) await connectWallet();
-
-    const contract = getContract();
-
-    const transaction = await contract.verifyMilestone(
-      agreementId,
-      milestoneId
-    );
-
-    console.log("Verify milestone transaction:", transaction.hash);
-
-    const receipt = await transaction.wait();
-
-    console.log("Milestone verified.");
-
-    return {
-      success: true,
-      transactionHash: transaction.hash,
-      receipt: receipt,
-    };
-  } catch (error) {
-    console.error("Verify milestone failed:", error);
-    handleBlockchainError(error, "Failed to verify milestone.");
-    throw error;
-  }
-}
-
-async function releasePayment(agreementId, milestoneId) {
-  try {
-    if (!isConnected()) await connectWallet();
-
-    const contract = getContract();
-
-    const transaction = await contract.releasePayment(
-      agreementId,
-      milestoneId
-    );
-
-    console.log("Release payment transaction:", transaction.hash);
-
-    const receipt = await transaction.wait();
-
-    console.log("Payment released.");
-
-    return {
-      success: true,
-      transactionHash: transaction.hash,
-      receipt: receipt,
-    };
-  } catch (error) {
-    console.error("Release payment failed:", error);
-    handleBlockchainError(error, "Failed to release payment.");
-    throw error;
-  }
-}
-
-
-// ─── GET ALL AGREEMENTS FOR A SHIPPER (on‑chain) ──────
+// ─── GET ALL AGREEMENTS FOR A SHIPPER ──────────────────────
 async function getAgreementsByShipper(shipperAddress) {
-  try {
-    if (!isConnected()) await connectWallet();
-    if (!isContractReady()) await initContract();
-    const contract = getContract();
+  try {
+    if (!isConnected()) await connectWallet();
+    const contract = getContract();
 
-    const count = Number(await contract.getAgreementCount());
-    const agreements = [];
+    const count = Number(await contract.getAgreementCount());
+    const agreements = [];
+    const shipperLower = shipperAddress.toLowerCase();
 
-    for (let i = 1; i <= count; i++) {
-      const ag = await contract.getAgreement(i);
-      // ag[1] is the shipper address (adjust if your struct order differs)
-      if (ag.shipper.toLowerCase() === shipperAddress.toLowerCase()) {
-        agreements.push({
-          id: i,
-          shipper: ag.shipper,
-          carrier: ag.carrier,
-          escrowAmountWei: ag.escrowAmount.toString(),
-          escrowAmountETH: ethers.formatEther(ag.escrowAmount),
-          releasedAmountWei: ag.releasedAmount.toString(),
-          releasedAmountETH: ethers.formatEther(ag.releasedAmount),
-          deadline: Number(ag.deadline),
-          status: Number(ag.status),
-          statusName: agreementStatusToName(Number(ag.status)),
-          createdAt: Number(ag.createdAt),
-          carrierAccepted: ag.carrierAccepted,
-          refundExecuted: ag.refundExecuted,
-          milestoneCount: Number(ag.milestoneCount),
-        });
-      }
-    }
-    return agreements;
-  } catch (error) {
-    console.error("❌ Failed to get agreements by shipper:", error);
-    throw error;
-  }
+    for (let i = 1; i <= count; i++) {
+      try {
+        const ag = await contract.getAgreement(i);
+        if (ag.shipper.toLowerCase() === shipperLower) {
+          agreements.push({
+            id: i,
+            shipper: ag.shipper,
+            carrier: ag.carrier,
+            escrowAmountWei: ag.escrowAmount.toString(),
+            escrowAmountETH: ethers.formatEther(ag.escrowAmount),
+            releasedAmountWei: ag.releasedAmount.toString(),
+            releasedAmountETH: ethers.formatEther(ag.releasedAmount),
+            deadline: Number(ag.deadline),
+            status: Number(ag.status),
+            statusName: agreementStatusToName(Number(ag.status)),
+            createdAt: Number(ag.createdAt),
+            carrierAccepted: ag.carrierAccepted,
+            refundExecuted: ag.refundExecuted,
+            milestoneCount: Number(ag.milestoneCount),
+          });
+        }
+      } catch (innerErr) {
+        // Some agreements might be invalid or not exist; skip them.
+        console.warn(`Skipping agreement ${i}:`, innerErr.message);
+      }
+    }
+    return agreements;
+  } catch (error) {
+    console.error("❌ Failed to get agreements by shipper:", error);
+    throw error;
+  }
 }
 
 window.getAgreementsByShipper = getAgreementsByShipper;
 
-// ─── GET ALL CARRIERS FROM AGREEMENTS ──────────────────
+// ─── GET ALL CARRIERS FROM AGREEMENTS ──────────────────────
 async function getCarriersFromAgreements() {
-  try {
-    if (!isConnected()) await connectWallet();
-    if (!isContractReady()) await initContract();
-    const contract = getContract();
+  try {
+    if (!isConnected()) await connectWallet();
+    const contract = getContract();
 
-    const count = Number(await contract.getAgreementCount());
-    const carrierSet = new Set();
+    const count = Number(await contract.getAgreementCount());
+    const carrierSet = new Set();
 
-    for (let i = 1; i <= count; i++) {
-      const ag = await contract.getAgreement(i);
-      carrierSet.add(ag.carrier.toLowerCase());
-    }
-    return Array.from(carrierSet);
-  } catch (error) {
-    console.error("❌ Failed to get carriers from agreements:", error);
-    throw error;
-  }
+    for (let i = 1; i <= count; i++) {
+      try {
+        const ag = await contract.getAgreement(i);
+        carrierSet.add(ag.carrier.toLowerCase());
+      } catch (innerErr) {
+        console.warn(`Skipping agreement ${i}:`, innerErr.message);
+      }
+    }
+    return Array.from(carrierSet);
+  } catch (error) {
+    console.error("❌ Failed to get carriers from agreements:", error);
+    throw error;
+  }
 }
 
 window.getCarriersFromAgreements = getCarriersFromAgreements;
 
-// ─── GET AGREEMENTS FOR A WALLET (shipper OR carrier) ──
+// ─── GET AGREEMENTS FOR A WALLET (shipper OR carrier) ──────
 async function getAgreementsByWallet(walletAddress) {
-  try {
-    if (!isConnected()) await connectWallet();
-    if (!isContractReady()) await initContract();
-    const contract = getContract();
+  try {
+    if (!isConnected()) await connectWallet();
+    const contract = getContract();
 
-    const count = Number(await contract.getAgreementCount());
-    const agreements = [];
+    const count = Number(await contract.getAgreementCount());
+    const agreements = [];
+    const targetLower = walletAddress.toLowerCase();
 
-    for (let i = 1; i <= count; i++) {
-      const ag = await contract.getAgreement(i);
-      const shipper = ag.shipper.toLowerCase();
-      const carrier = ag.carrier.toLowerCase();
-      const target = walletAddress.toLowerCase();
-      if (shipper === target || carrier === target) {
-        agreements.push({
-          id: i,
-          shipper: ag.shipper,
-          carrier: ag.carrier,
-          escrowAmountWei: ag.escrowAmount.toString(),
-          escrowAmountETH: ethers.formatEther(ag.escrowAmount),
-          releasedAmountWei: ag.releasedAmount.toString(),
-          releasedAmountETH: ethers.formatEther(ag.releasedAmount),
-          deadline: Number(ag.deadline),
-          status: Number(ag.status),
-          statusName: agreementStatusToName(Number(ag.status)),
-          createdAt: Number(ag.createdAt),
-          carrierAccepted: ag.carrierAccepted,
-          refundExecuted: ag.refundExecuted,
-          milestoneCount: Number(ag.milestoneCount),
-        });
-      }
-    }
-    return agreements;
-  } catch (error) {
-    console.error("❌ Failed to get agreements by wallet:", error);
-    throw error;
-  }
+    for (let i = 1; i <= count; i++) {
+      try {
+        const ag = await contract.getAgreement(i);
+        const shipper = ag.shipper.toLowerCase();
+        const carrier = ag.carrier.toLowerCase();
+        if (shipper === targetLower || carrier === targetLower) {
+          agreements.push({
+            id: i,
+            shipper: ag.shipper,
+            carrier: ag.carrier,
+            escrowAmountWei: ag.escrowAmount.toString(),
+            escrowAmountETH: ethers.formatEther(ag.escrowAmount),
+            releasedAmountWei: ag.releasedAmount.toString(),
+            releasedAmountETH: ethers.formatEther(ag.releasedAmount),
+            deadline: Number(ag.deadline),
+            status: Number(ag.status),
+            statusName: agreementStatusToName(Number(ag.status)),
+            createdAt: Number(ag.createdAt),
+            carrierAccepted: ag.carrierAccepted,
+            refundExecuted: ag.refundExecuted,
+            milestoneCount: Number(ag.milestoneCount),
+          });
+        }
+      } catch (innerErr) {
+        console.warn(`Skipping agreement ${i}:`, innerErr.message);
+      }
+    }
+    return agreements;
+  } catch (error) {
+    console.error("❌ Failed to get agreements by wallet:", error);
+    throw error;
+  }
 }
+
 window.getAgreementsByWallet = getAgreementsByWallet;
 
-// ─── GET PENDING AGREEMENTS FOR A CARRIER ──────────────
+// ─── GET PENDING AGREEMENTS FOR A CARRIER ──────────────────
 async function getPendingAgreementsForCarrier(carrierAddress) {
-  try {
-    if (!isConnected()) await connectWallet();
-    if (!isContractReady()) await initContract();
-    const contract = getContract();
+  try {
+    if (!isConnected()) await connectWallet();
+    const contract = getContract();
 
-    const count = Number(await contract.getAgreementCount());
-    const pending = [];
-for (let i = 1; i <= count; i++) {
-      const ag = await contract.getAgreement(i);
-      const carrier = ag.carrier.toLowerCase();
-      const target = carrierAddress.toLowerCase();
-      const status = Number(ag.status);
-      // status 0 = PendingAcceptance (check your contract's enum)
-      if (carrier === target && status === 0) {
-        pending.push({
-          id: i,
-          shipper: ag.shipper,
-          carrier: ag.carrier,
-          escrowAmountWei: ag.escrowAmount.toString(),
-          escrowAmountETH: ethers.formatEther(ag.escrowAmount),
-          deadline: Number(ag.deadline),
-          status: status,
-          statusName: agreementStatusToName(status),
-          milestoneCount: Number(ag.milestoneCount),
-          // we don't have cargo/weight/route on-chain – those are off-chain
-        });
-      }
-    }
-    return pending;
-  } catch (error) {
-    console.error("❌ Failed to get pending agreements for carrier:", error);
-    throw error;
-  }
+    const count = Number(await contract.getAgreementCount());
+    const pending = [];
+    const carrierLower = carrierAddress.toLowerCase();
+
+    for (let i = 1; i <= count; i++) {
+      try {
+        const ag = await contract.getAgreement(i);
+        const carrier = ag.carrier.toLowerCase();
+        const status = Number(ag.status);
+        // status 0 = PendingAcceptance (check your contract's enum)
+        if (carrier === carrierLower && status === 0) {
+          pending.push({
+            id: i,
+            shipper: ag.shipper,
+            carrier: ag.carrier,
+            escrowAmountWei: ag.escrowAmount.toString(),
+            escrowAmountETH: ethers.formatEther(ag.escrowAmount),
+            deadline: Number(ag.deadline),
+            status: status,
+            statusName: agreementStatusToName(status),
+            milestoneCount: Number(ag.milestoneCount),
+          });
+        }
+      } catch (innerErr) {
+        console.warn(`Skipping agreement ${i}:`, innerErr.message);
+      }
+    }
+    return pending;
+  } catch (error) {
+    console.error("❌ Failed to get pending agreements for carrier:", error);
+    throw error;
+  }
 }
+
 window.getPendingAgreementsForCarrier = getPendingAgreementsForCarrier;
+
 /* ============================================================
    GLOBAL FUNCTIONS
    ============================================================ */
 
-// Keep window.userWalletAddress in sync with the internal state so
-// agreement/deposit pages can send it as the x-wallet-address header.
 Object.defineProperty(window, "userWalletAddress", {
   get: () => userWalletAddress,
   set: (value) => {
@@ -991,7 +967,8 @@ window.initContract = initContract;
 window.getContract = getContract;
 window.getWalletAddress = getWalletAddress;
 window.isConnected = isConnected;
-window.checkGanacheNetwork = checkGanacheNetwork;
+window.reconnectWeb3 = reconnectWeb3;
+window.truncateAddress = truncateAddress;
 window.registerBlockchainUser = registerBlockchainUser;
 window.blockchainLogin = blockchainLogin;
 window.checkUserRegistered = checkUserRegistered;
@@ -1011,10 +988,13 @@ window.roleNumberToName = roleNumberToName;
 window.agreementStatusToName = agreementStatusToName;
 window.milestoneStatusToName = milestoneStatusToName;
 window.paymentStatusToName = paymentStatusToName;
+window.markExpired = markExpired;
+window.refund = refund;
 
 /* ============================================================
    START WEB3
    ============================================================ */
+window.isInitializing = isInitializing;
 document.addEventListener("DOMContentLoaded", initializeWeb3);
 window.__CONFIG = CONFIG;
 window.__loadContractABI = loadContractABI;

@@ -57,11 +57,6 @@ router.get("/history.html", (req, res) => {
 // Auth routes (login/register) – public
 router.use("/api/auth", authRoutes);
 
-// =====================================================
-// PROTECTED API ROUTES (all require authentication)
-// =====================================================
-router.use("/api", authenticate); // 🔒 applies to all routes below
-
 router.use("/api/agreements", agreementRoutes);
 router.use("/api/users", userRoutes);
 router.use("/api/payment", paymentRoutes);
