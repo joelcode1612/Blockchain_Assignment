@@ -23,6 +23,7 @@ async function loadCarriersFromBlockchain() {
   if (!carrierSelect) return;
 
   try {
+    // Check wallet connection (optional, but good for UX)
     const walletAddress = localStorage.getItem("traxenWallet");
     if (!walletAddress) {
       carrierSelect.innerHTML = `<option value="">Please connect your wallet first</option>`;
@@ -33,41 +34,38 @@ async function loadCarriersFromBlockchain() {
 
     carrierSelect.innerHTML = `<option value="">Loading carriers...</option>`;
     if (carrierStatus)
-      carrierStatus.textContent = "Loading carriers from blockchain...";
+      carrierStatus.textContent = "Loading carriers from database...";
 
-    // ─── Fetch carriers from contract ──────────────────────
-    if (typeof window.getCarriersFromAgreements !== "function") {
-      throw new Error(
-        "getCarriersFromAgreements not available. Is web3_integration loaded?",
-      );
+    // ─── Fetch carriers from the database API ──────────────
+    const response = await fetch("/api/users/carriers");
+    if (!response.ok) {
+      throw new Error(`Failed to fetch carriers: ${response.statusText}`);
     }
+    const carriers = await response.json(); // array of { wallet_address, display_name, email, ... }
 
-    const carrierAddresses = await window.getCarriersFromAgreements();
+    console.log("Carriers from DB:", carriers);
 
-    console.log("Available carriers (on-chain):", carrierAddresses);
-
-    if (!Array.isArray(carrierAddresses) || carrierAddresses.length === 0) {
+    if (!Array.isArray(carriers) || carriers.length === 0) {
       carrierSelect.innerHTML = `<option value="">No carriers available</option>`;
       if (carrierStatus)
         carrierStatus.textContent =
-          "No carriers have participated in any agreement yet.";
+          "No carriers are registered in the system yet.";
       return;
     }
 
     carrierSelect.innerHTML = `<option value="">-- Select a carrier --</option>`;
-    carrierAddresses.forEach((address) => {
+    carriers.forEach((carrier) => {
       const option = document.createElement("option");
-      option.value = address;
-      const shortWallet =
-        address.length > 12
-          ? `${address.substring(0, 8)}...${address.substring(address.length - 6)}`
-          : address;
-      option.textContent = `Carrier (${shortWallet})`;
+      option.value = carrier.wallet_address; // store the wallet address
+      const display =
+        carrier.display_name || carrier.wallet_address.substring(0, 8) + "...";
+      const email = carrier.email ? ` (${carrier.email})` : "";
+      option.textContent = `${display}${email}`;
       carrierSelect.appendChild(option);
     });
 
     if (carrierStatus) {
-      carrierStatus.textContent = `${carrierAddresses.length} carrier(s) available.`;
+      carrierStatus.textContent = `${carriers.length} carrier(s) available.`;
     }
   } catch (error) {
     console.error("❌ Failed to load carriers:", error);
@@ -94,9 +92,8 @@ function goStep(n) {
   if (n === 3) fillReview();
 }
 
-// ─── Step Navigation with Validation ────────────────────
-function nextFromStep1() {
-  // Validate Step 1 fields before moving to milestones
+async function nextFromStep1() {
+  // 1. Validate basic fields
   const nameInput = document.getElementById("f-name");
   const carrierSelect = document.getElementById("f-carrier");
   const carrierOption = carrierSelect && carrierSelect.selectedOptions[0];
@@ -113,9 +110,34 @@ function nextFromStep1() {
   }
 
   if (!validatePayloadValue()) return;
-
   if (!validateDeadline()) return;
 
+  // 2. Blockchain verification of the selected carrier
+  const selectedAddress = carrierOption.value;
+  try {
+    // Check if the address is registered at all
+    const isRegistered = await window.checkUserRegistered(selectedAddress);
+    if (!isRegistered) {
+      alert(
+        "The selected carrier is not registered on the blockchain. Please choose another.",
+      );
+      return;
+    }
+
+    // Check that the role is actually Carrier
+    const roleInfo = await window.getUserRole(selectedAddress);
+    if (roleInfo.role !== "Carrier") {
+      alert(
+        "The selected address is not a Carrier on the blockchain. Please choose another.",
+      );
+      return;
+    }
+  } catch (error) {
+    alert("Blockchain verification failed: " + error.message);
+    return;
+  }
+
+  // 3. All validations passed – proceed to step 2
   goStep(2);
 }
 
@@ -916,7 +938,7 @@ function initCreateAgreement() {
   loadWalletBalance().then(() => {
     validatePayloadValue();
   });
-  loadCarriersFromBlockchain(); 
+  loadCarriersFromBlockchain();
   validateDeadline();
 
   const valueInput = document.getElementById("f-value");

@@ -12,6 +12,6 @@ router.get("/me", authenticate, userController.getProfile);
 router.put("/me", authenticate, userController.updateProfile);
 
 // GET /api/users/carriers  ->  Get all registered carriers for shipper selection
-router.get("/carriers", authenticate, userController.listCarriers);
+router.get("/carriers", userController.getCarriers);
 
 module.exports = router;

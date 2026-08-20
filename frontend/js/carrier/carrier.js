@@ -29,7 +29,7 @@
       sub: "Submit and verify delivery milestones.",
     },
     history: {
-      file: "../../pages/shared/history.html",
+      file: "/history.html",
       title: "Transaction History",
       sub: "Complete record of all your transactions.",
     },
@@ -80,7 +80,7 @@
       }
       await loadDashboard();
       // 🟢 Validate session after dashboard loads
-      if (window.Auth && typeof window.Auth.ensureFullSession === 'function') {
+      if (window.Auth && typeof window.Auth.ensureFullSession === "function") {
         window.Auth.ensureFullSession();
       }
       return;
@@ -118,7 +118,7 @@
       }
 
       // 🟢 Validate session after loading any page
-      if (window.Auth && typeof window.Auth.ensureFullSession === 'function') {
+      if (window.Auth && typeof window.Auth.ensureFullSession === "function") {
         window.Auth.ensureFullSession();
       }
     } catch (error) {
@@ -256,9 +256,19 @@
 
   // ─── Fill user info into sidebar ──────────────────────────
   async function fillUserInfo() {
+    // If Session module is available, use it directly
+    if (window.Session) {
+      const session = window.Session.getSession();
+      const name =
+        session.name || session.wallet?.slice(0, 6) + "..." || "Carrier";
+      const role = session.role || "Carrier";
+      updateSidebar(name, role);
+      return;
+    }
+
+    // Fallback: fetch from API (as before)
     const walletAddress = localStorage.getItem("traxenWallet");
     if (!walletAddress) return;
-
     try {
       const userRes = await fetch("/api/users/me", {
         headers: { "x-wallet-address": walletAddress },
@@ -271,25 +281,28 @@
         "Carrier";
       const role =
         userData.role || localStorage.getItem("traxenUserRole") || "Carrier";
-
-      const miniName = document.querySelector(".mini-name");
-      if (miniName) miniName.textContent = name;
-      const miniRole = document.querySelector(".mini-role");
-      if (miniRole) miniRole.textContent = role;
-      const initials = name.substring(0, 2).toUpperCase();
-      document
-        .querySelectorAll(".mini-avatar")
-        .forEach((el) => (el.textContent = initials));
+      updateSidebar(name, role);
     } catch (error) {
       console.error("Error loading user info:", error);
     }
+  }
+
+  function updateSidebar(name, role) {
+    const miniName = document.querySelector(".mini-name");
+    if (miniName) miniName.textContent = name;
+    const miniRole = document.querySelector(".mini-role");
+    if (miniRole) miniRole.textContent = role;
+    const initials = name.substring(0, 2).toUpperCase();
+    document
+      .querySelectorAll(".mini-avatar")
+      .forEach((el) => (el.textContent = initials));
   }
 
   document.addEventListener("DOMContentLoaded", async () => {
     const walletAddress = localStorage.getItem("traxenWallet");
     if (!walletAddress) {
       // 🟢 Use Auth.ensureFullSession to handle missing session
-      if (window.Auth && typeof window.Auth.ensureFullSession === 'function') {
+      if (window.Auth && typeof window.Auth.ensureFullSession === "function") {
         window.Auth.ensureFullSession();
       } else {
         window.location.href = "/login";
@@ -299,7 +312,7 @@
     await fillUserInfo();
     await loadPage(initial);
     // 🟢 Validate session after the initial page load
-    if (window.Auth && typeof window.Auth.ensureFullSession === 'function') {
+    if (window.Auth && typeof window.Auth.ensureFullSession === "function") {
       window.Auth.ensureFullSession();
     }
   });

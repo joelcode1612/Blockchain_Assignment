@@ -141,6 +141,18 @@ const userController = {
         .json({ success: false, error: "Failed to load carriers" });
     }
   },
+
+  async getCarriers(req, res) {
+    try {
+      const carriers = await User.findAllCarriers();
+      return res.status(200).json(carriers);
+    } catch (error) {
+      console.error("List carriers error:", error);
+      return res
+        .status(500)
+        .json({ success: false, error: "Failed to load carriers" });
+    }
+  },
 };
 
 module.exports = userController;

@@ -33,15 +33,21 @@ let contractInstance = null;
 let userWalletAddress = null;
 let isWalletConnected = false;
 let isInitializing = false;
+let isConnecting = false;
 
 async function reconnectWeb3() {
   if (isConnected()) return true;
   if (userWalletAddress && !contractInstance) {
-    try { await initContract(); return true; } catch (e) { return false; }
+    try {
+      await initContract();
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
   if (!window.ethereum) return false;
   try {
-    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+    const accounts = await window.ethereum.request({ method: "eth_accounts" });
     if (accounts && accounts.length > 0) {
       provider = new ethers.BrowserProvider(window.ethereum);
       signer = await provider.getSigner();
@@ -49,11 +55,17 @@ async function reconnectWeb3() {
       isWalletConnected = true;
       syncWalletToStorage(userWalletAddress);
       updateWalletUI(userWalletAddress);
-      window.dispatchEvent(new CustomEvent("walletConnected", { detail: { address: userWalletAddress } }));
+      window.dispatchEvent(
+        new CustomEvent("walletConnected", {
+          detail: { address: userWalletAddress },
+        }),
+      );
       await initContract();
       return true;
     }
-  } catch (e) { console.error("Reconnect failed:", e); }
+  } catch (e) {
+    console.error("Reconnect failed:", e);
+  }
   return false;
 }
 window.reconnectWeb3 = reconnectWeb3;
@@ -115,30 +127,60 @@ async function checkNetwork() {
    CONNECT METAMASK
    ============================================================ */
 async function connectWallet() {
-  if (!window.ethereum) throw new Error("MetaMask not installed.");
-  provider = new ethers.BrowserProvider(window.ethereum);
-  await provider.send("wallet_requestPermissions", [{ eth_accounts: {} }]);
-  const accounts = await provider.send("eth_requestAccounts", []);
-  if (!accounts || accounts.length === 0) throw new Error("No account selected.");
+  // 🔒 Prevent concurrent calls
+  if (isConnecting) {
+    console.warn("⏳ Connection already in progress. Please wait.");
+    return;
+  }
+  isConnecting = true;
 
-  signer = await provider.getSigner();
-  userWalletAddress = await signer.getAddress();
-  isWalletConnected = true;
-  syncWalletToStorage(userWalletAddress);
-  await initContract();
-  updateWalletUI(userWalletAddress);
-  showToast("Wallet connected: " + truncateAddress(userWalletAddress), "success");
-  window.dispatchEvent(new CustomEvent("walletConnected", { detail: { address: userWalletAddress } }));
-  return userWalletAddress;
+  try {
+    if (!window.ethereum) throw new Error("MetaMask not installed.");
+    provider = new ethers.BrowserProvider(window.ethereum);
+    await provider.send("wallet_requestPermissions", [{ eth_accounts: {} }]);
+    const accounts = await provider.send("eth_requestAccounts", []);
+    if (!accounts || accounts.length === 0)
+      throw new Error("No account selected.");
+
+    signer = await provider.getSigner();
+    userWalletAddress = await signer.getAddress();
+    isWalletConnected = true;
+    syncWalletToStorage(userWalletAddress);
+    await initContract();
+    updateWalletUI(userWalletAddress);
+    showToast(
+      "Wallet connected: " + truncateAddress(userWalletAddress),
+      "success",
+    );
+    window.dispatchEvent(
+      new CustomEvent("walletConnected", {
+        detail: { address: userWalletAddress },
+      }),
+    );
+    return userWalletAddress;
+  } catch (error) {
+    console.error("❌ Connect failed:", error);
+    // If the error is "pending request", show a user-friendly message
+    if (error.code === -32002) {
+      showToast(
+        "MetaMask is already waiting for your confirmation. Please check the MetaMask popup.",
+        "warning",
+      );
+    } else {
+      showToast(error.message || "Failed to connect wallet.", "error");
+    }
+    throw error;
+  } finally {
+    isConnecting = false;
+  }
 }
-
 
 // ─── Sync wallet to localStorage (for auth.js) ──────────
 function syncWalletToStorage(address) {
   if (address) {
-    localStorage.setItem('traxenWallet', address);
+    localStorage.setItem("traxenWallet", address);
   } else {
-    localStorage.removeItem('traxenWallet');
+    localStorage.removeItem("traxenWallet");
   }
 }
 
@@ -164,7 +206,6 @@ async function initContract() {
   }
 }
 
-
 /* ============================================================
    GETTERS
    ============================================================ */
@@ -173,8 +214,12 @@ function getContract() {
   if (!contractInstance) throw new Error("Contract not initialised.");
   return contractInstance;
 }
-function getWalletAddress() { return userWalletAddress; }
-function isConnected() { return userWalletAddress !== null && contractInstance !== null; }
+function getWalletAddress() {
+  return userWalletAddress;
+}
+function isConnected() {
+  return userWalletAddress !== null && contractInstance !== null;
+}
 
 /* ============================================================
    USER MODULE
@@ -343,7 +388,7 @@ async function createAgreement(
   escrowAmount,
   deadline,
   milestoneDescriptions,
-  paymentPercentages
+  paymentPercentages,
 ) {
   try {
     if (!isConnected()) await connectWallet();
@@ -355,7 +400,7 @@ async function createAgreement(
       escrowWei,
       deadline,
       milestoneDescriptions,
-      paymentPercentages
+      paymentPercentages,
     );
 
     console.log("⏳ Agreement transaction:", transaction.hash);
@@ -556,18 +601,21 @@ async function getEscrowBalance(agreementId) {
    ============================================================ */
 
 function updateWalletUI(address) {
-  const els = document.querySelectorAll(".wallet-addr, .wallet-chip, .connect-wallet-btn");
-  els.forEach(el => {
+  const els = document.querySelectorAll(
+    ".wallet-addr, .wallet-chip, .connect-wallet-btn",
+  );
+  els.forEach((el) => {
     if (address) {
       el.classList.remove("disconnected");
       el.classList.add("connected");
-      if (el.classList.contains("wallet-addr")) el.textContent = truncateAddress(address);
+      if (el.classList.contains("wallet-addr"))
+        el.textContent = truncateAddress(address);
     } else {
       el.classList.remove("connected");
       el.classList.add("disconnected");
     }
   });
-  document.querySelectorAll("[data-wallet-address]").forEach(e => {
+  document.querySelectorAll("[data-wallet-address]").forEach((e) => {
     e.textContent = address ? truncateAddress(address) : "Not connected";
   });
 }
@@ -575,7 +623,9 @@ function updateWalletUI(address) {
 function truncateAddress(address) {
   if (!address) return "";
   if (address.length <= 10) return address;
-  return address.substring(0, 6) + "..." + address.substring(address.length - 4);
+  return (
+    address.substring(0, 6) + "..." + address.substring(address.length - 4)
+  );
 }
 
 function setupListeners() {
@@ -586,7 +636,7 @@ function setupListeners() {
 
     // If no accounts -> disconnected
     if (accounts.length === 0) {
-      if (typeof window.Auth?.clearAuthData === 'function') {
+      if (typeof window.Auth?.clearAuthData === "function") {
         window.Auth.clearAuthData();
       }
       userWalletAddress = null;
@@ -596,22 +646,25 @@ function setupListeners() {
       syncWalletToStorage(null);
       updateWalletUI(null);
       const current = window.location.pathname;
-      if (!['/login', '/register', '/'].includes(current)) {
-        window.location.href = '/login';
+      if (!["/login", "/register", "/"].includes(current)) {
+        window.location.href = "/login";
       }
       return;
     }
 
     const newAddress = accounts[0];
     // ✅ Ignore if it's the same account we already have
-    if (userWalletAddress && newAddress.toLowerCase() === userWalletAddress.toLowerCase()) {
+    if (
+      userWalletAddress &&
+      newAddress.toLowerCase() === userWalletAddress.toLowerCase()
+    ) {
       console.log("Same account, ignoring.");
       return;
     }
 
     // New account – clear session and redirect
     console.log("New account detected – clearing session.");
-    if (typeof window.Auth?.clearAuthData === 'function') {
+    if (typeof window.Auth?.clearAuthData === "function") {
       window.Auth.clearAuthData();
     }
     userWalletAddress = null;
@@ -620,14 +673,14 @@ function setupListeners() {
     isWalletConnected = false;
     syncWalletToStorage(null);
     updateWalletUI(null);
-    if (!['/login', '/register', '/'].includes(window.location.pathname)) {
-      window.location.href = '/login';
+    if (!["/login", "/register", "/"].includes(window.location.pathname)) {
+      window.location.href = "/login";
     }
   });
 
   window.ethereum.on("chainChanged", () => {
     console.log("⛓️ Network changed – reloading.");
-    if (typeof window.Auth?.clearAuthData === 'function') {
+    if (typeof window.Auth?.clearAuthData === "function") {
       window.Auth.clearAuthData();
     }
     window.location.reload();
@@ -642,8 +695,10 @@ async function initializeWeb3() {
   setupListeners();
 
   const currentPath = window.location.pathname;
-  const isPublic = ['/', '/login', '/register'].includes(currentPath) ||
-    currentPath.startsWith('/login') || currentPath.startsWith('/register');
+  const isPublic =
+    ["/", "/login", "/register"].includes(currentPath) ||
+    currentPath.startsWith("/login") ||
+    currentPath.startsWith("/register");
 
   if (isPublic) {
     console.log("Public page – no auto-connect.");
@@ -651,7 +706,7 @@ async function initializeWeb3() {
   }
 
   // Protected page – try silent restore
-  const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+  const accounts = await window.ethereum.request({ method: "eth_accounts" });
   if (accounts && accounts.length > 0) {
     try {
       provider = new ethers.BrowserProvider(window.ethereum);
@@ -665,15 +720,15 @@ async function initializeWeb3() {
     } catch (err) {
       console.error("Session restoration failed:", err);
       // Clear auth and redirect
-      if (typeof window.Auth?.clearAuthData === 'function') {
+      if (typeof window.Auth?.clearAuthData === "function") {
         window.Auth.clearAuthData();
       }
       syncWalletToStorage(null);
-      if (!isPublic) window.location.href = '/login';
+      if (!isPublic) window.location.href = "/login";
     }
   } else {
     console.log("No account – redirect to login.");
-    if (!isPublic) window.location.href = '/login';
+    if (!isPublic) window.location.href = "/login";
   }
 }
 
@@ -698,7 +753,7 @@ function handleBlockchainError(error, defaultMessage) {
 }
 
 function showToast(msg, type = "info") {
-  if (typeof window.showToast === 'function') {
+  if (typeof window.showToast === "function") {
     window.showToast(msg, type);
   } else {
     console.log(`[${type}] ${msg}`);
@@ -715,7 +770,10 @@ async function submitMilestone(agreementId, milestoneId) {
 
     const contract = getContract();
 
-    const transaction = await contract.submitMilestone(agreementId, milestoneId);
+    const transaction = await contract.submitMilestone(
+      agreementId,
+      milestoneId,
+    );
 
     console.log("Submit milestone transaction:", transaction.hash);
 
@@ -741,7 +799,10 @@ async function verifyMilestone(agreementId, milestoneId) {
 
     const contract = getContract();
 
-    const transaction = await contract.verifyMilestone(agreementId, milestoneId);
+    const transaction = await contract.verifyMilestone(
+      agreementId,
+      milestoneId,
+    );
 
     console.log("Verify milestone transaction:", transaction.hash);
 
@@ -950,6 +1011,31 @@ async function getPendingAgreementsForCarrier(carrierAddress) {
 
 window.getPendingAgreementsForCarrier = getPendingAgreementsForCarrier;
 
+async function getAllCarriers() {
+  try {
+    if (!isConnected()) await connectWallet();
+    const contract = getContract();
+
+    // Assuming your contract has a function to get total users
+    // and a function to get user address by index, e.g., getRegisteredUser(index)
+    const totalUsers = Number(await contract.getTotalRegisteredUsers());
+    const carriers = [];
+
+    for (let i = 0; i < totalUsers; i++) {
+      const address = await contract.getRegisteredUser(i);
+      const role = Number(await contract.getRole(address));
+      if (role === 2) {
+        // 2 = Carrier
+        carriers.push(address);
+      }
+    }
+    return carriers;
+  } catch (error) {
+    console.error("Failed to get all carriers:", error);
+    throw error;
+  }
+}
+window.getAllCarriers = getAllCarriers;
 /* ============================================================
    GLOBAL FUNCTIONS
    ============================================================ */

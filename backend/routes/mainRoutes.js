@@ -33,8 +33,6 @@ router.get("/", (req, res) => {
   res.sendFile(path.join(PAGES_DIR, "public/index.html"));
 });
 
-
-
 router.get("/login", (req, res) => {
   res.sendFile(path.join(PAGES_DIR, "public/login.html"));
 });

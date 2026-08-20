@@ -5,12 +5,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Traxen — Shipper Dashboard</title>
-    <link rel="stylesheet" href="../../css/styles.css" />
-    <link rel="stylesheet" href="../../css/dashboard.css" />
-    <link rel="stylesheet" href="../../css/responsive.css" />
-    <link rel="stylesheet" href="../../css/shipper.css" />
-    <link rel="stylesheet" href="../../css/profile.css" />
-    <link rel="stylesheet" href="../../css/shipper_create_agreement.css" />
+    <link rel="stylesheet" href="/css/styles.css" />
+    <link rel="stylesheet" href="/css/dashboard.css" />
+    <link rel="stylesheet" href="/css/responsive.css" />
+    <link rel="stylesheet" href="/css/shipper.css" />
+    <link rel="stylesheet" href="/css/profile.css" />
+    <link rel="stylesheet" href="/css/shipper_create_agreement.css" />
 </head>
 
 <body>
@@ -24,7 +24,7 @@
 
             <nav class="nav-group">
                 <!-- Dashboard -->
-                <a href="shipper.html" class="nav-item active" data-page="dashboard">
+                <a href="/shipper.html" class="nav-item active" data-page="dashboard">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <rect x="3" y="3" width="7" height="7" />
                         <rect x="14" y="3" width="7" height="7" />
@@ -35,7 +35,7 @@
                 </a>
 
                 <!-- Agreements -->
-                <a href="agreements.html" class="nav-item" data-page="agreements">
+                <a href="/agreements.html" class="nav-item" data-page="agreements">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M9 12h6M9 16h6M9 8h6" />
                         <rect x="4" y="4" width="16" height="16" rx="2" />
@@ -44,7 +44,7 @@
                 </a>
 
                 <!-- Create Agreement -->
-                <a href="create_agreement.html" class="nav-item" data-page="create_agreement">
+                <a href="/create_agreement.html" class="nav-item" data-page="create_agreement">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M12 5v14M5 12h14" />
                     </svg>
@@ -52,7 +52,7 @@
                 </a>
 
                 <!-- Escrow Overview -->
-                <a href="deposit_balance.html" class="nav-item" data-page="deposit_balance">
+                <a href="/deposit_balance.html" class="nav-item" data-page="deposit_balance">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="9" />
                         <path d="M12 7v5l3 3" />
@@ -61,7 +61,7 @@
                 </a>
 
                 <!-- Milestone Tracking -->
-                <a href="milestone_release.html" class="nav-item" data-page="milestone_release">
+                <a href="/milestone_release.html" class="nav-item" data-page="milestone_release">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="9" />
                         <path d="M9 12l2 2 4-4" />
@@ -70,7 +70,7 @@
                 </a>
 
                 <!-- Refund Centre -->
-                <a href="refund_expiry.html" class="nav-item" data-page="refund_expiry">
+                <a href="/refund_expiry.html" class="nav-item" data-page="refund_expiry">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="9" />
                         <path d="M12 7v5l3 3" />
@@ -79,7 +79,7 @@
                 </a>
 
                 <!-- Transaction History -->
-                <a href="pages/shared/history.html" class="nav-item" data-page="history">
+                <a href="/history.html" class="nav-item" data-page="history">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="11" cy="11" r="7" />
                         <path d="M21 21l-4-4" />
@@ -93,7 +93,7 @@
                 <div class="nav-label">Account</div>
 
                 <!-- Profile -->
-                <a href="shipper_profile.html" class="nav-item" data-page="profile">
+                <a href="/shipper_profile.html" class="nav-item" data-page="profile">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="8" r="4" />
                         <path d="M4 21c0-4 4-6 8-6s8 2 8 6" />
@@ -102,7 +102,7 @@
                 </a>
 
                 <!-- Settings -->
-                <a href="settings.html" class="nav-item" data-page="settings">
+                <a href="/settings.html" class="nav-item" data-page="settings">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="9" />
                         <path d="M12 8v4l3 2" />
@@ -154,17 +154,17 @@
 
     <!-- ─── SCRIPTS ────────────────────────────────────────── -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
-    <script src="../../js/blockchain/web3_integration.js"></script>
-    <script src="../../js/shipper/create_agreement.js"></script>
-    <script src="../../js/shared/auth.js"></script>
-    <script src="../../js/shipper/shipper.js"></script>
-    <script src="../../js/shared/common.js"></script>
-    <script src="../../js/shipper/agreements.js"></script>
-    <script src="../../js/shipper/deposit_balance.js"></script>
-    <script src="../../js/shipper/milestone_release.js"></script>
-    <script src="../../js/shipper/refund_expiry.js"></script>
-    <script src="../../js/shipper/shipper_profile.js"></script>
-    <script src="../../js/shared/history.js"></script>
+    <script src="/js/blockchain/web3_integration.js"></script>
+    <script src="/js/shipper/create_agreement.js"></script>
+    <script src="/js/shared/auth.js"></script>
+    <script src="/js/shipper/shipper.js"></script>
+    <script src="/js/shared/common.js"></script>
+    <script src="/js/shipper/agreements.js"></script>
+    <script src="/js/shipper/deposit_balance.js"></script>
+    <script src="/js/shipper/milestone_release.js"></script>
+    <script src="/js/shipper/refund_expiry.js"></script>
+    <script src="/js/shipper/shipper_profile.js"></script>
+    <script src="/js/shared/history.js"></script>
 </body>
 
 </html>

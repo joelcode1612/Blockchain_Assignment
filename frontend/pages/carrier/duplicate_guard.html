@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Traxen — Duplicate-Payment Guard</title>
-<link rel="stylesheet" href="../css/styles.css">
-<link rel="stylesheet" href="../css/shipper_styles.css">
-<link rel="stylesheet" href="../css/carrier_styles.css">
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="/css/shipper_styles.css">
+<link rel="stylesheet" href="/css/carrier_styles.css">
 </head>
 <body>
 <div class="app">
@@ -16,11 +16,11 @@
     <div class="brand"><div class="brand-mark">T</div> Traxen</div>
     <div class="nav-group">
       <div class="nav-label">Escrow Engine</div>
-      <a class="nav-item" href="deposit_balance.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v14M6 10l6 6 6-6"/><path d="M4 20h16"/></svg> Deposit &amp; Balance</a>
-      <a class="nav-item" href="milestone_release.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg> Milestone Release</a>
-      <a class="nav-item active" href="duplicate_guard.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L14.7 3.86a2 2 0 00-3.4 0z"/></svg> Duplicate Guard</a>
-      <a class="nav-item" href="refund_expiry.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg> Refund &amp; Expiry</a>
-      <a class="nav-item" href="history.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 106 5.3L3 8"/><path d="M12 7v5l4 2"/></svg> History</a>
+      <a class="nav-item" href="/deposit_balance.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v14M6 10l6 6 6-6"/><path d="M4 20h16"/></svg> Deposit &amp; Balance</a>
+      <a class="nav-item" href="/milestone_release.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg> Milestone Release</a>
+      <a class="nav-item active" href="/duplicate_guard.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L14.7 3.86a2 2 0 00-3.4 0z"/></svg> Duplicate Guard</a>
+      <a class="nav-item" href="/refund_expiry.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg> Refund &amp; Expiry</a>
+      <a class="nav-item" href="/history.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 106 5.3L3 8"/><path d="M12 7v5l4 2"/></svg> History</a>
     </div>
     <div class="contract-tag"><span class="dot"></span>0x9F2c…7B1E · Sepolia</div>
   </div>
@@ -107,9 +107,9 @@
 
 <!-- Scripts -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
-<script src="/js/toast.js"></script>
-<script src="/js/web3_integration.js"></script>
-<script src="/js/api.js"></script>
+<script src="/js/shared/common.js"></script>
+<script src="/js/blockchain/web3_integration.js"></script>
+<script src="/js/shared/api.js"></script>
 
 <script>
   let currentAgreementId = null;

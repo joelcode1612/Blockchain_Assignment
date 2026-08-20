@@ -10,19 +10,9 @@ exports.authenticate = async (req, res, next) => {
 
     console.log("🔍 authenticate - walletAddress:", walletAddress);
 
-    // ---------------------------------------------
-    // Check wallet address
-    // ---------------------------------------------
-
     if (!walletAddress) {
-      return res.status(401).json({
-        error: "Wallet address required",
-      });
+      return res.status(401).json({ error: "Wallet address required" });
     }
-
-    // ---------------------------------------------
-    // Find user
-    // ---------------------------------------------
 
     const { data: user, error } = await supabase
       .from("users")
@@ -30,31 +20,16 @@ exports.authenticate = async (req, res, next) => {
       .eq("wallet_address", walletAddress.toLowerCase())
       .single();
 
-    // ---------------------------------------------
-    // User not found
-    // ---------------------------------------------
-
-    if (error || !user) {
+    if (!user) {
       console.warn("⚠️ User not found for address:", walletAddress);
-
-      return res.status(401).json({
-        error: "User not registered",
-      });
+      return res.status(401).json({ error: "User not registered" });
     }
 
-    // ---------------------------------------------
-    // Attach user to request
-    // ---------------------------------------------
-
     req.user = user;
-
     next();
   } catch (error) {
     console.error("❌ Auth error:", error);
-
-    return res.status(500).json({
-      error: error.message,
-    });
+    return res.status(500).json({ error: error.message });
   }
 };
 

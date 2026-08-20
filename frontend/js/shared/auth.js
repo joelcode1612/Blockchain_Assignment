@@ -5,17 +5,24 @@ const STORAGE_NAME = "traxenUserName";
 const STORAGE_EMAIL = "traxenUserEmail";
 
 // ─── Private Helpers ──────────────────────────────────────
-function getWallet() { return localStorage.getItem(STORAGE_WALLET); }
-function getRole() { return localStorage.getItem(STORAGE_ROLE); }
-function getName() { return localStorage.getItem(STORAGE_NAME); }
-function getEmail() { return localStorage.getItem(STORAGE_EMAIL); }
+function getWallet() {
+  return localStorage.getItem(STORAGE_WALLET);
+}
+function getRole() {
+  return localStorage.getItem(STORAGE_ROLE);
+}
+function getName() {
+  return localStorage.getItem(STORAGE_NAME);
+}
+function getEmail() {
+  return localStorage.getItem(STORAGE_EMAIL);
+}
 function setAuthData(wallet, role, name, email) {
   if (wallet) localStorage.setItem(STORAGE_WALLET, wallet);
   if (role) localStorage.setItem(STORAGE_ROLE, role);
   if (name) localStorage.setItem(STORAGE_NAME, name);
   if (email) localStorage.setItem(STORAGE_EMAIL, email);
 }
-
 
 function clearAuthData() {
   localStorage.removeItem(STORAGE_WALLET);
@@ -24,9 +31,6 @@ function clearAuthData() {
   localStorage.removeItem(STORAGE_EMAIL);
   sessionStorage.clear();
 }
-
-
-
 
 // ─── Core Guard ────────────────────────────────────────────
 function guard(allowedRoles) {
@@ -60,7 +64,6 @@ function autoGuard() {
   return guard(allowedRoles);
 }
 
-
 // ─── For SPA Navigation ────────────────────────────────────
 function requireRoleForUrl(url) {
   let allowedRoles = [];
@@ -92,8 +95,10 @@ window.Auth = {
   },
   requireRoleForUrl: function (url) {
     let allowedRoles = [];
-    if (url.includes("/shipper/") || url.includes("/shipper")) allowedRoles = ["Shipper"];
-    else if (url.includes("/carrier/") || url.includes("/carrier")) allowedRoles = ["Carrier"];
+    if (url.includes("/shipper/") || url.includes("/shipper"))
+      allowedRoles = ["Shipper"];
+    else if (url.includes("/carrier/") || url.includes("/carrier"))
+      allowedRoles = ["Carrier"];
     else return true;
     return guard(allowedRoles);
   },
@@ -112,7 +117,7 @@ window.Auth = {
     }
 
     // Check if contract is initialising – wait up to 5 seconds
-    if (typeof window.isInitializing !== 'undefined' && window.isInitializing) {
+    if (typeof window.isInitializing !== "undefined" && window.isInitializing) {
       console.log("Contract initialising, waiting...");
       return new Promise((resolve) => {
         let attempts = 0;
@@ -121,11 +126,12 @@ window.Auth = {
           if (window.isConnected()) {
             clearInterval(check);
             resolve(true);
-          } else if (attempts > 50) { // 5 seconds
+          } else if (attempts > 50) {
+            // 5 seconds
             clearInterval(check);
             // Still not connected – try reconnect
-            if (typeof window.reconnectWeb3 === 'function') {
-              window.reconnectWeb3().then(connected => {
+            if (typeof window.reconnectWeb3 === "function") {
+              window.reconnectWeb3().then((connected) => {
                 if (!connected) {
                   this.clearAuthData();
                   window.location.href = "/login";
@@ -143,9 +149,9 @@ window.Auth = {
     }
 
     // Normal check
-    if (typeof window.isConnected === 'function' && !window.isConnected()) {
-      if (typeof window.reconnectWeb3 === 'function') {
-        return window.reconnectWeb3().then(connected => {
+    if (typeof window.isConnected === "function" && !window.isConnected()) {
+      if (typeof window.reconnectWeb3 === "function") {
+        return window.reconnectWeb3().then((connected) => {
           if (!connected) {
             this.clearAuthData();
             window.location.href = "/login";
@@ -159,9 +165,8 @@ window.Auth = {
       }
     }
     return true;
-  }
+  },
 };
-
 
 // ============================================================
 // LOGIN / REGISTRATION UI (using central helpers)
@@ -262,16 +267,17 @@ async function finishRegister() {
 // ─── Check server availability on every page load ──────
 async function checkServerAndSession() {
   const currentPath = window.location.pathname;
-  const isPublicPage = ['/login', '/register', '/'].includes(currentPath) ||
-    currentPath.startsWith('/login') ||
-    currentPath.startsWith('/register');
+  const isPublicPage =
+    ["/login", "/register", "/"].includes(currentPath) ||
+    currentPath.startsWith("/login") ||
+    currentPath.startsWith("/register");
 
   // Function to perform a single health check
   async function checkHealth() {
     try {
-      const response = await fetch('/api/health', { method: 'GET' });
+      const response = await fetch("/api/health", { method: "GET" });
       if (!response.ok) {
-        throw new Error('Server returned ' + response.status);
+        throw new Error("Server returned " + response.status);
       }
       return true;
     } catch (error) {
@@ -286,27 +292,26 @@ async function checkServerAndSession() {
     if (healthy) break;
     if (attempt < 2) {
       console.warn(`Health check attempt ${attempt} failed. Retrying in 2s...`);
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
     }
   }
 
   if (!healthy) {
     // Server is unreachable – clear the session
-    console.warn('Server unreachable after 2 attempts – clearing session.');
+    console.warn("Server unreachable after 2 attempts – clearing session.");
     clearAuthData();
 
     // If we're on a protected page, redirect to login
     if (!isPublicPage) {
-      window.location.href = '/login';
+      window.location.href = "/login";
     } else {
       // If already on login/register, just show a warning (optional)
-      if (typeof showToast === 'function') {
-        showToast('Server is unreachable. Please try again later.', 'error');
+      if (typeof showToast === "function") {
+        showToast("Server is unreachable. Please try again later.", "error");
       }
     }
   }
 }
-
 
 function doLogin() {
   const address = localStorage.getItem("traxenWallet");
@@ -328,6 +333,10 @@ function doLogin() {
 }
 
 function selectWallet(el, ctx) {
+  if (el.classList.contains("disabled")) return;
+  el.style.opacity = "0.6";
+  el.style.pointerEvents = "none";
+
   el.parentElement
     .querySelectorAll(".wallet-opt")
     .forEach((w) => w.classList.remove("selected"));
@@ -347,6 +356,9 @@ function selectWallet(el, ctx) {
     if (ctx === "reg") setTimeout(() => goRegStep(2), 500);
     if (ctx === "login") setTimeout(() => handleLogin(), 500);
   }, 900);
+
+  el.style.opacity = "1";
+  el.style.pointerEvents = "auto";
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -424,4 +436,4 @@ async function handleLogin() {
 }
 
 // Run the check as soon as the DOM is ready.
-document.addEventListener('DOMContentLoaded', checkServerAndSession);
+document.addEventListener("DOMContentLoaded", checkServerAndSession);

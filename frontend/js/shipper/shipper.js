@@ -1,5 +1,5 @@
 // ─── SPA ROUTER ──────────────────────────────────────────
-const ROLE_PATH = '/shipper';
+const ROLE_PATH = "/shipper";
 
 document.addEventListener("DOMContentLoaded", function () {
   (function () {
@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
-    if (window.Auth && typeof window.Auth.ensureFullSession === 'function') {
+    if (window.Auth && typeof window.Auth.ensureFullSession === "function") {
       window.Auth.ensureFullSession();
     }
 
@@ -21,51 +21,46 @@ document.addEventListener("DOMContentLoaded", function () {
     // ─── PAGE MAPPING ────────────────────────────────────
     const pageMap = {
       agreements: {
-        file: "agreements.html",
+        file: "/agreements.html",
         title: "Agreements",
         sub: "All logistics agreements you're party to as a Shipper",
         button: { label: "+ Create Agreement", page: "create_agreement" },
       },
       create_agreement: {
-        file: "create_agreement.html",
+        file: "/create_agreement.html",
         title: "Create Agreement",
         sub: "Start a new logistics contract with a Carrier",
       },
       deposit_balance: {
-        file: "deposit_balance.html",
+        file: "/deposit_balance.html",
         title: "Escrow Overview",
         sub: "View your locked and available escrow balances",
       },
       milestone_release: {
-        file: "milestone_release.html",
+        file: "/milestone_release.html",
         title: "Milestone Tracking",
         sub: "Track and verify delivery milestones",
       },
       refund_expiry: {
-        file: "refund_expiry.html",
+        file: "/refund_expiry.html",
         title: "Refund Centre",
         sub: "Manage refunds and expiry of agreements",
       },
       history: {
-        file: "../../pages/shared/history.html",
+        file: "/history.html",
         title: "Transaction History",
         sub: "Complete record of all your transactions",
       },
       profile: {
-        file: "shipper_profile.html",
+        file: "/shipper_profile.html",
         title: "My Profile",
         sub: "Manage your shipper account and activity",
       },
       settings: {
-        file: "settings.html",
+        file: "/settings.html",
         title: "Settings",
         sub: "Configure your account preferences",
       },
-    };
-
-    const dashboardTitles = {
-      title: "Dashboard",
-      sub: "Welcome back!",
     };
 
     function getPageDetails(pageKey) {
@@ -166,50 +161,69 @@ document.addEventListener("DOMContentLoaded", function () {
     // ─── Load dashboard stats ──────────────────────────────
     async function loadDashboardStats() {
       try {
-        const walletAddress = localStorage.getItem("traxenWallet");
+        const walletAddress =
+          window.Session?.getWalletAddress?.() ||
+          localStorage.getItem("traxenWallet");
         if (!walletAddress) {
-          console.warn("No wallet address for dashboard stats.");
+          console.warn("No wallet address available.");
           return;
         }
+        // Trim and lowercase just in case
+        const cleanWallet = walletAddress.trim().toLowerCase();
         const response = await fetch("/api/agreements", {
-          headers: { "x-wallet-address": walletAddress },
+          headers: { "x-wallet-address": cleanWallet },
         });
         if (!response.ok) throw new Error("Failed to fetch agreements");
         const agreements = await response.json();
 
         const total = agreements.length;
-        const active = agreements.filter(a => a.status === "Active" || a.status === "AwaitingFunding").length;
-        const completed = agreements.filter(a => a.status === "Completed").length;
+        const active = agreements.filter(
+          (a) => a.status === "Active" || a.status === "AwaitingFunding",
+        ).length;
+        const completed = agreements.filter(
+          (a) => a.status === "Completed",
+        ).length;
         let totalEscrow = 0;
-        agreements.forEach(a => {
+        agreements.forEach((a) => {
           try {
             const wei = a.escrow_amount ? String(a.escrow_amount) : "0";
             const eth = parseFloat(ethers.formatEther(wei));
             if (!isNaN(eth)) totalEscrow += eth;
-          } catch (e) { /* ignore */ }
+          } catch (e) {
+            /* ignore */
+          }
         });
 
         document.getElementById("stat-total").textContent = total;
         document.getElementById("stat-active").textContent = active;
         document.getElementById("stat-completed").textContent = completed;
-        document.getElementById("stat-escrow").textContent = totalEscrow.toFixed(2);
+        document.getElementById("stat-escrow").textContent =
+          totalEscrow.toFixed(2);
         document.getElementById("stat-total-delta").textContent =
-          total > 0 ? `${total} agreement${total > 1 ? "s" : ""}` : "No agreements yet";
+          total > 0
+            ? `${total} agreement${total > 1 ? "s" : ""}`
+            : "No agreements yet";
 
-        const recentContainer = document.getElementById("recent-agreements-list");
+        const recentContainer = document.getElementById(
+          "recent-agreements-list",
+        );
         const recent = agreements.slice(-3).reverse();
         if (recent.length === 0) {
           recentContainer.innerHTML = `<div style="padding:20px;text-align:center;color:var(--text-faint);">No agreements yet. Create one!</div>`;
         } else {
           let html = `<table><thead><tr><th>ID</th><th>Carrier</th><th>Status</th><th>Value</th></tr></thead><tbody>`;
-          recent.forEach(a => {
+          recent.forEach((a) => {
             const status = a.status || "Unknown";
             let pillClass = "pill gray";
-            if (status === "Active" || status === "AwaitingFunding") pillClass = "pill lime";
+            if (status === "Active" || status === "AwaitingFunding")
+              pillClass = "pill lime";
             else if (status === "PendingAcceptance") pillClass = "pill amber";
             else if (status === "Completed") pillClass = "pill gray";
-            const value = a.escrow_amount ? parseFloat(ethers.formatEther(a.escrow_amount)).toFixed(2) : "0.00";
-            const carrierName = a.carrier?.display_name || a.carrier?.wallet_address || "Unknown";
+            const value = a.escrow_amount
+              ? parseFloat(ethers.formatEther(a.escrow_amount)).toFixed(2)
+              : "0.00";
+            const carrierName =
+              a.carrier?.display_name || a.carrier?.wallet_address || "Unknown";
             html += `<tr>
               <td><span class="mono">#${a.onchain_id || "—"}</span></td>
               <td>${carrierName}</td>
@@ -221,20 +235,63 @@ document.addEventListener("DOMContentLoaded", function () {
           recentContainer.innerHTML = html;
         }
 
-        const activeAgreement = agreements.find(a => a.status === "Active" || a.status === "AwaitingFunding");
+        const activeAgreement = agreements.find(
+          (a) => a.status === "Active" || a.status === "AwaitingFunding",
+        );
         if (activeAgreement?.milestones?.length > 0) {
           const totalMilestones = activeAgreement.milestones.length;
-          const paid = activeAgreement.milestones.filter(m => m.status === "Paid").length;
-          const progress = totalMilestones > 0 ? (paid / totalMilestones) * 100 : 0;
-          document.getElementById("milestone-progress").style.width = progress + "%";
+          const paid = activeAgreement.milestones.filter(
+            (m) => m.status === "Paid",
+          ).length;
+          const progress =
+            totalMilestones > 0 ? (paid / totalMilestones) * 100 : 0;
+          document.getElementById("milestone-progress").style.width =
+            progress + "%";
           document.getElementById("next-milestone-days").textContent = "3 days";
         } else {
-          document.getElementById("next-milestone-days").textContent = "No active agreement";
+          document.getElementById("next-milestone-days").textContent =
+            "No active agreement";
           document.getElementById("milestone-progress").style.width = "0%";
         }
       } catch (error) {
         console.error("Dashboard stats error:", error);
-        if (typeof showToast === "function") showToast("Failed to load dashboard data", "error");
+        if (typeof showToast === "function")
+          showToast("Failed to load dashboard data", "error");
+      }
+    }
+
+    function updateSidebarUser() {
+      const walletAddress = localStorage.getItem("traxenWallet");
+      let displayName = localStorage.getItem("traxenUserName");
+      let role = localStorage.getItem("traxenRole") || "Shipper";
+
+      // If no display name in localStorage, try to fetch from database
+      if (!displayName && walletAddress) {
+        // Optionally fetch from API (but we can also fallback to wallet address)
+        // For now, we'll just use the wallet address as fallback
+        displayName =
+          walletAddress.slice(0, 6) + "..." + walletAddress.slice(-4);
+      }
+
+      // Update name and role
+      const nameEl = document.getElementById("miniName");
+      const roleEl = document.getElementById("miniRole");
+      const avatarEl = document.getElementById("miniAvatar");
+
+      if (nameEl) nameEl.textContent = displayName || "User";
+      if (roleEl) roleEl.textContent = role || "Shipper";
+
+      // Generate avatar initials
+      if (avatarEl) {
+        const initials = displayName
+          ? displayName
+              .split(" ")
+              .map((w) => w[0])
+              .join("")
+              .toUpperCase()
+              .slice(0, 2)
+          : "U";
+        avatarEl.textContent = initials;
       }
     }
 
@@ -242,9 +299,12 @@ document.addEventListener("DOMContentLoaded", function () {
     async function loadPage(pageKey) {
       if (pageKey === "dashboard") {
         contentEl.innerHTML = getDashboardHTML();
+        updateSidebarUser();
         updateTopbarButton(null);
-        navItems.forEach(el => el.classList.remove("active"));
-        const active = Array.from(navItems).find(el => el.dataset.page === "dashboard");
+        navItems.forEach((el) => el.classList.remove("active"));
+        const active = Array.from(navItems).find(
+          (el) => el.dataset.page === "dashboard",
+        );
         if (active) active.classList.add("active");
 
         // ✅ Dynamic welcome message with user's name
@@ -253,7 +313,10 @@ document.addEventListener("DOMContentLoaded", function () {
         if (pageSubEl) pageSubEl.textContent = `Welcome back, ${userName}!`;
 
         await loadDashboardStats();
-        if (window.Auth && typeof window.Auth.ensureFullSession === 'function') {
+        if (
+          window.Auth &&
+          typeof window.Auth.ensureFullSession === "function"
+        ) {
           window.Auth.ensureFullSession();
         }
         return;
@@ -266,7 +329,8 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       const url = details.file;
-      contentEl.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-faint);">Loading...</div>';
+      contentEl.innerHTML =
+        '<div style="padding:40px;text-align:center;color:var(--text-faint);">Loading...</div>';
 
       try {
         const response = await fetch(url);
@@ -277,10 +341,14 @@ document.addEventListener("DOMContentLoaded", function () {
         const doc = parser.parseFromString(html, "text/html");
 
         const newContent = doc.querySelector(".content");
-        contentEl.innerHTML = newContent ? newContent.innerHTML : doc.body.innerHTML;
+        contentEl.innerHTML = newContent
+          ? newContent.innerHTML
+          : doc.body.innerHTML;
 
-        navItems.forEach(el => el.classList.remove("active"));
-        const active = Array.from(navItems).find(el => el.dataset.page === pageKey);
+        navItems.forEach((el) => el.classList.remove("active"));
+        const active = Array.from(navItems).find(
+          (el) => el.dataset.page === pageKey,
+        );
         if (active) active.classList.add("active");
 
         if (pageTitleEl) pageTitleEl.textContent = details.title;
@@ -305,7 +373,10 @@ document.addEventListener("DOMContentLoaded", function () {
           window[initName]();
         }
 
-        if (window.Auth && typeof window.Auth.ensureFullSession === 'function') {
+        if (
+          window.Auth &&
+          typeof window.Auth.ensureFullSession === "function"
+        ) {
           await window.Auth.ensureFullSession();
         }
       } catch (error) {
@@ -320,26 +391,28 @@ document.addEventListener("DOMContentLoaded", function () {
         e.preventDefault();
         const page = this.dataset.page;
         loadPage(page);
-        window.history.pushState({ page }, "", `${ROLE_PATH}/${page}`);
+        window.history.pushState({ page }, "", `${ROLE_PATH}/${page}.html`);
       });
     });
 
     // ─── BACK/FORWARD ──────────────────────────────────────
     const path = window.location.pathname;
-    const segments = path.split('/').filter(s => s.length > 0);
-    // If the first segment is 'shipper', take the second; otherwise default to 'dashboard'
-    let pageKey = 'dashboard';
-    if (segments.length >= 2 && segments[0] === 'shipper') {
-      pageKey = segments[1];
-    } else if (segments.length === 1 && segments[0] !== 'shipper') {
-      // If we are at /profile (without prefix), redirect to /shipper/profile
-      window.location.href = `${ROLE_PATH}/${segments[0]}`;
+    const segments = path.split("/").filter((s) => s.length > 0);
+    let pageKey = "dashboard";
+    if (segments.length >= 2 && segments[0] === "shipper") {
+      pageKey = segments[1].replace(".html", "");
+    } else if (segments.length === 1 && segments[0] !== "shipper") {
+      // Redirect to shipper route with .html
+      window.location.href = `${ROLE_PATH}/${segments[0]}.html`;
       return;
     }
+
     // Remove .html if present
-    pageKey = pageKey.replace('.html', '');
+    if (!pageKey) pageKey = "dashboard";
     const availablePages = ["dashboard", ...Object.keys(pageMap)];
-    const initialPage = availablePages.includes(pageKey) ? pageKey : "dashboard";
+    const initialPage = availablePages.includes(pageKey)
+      ? pageKey
+      : "dashboard";
     loadPage(initialPage);
 
     // ─── EXPOSE loadPage GLOBALLY ──────────────────────────

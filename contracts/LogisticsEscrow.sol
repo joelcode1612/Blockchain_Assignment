@@ -66,6 +66,7 @@ contract LogisticsEscrow {
     // =====================================================
 
     mapping(address => Role) public userRoles;
+    address[] public registeredUsers;   // NEW: array to store all registered addresses
     mapping(uint256 => Agreement) private agreements;
     mapping(address => uint256[]) private shipperAgreements;
     mapping(address => uint256[]) private carrierAgreements;
@@ -137,6 +138,7 @@ contract LogisticsEscrow {
         require(_role == Role.Shipper || _role == Role.Carrier, "Invalid role");
 
         userRoles[msg.sender] = _role;
+        registeredUsers.push(msg.sender);   // NEW: store address in array
 
         emit UserRegistered(msg.sender, _role);
     }
@@ -155,6 +157,19 @@ contract LogisticsEscrow {
 
     function isRegistered(address _wallet) external view returns (bool) {
         return userRoles[_wallet] != Role.None;
+    }
+
+    // =====================================================
+    // NEW: GETTERS FOR REGISTERED USERS ARRAY
+    // =====================================================
+
+    function getRegisteredUsersCount() external view returns (uint256) {
+        return registeredUsers.length;
+    }
+
+    function getRegisteredUser(uint256 index) external view returns (address) {
+        require(index < registeredUsers.length, "Index out of bounds");
+        return registeredUsers[index];
     }
 
     // =====================================================
@@ -275,18 +290,6 @@ contract LogisticsEscrow {
     // =====================================================
     // MODULE 5 — MILESTONE SUBMIT, VERIFY, RELEASE
     // =====================================================
-
-    // function submitMilestone(uint256 _agreementId, uint256 _milestoneId) external agreementExists(_agreementId) onlyCarrier(_agreementId) {
-    //     Agreement storage agreement = agreements[_agreementId];
-    //     require(agreement.status == AgreementStatus.Active, "Agreement not active");
-    //     require(_milestoneId < agreement.milestoneCount, "Invalid milestone");
-    //     require(agreement.milestones[_milestoneId].status == MilestoneStatus.Pending, "Milestone not pending");
-
-    //     agreement.milestones[_milestoneId].status = MilestoneStatus.Submitted;
-    //     agreement.milestones[_milestoneId].submittedAt = block.timestamp;
-
-    //     emit MilestoneSubmitted(_agreementId, _milestoneId, msg.sender);
-    // }
 
     function submitMilestone(uint256 _agreementId,uint256 _milestoneId) external agreementExists(_agreementId) onlyCarrier(_agreementId) {
         Agreement storage agreement = agreements[_agreementId];

@@ -1,52 +1,52 @@
-// require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
-const fs = require("fs");
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5100;
 
 app.use(cors());
 app.use(express.json());
 
-const pagesPath = path.join(__dirname, "../frontend/pages");    
+// =====================================================
+// FIXED PATH CONFIGURATION
+// =====================================================
+// This creates the perfect absolute path to your public folder
+const PUBLIC_DIR = path.join(__dirname, "../frontend", "pages", "public");
+const FRONTEND_PAGES_DIR = path.join(__dirname, "../frontend", "pages");
+const SHARED_DIR = path.join(__dirname, "../frontend", "pages", "shared");
 
-app.use(express.static(pagesPath));
+// Serve root '/' out of the public folder
+app.use("/", express.static(PUBLIC_DIR));
+app.use("/shared", express.static(SHARED_DIR));
+
+// Other structural static assets
 app.use("/abi", express.static(path.join(__dirname, "../abi")));
 app.use("/css", express.static(path.join(__dirname, "../frontend/css")));
 app.use("/js", express.static(path.join(__dirname, "../frontend/js")));
 
+// Core Routes & Routers
 app.get("/api/health", (req, res) => res.json({ status: "OK" }));
 
+const userRoutes = require("./routes/userRoutes");
+app.use("/api/users", userRoutes);
+
+// Mount main routes (ensure you updated PAGES_DIR inside this file as shown in step 1!)
 const pagesRouter = require("./routes/mainRoutes");
-// Mount the page router (may handle /login, /register, etc.)
 app.use(pagesRouter);
 
-// ==== SPA FALLBACKS ====
-// For shipper routes – adjust the file path to match your actual location
-app.get('/shipper/*', (req, res) => {
-  // Example: if shipper.html is inside pages/shipper/
-  res.sendFile(path.join(pagesPath, 'shipper/shipper.html'));
+// SPA Dashboard Fallbacks
+app.get("/shipper/*", (req, res) => {
+  res.sendFile(path.join(FRONTEND_PAGES_DIR, "shipper/shipper.html"));
 });
 
-// For carrier routes
-app.get('/carrier/*', (req, res) => {
-  res.sendFile(path.join(pagesPath, 'carrier/carrier.html'));
+app.get("/carrier/*", (req, res) => {
+  res.sendFile(path.join(FRONTEND_PAGES_DIR, "carrier/carrier.html"));
 });
 
-// =====================================================
-// 404 HANDLER – catches all unmatched routes
-// =====================================================
-// router.use((req, res) => {
-//   const errorPagePath = path.join(PAGES_DIR, "shared", "404.html");
-//   res.status(404).sendFile(errorPagePath);
-// });
-
-// Optional global fallback – but be careful not to catch API routes.
-// If you have a root index.html (e.g., landing page) inside pages/public/, serve that.
-// app.get('*', (req, res) => {
-//   res.sendFile(path.join(pagesPath, 'public/index.html'));
+// // 404 Handler
+// app.use((req, res) => {
+//   res.status(404).sendFile(path.join(SHARED_DIR, "404.html"));
 // });
 
 app.listen(PORT, () => {
