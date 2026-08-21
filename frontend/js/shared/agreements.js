@@ -202,7 +202,7 @@
             const detailPath =
               role === "Shipper"
                 ? `/shipper/agreement_details_shipper.html?id=${agreementId}`
-                : `/carrier/agreement_details_carrier.html?id=${agreementId}`;
+                : `/carrier/carrier_agreement_detail.html?id=${agreementId}`;
             window.history.pushState(
               { page: "agreement_details" },
               "",
@@ -213,7 +213,7 @@
             const detailFile =
               role === "Shipper"
                 ? "agreement_details_shipper.html"
-                : "agreement_details_carrier.html";
+                : "carrier_agreement_detail.html";
             window.location.href = `${detailFile}?id=${agreementId}`;
           }
         });

@@ -38,7 +38,7 @@ async function submitProof(milestoneId) {
             "Your milestone proof has been uploaded and sent to the shipper for verification.",
             `<div class="kv"><span class="k">Milestone</span><span class="v">#${milestoneId + 1}</span></div>
              <div class="kv"><span class="k">Agreement</span><span class="v">#AG${agreementId}</span></div>`,
-            `agreement_details_carrier.html?id=${agreementId}`
+            `carrier_agreement_detail.html?id=${agreementId}`
         );
 
     } catch (error) {

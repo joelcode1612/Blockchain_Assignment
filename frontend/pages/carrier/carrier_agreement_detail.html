@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Traxen — Agreement #AG8901</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <link rel="stylesheet" href="/css/responsive.css">
+  <link rel="stylesheet" href="/css/carrier.css">
+  <link rel="stylesheet" href="/css/carrier_agreements.css">
+</head>
+
+<body>
+  <div class="app">
+    <div class="main">
+      <div class="topbar">
+        <div>
+          <h1>Agreement #AG8901</h1>
+          <div class="sub">Track your delivery and submit milestone proof</div>
+        </div>
+
+      </div>
+      <div class="content">
+        <div class="back-link" onclick="window.loadPage('carrier_dashboard')">← Back to Carrier Dashboard</div>
+
+        <div class="detail-header">
+          <div>
+            <h2 id="agreement-title">Agreement #<span id="agreement-id">—</span>
+              <span class="pill amber" id="agreement-status-badge"><span class="dot"></span>Loading...</span>
+            </h2>
+            <div style="color:var(--text-faint);font-size:13px" id="agreement-sub">Loading agreement details...</div>
+          </div>
+          <div class="escrow-box">
+            <div class="amt" id="escrow-amount">— ETH</div>
+            <div class="lbl">Escrow Balance · <span id="escrow-status">Locked</span></div>
+          </div>
+        </div>
+
+        <div class="detail-grid">
+          <div class="info-card">
+            <h3>Job Info</h3>
+            <div class="kv"><span class="k">Shipper</span><span class="v" id="shipper-name">—</span></div>
+            <div class="kv"><span class="k">Deadline</span><span class="v" id="deadline-date">—</span></div>
+            <div class="kv"><span class="k">Accepted</span><span class="v" id="accepted-date">—</span></div>
+            <div class="kv"><span class="k">Contract</span><span class="v"
+                style="font-family:var(--mono);font-size:11px" id="contract-address">—</span></div>
+            <div class="btn-row">
+              <button class="btn btn-ghost btn-sm"
+                onclick="window.open('https://sepolia.etherscan.io/address/' + document.getElementById('contract-address').textContent, '_blank')">View
+                Contract</button>
+              <button class="btn btn-ghost btn-sm">Message Shipper</button>
+            </div>
+          </div>
+
+          <div class="info-card">
+            <h3>Delivery Progress</h3>
+            <div class="track" id="milestone-track">
+              <div style="padding:20px;text-align:center;color:var(--text-faint);">Loading milestones...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Submit Proof Section -->
+        <div class="info-card" style="margin-bottom:18px" id="proof-section">
+          <h3 id="proof-title">Submit Proof — Milestone <span id="proof-milestone-index">—</span></h3>
+          <div class="upload-box" onclick="alert('Opens file picker / GPS checkpoint capture.')">📎 Click to upload
+            proof (photo, GPS checkpoint, or signed receipt)</div>
+          <button class="btn btn-primary btn-block" id="submit-proof-btn" onclick="submitMilestoneProof()">Submit
+            Milestone Proof</button>
+        </div>
+
+        <!-- Milestone List -->
+        <div class="info-card">
+          <h3>Milestone &amp; Payout Schedule</h3>
+          <div id="milestone-list">
+            <div style="padding:12px;color:var(--text-faint);">Loading milestones...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>
