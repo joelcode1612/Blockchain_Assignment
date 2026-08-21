@@ -13,19 +13,14 @@
 </head>
 
 <body>
-
     <div class="app">
 
         <main class="main">
 
             <div class="content">
-
                 <div class="table-container">
-
                     <table class="data-table">
-
                         <thead>
-
                             <tr>
                                 <th>Agreement ID</th>
                                 <th>Route / Payload</th>
@@ -35,122 +30,24 @@
                                 <th>Status</th>
                                 <th>Action</th>
                             </tr>
-
                         </thead>
-
-
-                        <tbody>
-
-                            <!-- DELIVERY 1 -->
+                        <tbody id="deliveries-body">
+                            <!-- Populated dynamically by JavaScript -->
                             <tr>
-
-                                <td class="mono">
-                                    #AG8901
+                                <td colspan="7" style="text-align:center;padding:40px 0;color:var(--text-faint);">
+                                    Loading deliveries...
                                 </td>
-
-                                <td>
-                                    <b>LA → NY</b>
-                                    <br>
-
-                                    <span class="muted-small">
-                                        Electronics
-                                    </span>
-                                </td>
-
-                                <td>
-                                    5.00 ETH
-                                </td>
-
-                                <td>
-                                    2. In Transit Checkpoint
-                                </td>
-
-                                <td>
-                                    Aug 25, 2026
-                                </td>
-
-                                <td>
-
-                                    <span class="status-badge status-action">
-                                        <span class="dot"></span>
-                                        Proof Required
-                                    </span>
-
-                                </td>
-
-                                <td>
-
-                                    <button class="btn btn-primary btn-sm"
-                                        onclick="location.href='agreement_details_carrier.html?id=AG8901'">
-
-                                        Submit Proof
-
-                                    </button>
-
-                                </td>
-
                             </tr>
-
-
-                            <!-- DELIVERY 2 -->
-                            <tr>
-
-                                <td class="mono">
-                                    #AG8877
-                                </td>
-
-                                <td>
-                                    <b>Miami → Atlanta</b>
-                                    <br>
-
-                                    <span class="muted-small">
-                                        Textiles
-                                    </span>
-                                </td>
-
-                                <td>
-                                    3.20 ETH
-                                </td>
-
-                                <td>
-                                    3. Out for Delivery
-                                </td>
-
-                                <td>
-                                    Aug 18, 2026
-                                </td>
-
-                                <td>
-
-                                    <span class="status-badge status-active">
-                                        <span class="dot"></span>
-                                        In Transit
-                                    </span>
-
-                                </td>
-
-                                <td>
-
-                                    <button class="btn btn-ghost btn-sm">
-                                        View Details
-                                    </button>
-
-                                </td>
-
-                            </tr>
-
                         </tbody>
-
                     </table>
-
                 </div>
-
             </div>
 
         </main>
 
     </div>
-
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+    <script src="/js/blockchain/web3_integration.js"></script>
     <script src="/js/shared/common.js"></script>
     <script src="/js/shared/auth.js"></script>
     <script src="/js/shared/actions.js"></script>

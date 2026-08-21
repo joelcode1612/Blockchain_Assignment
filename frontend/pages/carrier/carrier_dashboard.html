@@ -21,7 +21,8 @@
             <div class="brand"><span class="brand-mark">T</span> Traxen</div>
 
             <nav class="nav-group">
-                <a href="#" class="nav-item active" data-page="dashboard">
+                <!-- Dashboard -->
+                <a href="#" class="nav-item active" data-page="">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <rect x="3" y="3" width="7" height="7" />
                         <rect x="14" y="3" width="7" height="7" />
@@ -30,29 +31,44 @@
                     </svg>
                     Dashboard
                 </a>
-                <a href="#" class="nav-item" data-page="available-jobs">
+
+                <!-- Available Jobs -->
+                <a href="#" class="nav-item" data-page="carrier_available_jobs">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="9" />
                         <path d="M8 12l3 3 5-6" />
                     </svg>
                     Available Jobs
                 </a>
-                <a href="#" class="nav-item" data-page="agreements">
+
+                <!-- Agreements (History) -->
+                <a href="#" class="nav-item" data-page="carrier_agreements">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M9 12h6M9 16h6M9 8h6" />
                         <rect x="4" y="4" width="16" height="16" rx="2" />
                     </svg>
-                    Agreements
+                    Agreements History
                 </a>
-                <a href="/milestone_release.html" class="nav-item" data-page="milestone_release">
+
+                <a href="#" class="nav-item" data-page="carrier_milestone_release">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 12h6M9 16h6M9 8h6" />
+                        <rect x="4" y="4" width="16" height="16" rx="2" />
+                    </svg>
+                    Milestone Tracking
+                </a>
+
+                <!-- My Deliveries -->
+                <a href="#" class="nav-item" data-page="carrier_my_deliveries">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="9" />
                         <path d="M9 12l2 2 4-4" />
                     </svg>
                     My Deliveries
                 </a>
+
                 <!-- Transaction History -->
-                <a href="/history.html" class="nav-item" data-page="history">
+                <a href="#" class="nav-item" data-page="carrier_history">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="11" cy="11" r="7" />
                         <path d="M21 21l-4-4" />
@@ -64,20 +80,12 @@
             <div class="nav-group">
                 <div class="nav-label">Account</div>
 
-                <a href="#" class="nav-item" data-page="profile">
+                <a href="#" class="nav-item" data-page="carrier_profile">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="8" r="4" />
                         <path d="M4 21c0-4 4-6 8-6s8 2 8 6" />
                     </svg>
                     Profile
-                </a>
-
-                <a href="/carrier_settings.html" class="nav-item">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="9" />
-                        <path d="M12 8v4l3 2" />
-                    </svg>
-                    Settings
                 </a>
             </div>
 
@@ -198,10 +206,13 @@
     <script src="/js/blockchain/web3_integration.js"></script>
     <script src="/js/shared/common.js"></script>
     <script src="/js/shared/auth.js"></script>
-    <script src="/js/shared/profile.js"></script>
     <script src="/js/carrier/carrier.js"></script>
-    <script src="/js/shared/history.js"></script>
+    <script src="/js/carrier/carrier_profile.js"></script>
     <script src="/js/carrier/carrier_available_job.js"></script>
+    <script src="/js/carrier/carrier_my_delivery.js"></script>
+    <script src="/js/carrier/carrier_agreement_detail.js"></script>
+    <script src="/js/carrier/carrier_agreement_history.js"></script>
+    <script src="/js/shared/agreements.js"></script>
 </body>
 
-</html>w
+</html>

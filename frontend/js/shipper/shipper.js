@@ -10,8 +10,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // ─── SESSION GUARD ──────────────────────────────────────
-    // Ensure both auth data AND contract are valid.
-    // If not, Auth.ensureFullSession will redirect to /login.
     const sessionOk = await window.Auth.ensureFullSession();
     if (!sessionOk) {
       // Redirect already happened.
@@ -27,46 +25,46 @@ document.addEventListener("DOMContentLoaded", function () {
     const pageSubEl = document.getElementById("pageSub");
     const topbarActions = document.querySelector(".topbar-actions");
 
-    // ─── PAGE MAPPING ──────────────────────────────────────
+    // ─── PAGE MAPPING (all fragments are served from /fragments) ──
     const pageMap = {
       agreements: {
-        file: "/shipper/agreements.html", // was "/agreements.html"
+        file: "/fragments/shared/agreements.html",
         title: "Agreements",
         sub: "All logistics agreements you're party to as a Shipper",
         button: { label: "+ Create Agreement", page: "create_agreement" },
       },
       create_agreement: {
-        file: "/shipper/create_agreement.html", // was "/create_agreement.html"
+        file: "/fragments/shipper/create_agreement.html",
         title: "Create Agreement",
         sub: "Start a new logistics contract with a Carrier",
       },
       deposit_balance: {
-        file: "/shipper/deposit_balance.html", // was "/deposit_balance.html"
+        file: "/fragments/shipper/deposit_balance.html",
         title: "Escrow Overview",
         sub: "View your locked and available escrow balances",
       },
       milestone_release: {
-        file: "/shipper/milestone_release.html", // was "/milestone_release.html"
+        file: "/fragments/shipper/milestone_release.html",
         title: "Milestone Tracking",
         sub: "Track and verify delivery milestones",
       },
       refund_expiry: {
-        file: "/shipper/refund_expiry.html", // was "/refund_expiry.html"
+        file: "/fragments/shipper/refund_expiry.html",
         title: "Refund Centre",
         sub: "Manage refunds and expiry of agreements",
       },
       history: {
-        file: "/shared/history.html", // shared path
+        file: "/fragments/shared/history.html",
         title: "Transaction History",
         sub: "Complete record of all your transactions",
       },
       profile: {
-        file: "/shipper/shipper_profile.html", // was "/shipper_profile.html"
+        file: "/fragments/shipper/shipper_profile.html",
         title: "My Profile",
         sub: "Manage your shipper account and activity",
       },
       settings: {
-        file: "/shipper/settings.html", // was "/settings.html"
+        file: "/fragments/shipper/settings.html",
         title: "Settings",
         sub: "Configure your account preferences",
       },
@@ -77,7 +75,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const id =
           new URLSearchParams(window.location.search).get("id") || "AG8901";
         return {
-          file: `/shipper/agreement_details_shipper.html?id=${id}`, // role prefix
+          file: `/fragments/shipper/agreement_details_shipper.html?id=${id}`,
           title: "Agreement Details",
           sub: "Manage escrow, milestones, and disputes for this agreement",
         };
@@ -304,9 +302,12 @@ document.addEventListener("DOMContentLoaded", function () {
     async function loadPage(pageKey) {
       // ─── Guard every navigation ──────────────────────────
       const sessionOk = await window.Auth.ensureFullSession();
-      if (!sessionOk) return; // redirect already happened
+      if (!sessionOk) return;
 
-      if (pageKey === "dashboard") {
+      // Map "dashboard" from navigation to "shipper_dashboard"
+      if (pageKey === "dashboard") pageKey = "shipper_dashboard";
+
+      if (pageKey === "shipper_dashboard") {
         contentEl.innerHTML = getDashboardHTML();
         updateSidebarUser();
         updateTopbarButton(null);
@@ -343,9 +344,10 @@ document.addEventListener("DOMContentLoaded", function () {
         const doc = parser.parseFromString(html, "text/html");
 
         const newContent = doc.querySelector(".content");
-        contentEl.innerHTML = newContent
-          ? newContent.innerHTML
-          : doc.body.innerHTML;
+        if (!newContent) {
+          throw new Error("Invalid fragment: missing .content element");
+        }
+        contentEl.innerHTML = newContent.innerHTML;
 
         navItems.forEach((el) => el.classList.remove("active"));
         const active = Array.from(navItems).find(
@@ -392,7 +394,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // ─── BACK/FORWARD ──────────────────────────────────────
     const availablePages = [
-      "dashboard",
+      "shipper_dashboard",
       ...Object.keys(pageMap),
       "agreement_details",
     ];
@@ -401,41 +403,44 @@ document.addEventListener("DOMContentLoaded", function () {
       if (e.state && e.state.page) {
         loadPage(e.state.page);
       } else {
+        // fallback: parse from URL
         const path = window.location.pathname;
         const segments = path.split("/").filter((s) => s.length > 0);
-        let pageKey = "dashboard";
+        let pageKey = "shipper_dashboard";
         if (segments.length >= 2 && segments[0] === "shipper") {
-          pageKey = segments[1].replace(".html", "");
-          if (pageKey === "agreement_details_shipper")
+          const raw = segments[1].replace(".html", "");
+          if (raw === "agreement_details_shipper")
             pageKey = "agreement_details";
+          else if (pageMap[raw]) pageKey = raw;
+          else pageKey = "shipper_dashboard";
         }
         if (pageKey && availablePages.includes(pageKey)) {
           loadPage(pageKey);
         } else {
-          loadPage("dashboard");
+          loadPage("shipper_dashboard");
         }
       }
     });
 
-    // // ─── INITIAL PAGE LOAD ────────────────────────────────
-    // const path = window.location.pathname;
-    // const segments = path.split("/").filter((s) => s.length > 0);
-    // let pageKey = "dashboard";
-    // if (segments.length >= 2 && segments[0] === "shipper") {
-    //   pageKey = segments[1].replace(".html", "");
-    //   if (pageKey === "agreement_details_shipper")
-    //     pageKey = "agreement_details";
-    // } else if (segments.length === 1 && segments[0] !== "shipper") {
-    //   // Redirect if someone visits /agreements without the shipper prefix
-    //   window.location.href = `${ROLE_PATH}/${segments[0]}.html`;
-    //   return;
-    // }
-    // if (!pageKey) pageKey = "dashboard";
-    // const initialPage = availablePages.includes(pageKey)
-    //   ? pageKey
-    //   : "dashboard";
+    // ─── INITIAL PAGE LOAD ────────────────────────────────
+    const path = window.location.pathname;
+    const segments = path.split("/").filter((s) => s.length > 0);
+    let pageKey = "shipper_dashboard";
+    if (segments.length >= 2 && segments[0] === "shipper") {
+      const raw = segments[1].replace(".html", "");
+      if (raw === "agreement_details_shipper") pageKey = "agreement_details";
+      else if (pageMap[raw]) pageKey = raw;
+      else pageKey = "shipper_dashboard";
+    } else if (segments.length === 1 && segments[0] !== "shipper") {
+      // Redirect to shipper route with .html
+      window.location.href = `${ROLE_PATH}/${segments[0]}`;
+      return;
+    }
+    if (!pageKey) pageKey = "shipper_dashboard";
+    const initialPage = availablePages.includes(pageKey)
+      ? pageKey
+      : "shipper_dashboard";
 
-    // ─── START ──────────────────────────────────────────────
     loadPage(initialPage);
 
     // ─── EXPOSE loadPage GLOBALLY ──────────────────────────

@@ -16,11 +16,12 @@ router.use(express.static(CARRIER_DIR));
 // MAP /carrier AND /carrier.html TO carrier.html
 // =====================================================
 
-router.get("/carrier", (req, res) => {
-  res.sendFile(path.join(CARRIER_DIR, "carrier.html"));
-});
 router.get("/carrier.html", (req, res) => {
-  res.sendFile(path.join(CARRIER_DIR, "carrier.html"));
+  res.sendFile(path.join(CARRIER_DIR, "carrier_dashboard.html"));
 });
+// router.get("carrier/carrier_dashboard.html", (req, res) => {
+//   res.sendFile(path.join(CARRIER_DIR, "carrier_dashboard.html"));
+// });
 
 module.exports = router;
+

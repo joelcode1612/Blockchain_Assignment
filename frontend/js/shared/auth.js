@@ -105,7 +105,6 @@ window.Auth = {
   autoGuard: autoGuard,
   guard: guard,
 
-  // ─── NEW: ensure both auth data AND contract are valid ──
   ensureFullSession: function () {
     const wallet = this.getWallet();
     const role = this.getCurrentRole();

@@ -9,23 +9,18 @@
 
     <link rel="stylesheet" href="/css/styles.css">
     <link rel="stylesheet" href="/css/dashboard.css">
-    <link rel="stylesheet" href="/css/carrier-agreements.css">
+    <link rel="stylesheet" href="/css/responsive.css">
+    <link rel="stylesheet" href="/css/carrier.css">
+    <link rel="stylesheet" href="/css/carrier_agreements.css">
 </head>
 
 <body>
-
     <div class="app">
-
         <main class="main">
-
             <div class="content">
-
                 <div class="table-container">
-
                     <table class="data-table">
-
                         <thead>
-
                             <tr>
                                 <th>Agreement ID</th>
                                 <th>Date Completed</th>
@@ -34,129 +29,21 @@
                                 <th>Total Earned</th>
                                 <th>Contract Status</th>
                             </tr>
-
                         </thead>
-
-
-                        <tbody>
-
-                            <!-- AGREEMENT 1 -->
+                        <tbody id="historyBody">
                             <tr>
-
-                                <td class="mono">
-                                    #AG8712
+                                <td colspan="6" style="text-align:center;padding:40px 0;color:var(--text-faint);">
+                                    Loading history...
                                 </td>
-
-                                <td>
-                                    July 28, 2026
-                                </td>
-
-                                <td>
-                                    Global Traders LLC
-                                </td>
-
-                                <td>
-                                    Auto Parts
-                                </td>
-
-                                <td class="earned">
-                                    6.50 ETH
-                                </td>
-
-                                <td>
-
-                                    <span class="status-badge status-done">
-                                        ✔ Completed
-                                    </span>
-
-                                </td>
-
                             </tr>
-
-
-                            <!-- AGREEMENT 2 -->
-                            <tr>
-
-                                <td class="mono">
-                                    #AG8650
-                                </td>
-
-                                <td>
-                                    July 15, 2026
-                                </td>
-
-                                <td>
-                                    Dana Reyes
-                                </td>
-
-                                <td>
-                                    Raw Materials
-                                </td>
-
-                                <td class="earned">
-                                    2.10 ETH
-                                </td>
-
-                                <td>
-
-                                    <span class="status-badge status-done">
-                                        ✔ Completed
-                                    </span>
-
-                                </td>
-
-                            </tr>
-
-
-                            <!-- AGREEMENT 3 -->
-                            <tr>
-
-                                <td class="mono">
-                                    #AG8502
-                                </td>
-
-                                <td>
-                                    June 10, 2026
-                                </td>
-
-                                <td>
-                                    Mike Johnson
-                                </td>
-
-                                <td>
-                                    Perishables
-                                </td>
-
-                                <td class="failed-amount">
-                                    1.00 ETH
-                                </td>
-
-                                <td>
-
-                                    <span class="status-badge status-fail">
-                                        ✖ Failed / Refunded
-                                    </span>
-
-                                </td>
-
-                            </tr>
-
                         </tbody>
-
                     </table>
-
                 </div>
-
             </div>
 
         </main>
 
     </div>
-
-    <!-- Redirect when opened directly (SPA loads this content inline via DOMParser) -->
-    <script>
-        window.location.replace('carrier.html');
-    </script>
 </body>
 
 </html>

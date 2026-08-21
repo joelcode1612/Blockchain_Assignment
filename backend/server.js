@@ -17,9 +17,8 @@ const SHARED_DIR = path.join(FRONTEND_PAGES_DIR, "shared");
 app.use("/", express.static(PUBLIC_DIR)); // serves index.html, login.html, register.html
 app.use("/shared", express.static(SHARED_DIR));
 
-// ─── Role‑specific static folders ─────────────────────
-app.use("/shipper", express.static(path.join(FRONTEND_PAGES_DIR, "shipper")));
-app.use("/carrier", express.static(path.join(FRONTEND_PAGES_DIR, "carrier")));
+// ─── Fragments (SPA content) – ADD THIS ──────────────
+app.use("/fragments", express.static(FRONTEND_PAGES_DIR));
 
 // ─── Other assets ──────────────────────────────────────
 app.use("/abi", express.static(path.join(__dirname, "../abi")));
@@ -37,10 +36,10 @@ app.use(pagesRouter);
 
 // ─── SPA fallbacks (serve the shell HTML) ─────────────
 app.get(/^\/shipper(?:\/.*)?$/, (req, res) => {
-  res.sendFile(path.join(FRONTEND_PAGES_DIR, "shipper/shipper.html"));
+  res.sendFile(path.join(FRONTEND_PAGES_DIR, "shipper/shipper_dashboard.html"));
 });
 app.get(/^\/carrier(?:\/.*)?$/, (req, res) => {
-  res.sendFile(path.join(FRONTEND_PAGES_DIR, "carrier/carrier.html"));
+  res.sendFile(path.join(FRONTEND_PAGES_DIR, "carrier/carrier_dashboard.html"));
 });
 
 app.listen(PORT, () => {

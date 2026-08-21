@@ -1,9 +1,9 @@
 /**
  * ============================================================
- * Carrier Available Jobs – Blockchain version
+ * Carrier Available Jobs – Blockchain only
  * ============================================================
  */
-console.log("✅ carrier_available_jobs.js (blockchain) loaded.");
+console.log("✅ carrier_available_jobs.js loaded.");
 
 let availableAgreements = [];
 
@@ -12,19 +12,8 @@ async function loadAvailableJobs() {
   console.log("⏳ loadAvailableJobs() called.");
 
   const container = document.getElementById("available-jobs-list");
-  console.log("🔍 container element:", container);
-
   if (!container) {
-    console.error("❌ Container #available-jobs-list not found in DOM!");
-    const content = document.querySelector(".content");
-    if (content) {
-      content.innerHTML = `
-        <div style="padding:40px;text-align:center;color:var(--red);">
-          <h3>⚠️ UI Error</h3>
-          <p>Job list container is missing. Please check your HTML.</p>
-        </div>
-      `;
-    }
+    console.error("❌ Container #available-jobs-list not found.");
     return;
   }
 
@@ -36,8 +25,6 @@ async function loadAvailableJobs() {
 
   try {
     const walletAddress = localStorage.getItem("traxenWallet");
-    console.log("🔑 Wallet address from localStorage:", walletAddress);
-
     if (!walletAddress) {
       container.innerHTML = `
         <div style="padding: 60px 20px; text-align: center; color: var(--red);">
@@ -48,7 +35,6 @@ async function loadAvailableJobs() {
       return;
     }
 
-    // ─── Fetch from blockchain ────────────────────────────
     if (typeof window.getPendingAgreementsForCarrier !== "function") {
       throw new Error(
         "getPendingAgreementsForCarrier not available. Is web3_integration loaded?",
@@ -56,8 +42,7 @@ async function loadAvailableJobs() {
     }
 
     const pending = await window.getPendingAgreementsForCarrier(walletAddress);
-    console.log("📦 Pending agreements from blockchain:", pending);
-
+    console.log("📦 Pending agreements:", pending);
     availableAgreements = pending;
 
     if (availableAgreements.length === 0) {
@@ -76,8 +61,8 @@ async function loadAvailableJobs() {
     container.innerHTML = `
       <div style="padding: 40px; text-align: center; color: var(--red);">
         <h3>❌ Failed to load jobs</h3>
-        <p style="margin-top:8px;">${error.message}</p>
-        <button onclick="window.initPage()" class="btn btn-primary" style="margin-top: 12px;">
+        <p>${error.message}</p>
+        <button onclick="window.initAvailableJobs()" class="btn btn-primary" style="margin-top: 12px;">
           Retry
         </button>
       </div>
@@ -87,9 +72,7 @@ async function loadAvailableJobs() {
 
 // ─── Render jobs ──────────────────────────────────────────
 function renderJobs(container, agreements) {
-  console.log("🎨 Rendering jobs...");
   container.innerHTML = "";
-
   agreements.forEach((ag) => {
     const card = document.createElement("div");
     card.className = "job-card";
@@ -98,14 +81,7 @@ function renderJobs(container, agreements) {
     const shipper = ag.shipper
       ? `${ag.shipper.slice(0, 6)}…${ag.shipper.slice(-4)}`
       : "Unknown Shipper";
-
     const value = ag.escrowAmountETH || "0.00";
-
-    // On-chain data doesn't have cargo/weight – we'll show placeholders
-    const cargo = "—";
-    const weight = "";
-    const payload = cargo;
-
     const deadline = ag.deadline
       ? new Date(ag.deadline * 1000).toLocaleDateString("en-US", {
           month: "short",
@@ -113,10 +89,7 @@ function renderJobs(container, agreements) {
           year: "numeric",
         })
       : "Not set";
-
     const milestones = ag.milestoneCount || "—";
-
-    // Route – can't get from contract, use agreement ID
     const route = `Agreement #${ag.id}`;
 
     card.innerHTML = `
@@ -134,7 +107,7 @@ function renderJobs(container, agreements) {
         <div class="job-details">
           <div>
             <div class="detail-label">Payload</div>
-            <div class="detail-val">${payload}</div>
+            <div class="detail-val">—</div>
           </div>
           <div>
             <div class="detail-label">Deadline</div>
@@ -168,12 +141,12 @@ function renderJobs(container, agreements) {
   });
 }
 
-// ─── Accept job (blockchain + optional DB sync) ──────────
+// ─── Accept job (blockchain only) ──────────────────────────
 async function acceptJob(agreementId) {
   try {
     const walletAddress = localStorage.getItem("traxenWallet");
     if (!walletAddress) {
-      alert("Please connect your wallet first.");
+      showToast("Please connect your wallet first.", "warning");
       return;
     }
 
@@ -183,58 +156,52 @@ async function acceptJob(agreementId) {
       return;
     }
 
-    // ─── Blockchain accept ──────────────────────────────
     if (typeof acceptAgreement !== "function") {
       throw new Error("Blockchain accept function not available.");
     }
+
     const tx = await acceptAgreement(agreementId);
     console.log("✅ Blockchain acceptance tx:", tx);
+    showToast("✅ Job accepted successfully!", "success");
 
-    // ─── (Optional) Sync with database ──────────────────
-    // You can keep this if you still use DB for metadata.
-    // If you want pure on-chain, comment or remove this block.
-    try {
-      const response = await fetch(`/api/agreements/${agreementId}/accept`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-wallet-address": walletAddress,
-        },
-        body: JSON.stringify({ acceptTx: tx.transactionHash || tx.hash }),
-      });
-      if (!response.ok) {
-        console.warn("⚠️ DB sync failed, but blockchain tx succeeded.");
-      }
-    } catch (dbError) {
-      console.warn("⚠️ DB sync error:", dbError);
-    }
-
-    alert("✅ Job accepted successfully!");
-    await loadAvailableJobs(); // refresh list
+    // Refresh the list
+    await loadAvailableJobs();
   } catch (error) {
     console.error("❌ Accept job error:", error);
-    alert(`Failed to accept job: ${error.message || "Unknown error"}`);
+    showToast(
+      `Failed to accept job: ${error.message || "Unknown error"}`,
+      "error",
+    );
+  }
+}
+
+// ─── Toast helper ──────────────────────────────────────────
+function showToast(message, type = "info") {
+  if (typeof window.showToast === "function") {
+    window.showToast(message, type);
+  } else {
+    console.log(`[${type}] ${message}`);
+    alert(message);
   }
 }
 
 // ─── SPA Router initialisation ──────────────────────────
 function initAvailableJobs() {
-  console.log("🚀 initAvailableJobs() called (SPA or direct load).");
+  console.log("🚀 initAvailableJobs() called.");
   loadAvailableJobs();
 }
 
-window.initPage = initAvailableJobs;
+// Expose for the router
+window.initAvailableJobs = initAvailableJobs;
 
 // Auto-init on direct page load
-if (
-  document.readyState === "complete" ||
-  document.readyState === "interactive"
-) {
-  console.log("📄 Direct load – calling initAvailableJobs()");
-  initAvailableJobs();
-} else {
-  document.addEventListener("DOMContentLoaded", () => {
-    console.log("📄 DOMContentLoaded – calling initAvailableJobs()");
+if (document.getElementById("available-jobs-list")) {
+  if (
+    document.readyState === "complete" ||
+    document.readyState === "interactive"
+  ) {
     initAvailableJobs();
-  });
+  } else {
+    document.addEventListener("DOMContentLoaded", initAvailableJobs);
+  }
 }

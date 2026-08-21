@@ -6,6 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Traxen — Agreement #AG8930</title>
   <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/css/responsive.css">
+  <link rel="stylesheet" href="/css/carrier.css">
   <link rel="stylesheet" href="/css/dashboard.css">
   <link rel="stylesheet" href="/css/carrier_agreements.css">
 </head>
@@ -21,34 +23,36 @@
 
       </div>
       <div class="content">
-        <div class="back-link" onclick="location.href='carrier.html'">← Back to Carrier Dashboard</div>
+        <div class="back-link" onclick="window.loadPage('carrier_dashboard')">← Back to Carrier Dashboard</div>
+
         <div class="detail-header">
           <div>
-            <h2>Agreement #AG8930 <span class="pill gray" style="margin-left:8px"><span class="dot"></span>Awaiting Your
-                Acceptance</span></h2>
-            <div style="color:var(--text-faint);font-size:13px">Furniture Batch to Seattle · Shipper: Alan Cho</div>
+            <h2 id="pending-agreement-title">Agreement #<span id="pending-agreement-id">—</span>
+              <span class="pill gray" id="pending-status-badge"><span class="dot"></span>Awaiting Your Acceptance</span>
+            </h2>
+            <div style="color:var(--text-faint);font-size:13px" id="pending-agreement-sub">Loading...</div>
           </div>
           <div class="escrow-box">
-            <div class="amt">2.80 ETH</div>
+            <div class="amt" id="pending-escrow-amount">— ETH</div>
             <div class="lbl">Escrow Balance · Locked</div>
           </div>
         </div>
+
         <div class="info-card">
           <h3>Job Summary</h3>
-          <div class="kv"><span class="k">Route</span><span class="v">LA Warehouse → Seattle, WA</span></div>
-          <div class="kv"><span class="k">Deadline</span><span class="v">2025-07-22, 5:00 PM</span></div>
-          <div class="kv"><span class="k">Milestones</span><span class="v">4 checkpoints</span></div>
-          <div class="kv"><span class="k">Total Payout</span><span class="v" style="color:var(--lime)">2.80 ETH</span>
+          <div class="kv"><span class="k">Shipper</span><span class="v" id="pending-shipper">—</span></div>
+          <div class="kv"><span class="k">Deadline</span><span class="v" id="pending-deadline">—</span></div>
+          <div class="kv"><span class="k">Milestones</span><span class="v" id="pending-milestone-count">—</span></div>
+          <div class="kv"><span class="k">Total Payout</span><span class="v" style="color:var(--lime)"
+              id="pending-total-payout">— ETH</span></div>
+          <div class="btn-row">
+            <button class="btn btn-danger" onclick="rejectAgreement()">Decline</button>
+            <button class="btn btn-primary" onclick="acceptAgreement()">Accept Job</button>
           </div>
-          <div class="btn-row"><button class="btn btn-danger" onclick="declineJob()">Decline</button><button
-              class="btn btn-primary" onclick="acceptJob()">Accept Job</button></div>
         </div>
       </div>
     </div>
   </div>
-  <script src="/js/shared/common.js"></script>
-  <script src="/js/shared/auth.js"></script>
-  <script src="/js/shared/actions.js"></script>
 </body>
 
 </html>
