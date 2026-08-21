@@ -4,12 +4,10 @@ console.log(
   path.resolve(__dirname, "../config/supabase.js"),
 );
 const supabase = require("../config/supabase.js");
-const blockchainService = require("../services/escrowService");
+const escrowService = require("../services/escrowService");
 const { ethers } = require("ethers");
 
-/**
- * Helper: find agreement by onchain_id (integer) ONLY.
- */
+// ─── Helper: find agreement by onchain_id ──────────────────
 async function findAgreementByOnchainId(onchainId) {
   const { data, error } = await supabase
     .from("agreements")
@@ -20,28 +18,19 @@ async function findAgreementByOnchainId(onchainId) {
   return data;
 }
 
-/**
- * 1️⃣ VIEW ESCROW BALANCE
- * GET /api/escrow/:agreementId/balance
- */
+// ─── 1️⃣ View Escrow Balance ──────────────────────────────
 exports.viewEscrowBalance = async (req, res) => {
   try {
     const { agreementId } = req.params;
-
     const agreement = await findAgreementByOnchainId(agreementId);
     if (!agreement) {
       return res.status(404).json({ error: "Agreement not found" });
     }
-
-    // ─── Use the agreement's chain_id (not to be confused with onchain_id) ──
-    const chainId = agreement.chain_id || "11155111"; // fallback to Sepolia
-
-    const balance = await blockchainService.getEscrowBalance(
+    const chainId = agreement.chain_id;
+    const balance = await escrowService.getEscrowBalance(
       agreement.onchain_id,
       chainId
     );
-
-    // Get the latest deposit record from escrow_history
     const { data: history } = await supabase
       .from("escrow_history")
       .select("amount, funded_at")
@@ -56,11 +45,9 @@ exports.viewEscrowBalance = async (req, res) => {
       remainingWei: balance.toString(),
       remainingEther: ethers.formatEther(balance),
       totalDepositedWei: history?.amount || "0",
-      totalDepositedEther: history?.amount
-        ? ethers.formatEther(history.amount)
-        : "0",
+      totalDepositedEther: history?.amount ? ethers.formatEther(history.amount) : "0",
       lastFundedAt: history?.funded_at || null,
-      funded: !!history, // true if at least one deposit exists
+      funded: !!history,
     });
   } catch (error) {
     console.error("❌ viewEscrowBalance error:", error);
@@ -68,65 +55,87 @@ exports.viewEscrowBalance = async (req, res) => {
   }
 };
 
-/**
- * 2️⃣ DEPOSIT ESCROW
- * POST /api/escrow/:agreementId/deposit
- */
+// ─── 2️⃣ Deposit Escrow (with full debugging) ──────────────
 exports.depositEscrow = async (req, res) => {
   try {
-    const { agreementId } = req.params;
-    const { amount, txHash } = req.body; // amount in wei (string or BigInt)
-    const shipperAddress = req.user.wallet_address?.toLowerCase();
+    console.log("🔍 [depositEscrow] Called with params:", req.params);
+    console.log("🔍 [depositEscrow] Request body:", req.body);
+    console.log("🔍 [depositEscrow] User:", req.user);
 
-    // ─── 1. Validate input ──────────────────────────────────────
+    const { agreementId } = req.params;
+    const { amount, txHash } = req.body;
+    const shipperAddress = req.user?.wallet_address?.toLowerCase();
+
+    // ─── Validate input ──────────────────────────────────────
     if (!amount || !txHash) {
+      console.warn("⚠️ Missing amount or txHash");
       return res.status(400).json({ error: "Missing amount or transaction hash" });
     }
 
-    // ─── 2. Find agreement ──────────────────────────────────────
+    // ─── Find agreement ──────────────────────────────────────
     const agreement = await findAgreementByOnchainId(agreementId);
     if (!agreement) {
-      return res.status(404).json({ error: "Agreement not found" });
+      console.error(`❌ Agreement with onchain_id ${agreementId} not found in database.`);
+      return res.status(404).json({ error: "Agreement not found in database" });
     }
+    console.log("✅ Agreement found:", agreement);
 
-    // ─── 3. Verify shipper ──────────────────────────────────────
+    // ─── Verify shipper ──────────────────────────────────────
     if (agreement.shipper_wallet.toLowerCase() !== shipperAddress) {
+      console.warn(`⚠️ Shipper mismatch: DB=${agreement.shipper_wallet}, request=${shipperAddress}`);
       return res.status(403).json({ error: "Only the shipper can deposit" });
     }
 
-    // ─── 4. Check status ────────────────────────────────────────
-    if (!["AwaitingFunding", "PendingAcceptance"].includes(agreement.status)) {
+    // ─── Check status ────────────────────────────────────────
+    const allowedStatuses = ["AwaitingFunding", "PendingAcceptance"];
+    if (!allowedStatuses.includes(agreement.status)) {
+      console.warn(`⚠️ Invalid status: ${agreement.status}`);
       return res.status(400).json({
-        error: `Invalid status: ${agreement.status}. Must be AwaitingFunding.`,
+        error: `Invalid status: ${agreement.status}. Must be AwaitingFunding or PendingAcceptance.`,
       });
     }
 
-    // ─── 5. Verify amount matches expected escrow ──────────────
-    const expectedAmount = agreement.escrow_amount?.toString();
-    if (amount.toString() !== expectedAmount) {
+    // ─── Verify amount ──────────────────────────────────────
+    const expectedAmount = agreement.escrow_amount?.toString().trim();
+    const receivedAmount = amount.toString().trim();
+    if (receivedAmount !== expectedAmount) {
+      console.warn(`⚠️ Amount mismatch: expected ${expectedAmount}, received ${receivedAmount}`);
       return res.status(400).json({
-        error: `Amount mismatch. Expected ${expectedAmount}, received ${amount}`,
+        error: `Amount mismatch. Expected ${expectedAmount}, received ${receivedAmount}`,
       });
     }
 
-    // ─── 6. Get chain_id (used by blockchain service) ──────────
-    const chainId = agreement.chain_id || "11155111";
+    // ─── Check duplicate transaction hash ──────────────────
+    const { data: existing, error: dupError } = await supabase
+      .from("escrow_history")
+      .select("id")
+      .eq("transaction_hash", txHash)
+      .maybeSingle();
 
-    // ─── 7. Insert into escrow_history ──────────────────────────
+    if (dupError) {
+      console.error("❌ Error checking duplicate hash:", dupError);
+      return res.status(500).json({ error: "Database error while checking duplicate" });
+    }
+    if (existing) {
+      console.warn(`⚠️ Duplicate transaction hash: ${txHash}`);
+      return res.status(409).json({ error: "Transaction already recorded." });
+    }
+
+    // ─── Prepare insert data ─────────────────────────────────
     const insertData = {
       agreement_onchain_id: agreement.onchain_id,
       shipper_wallet: shipperAddress,
-      amount: amount.toString(), // ✅ convert to string for Supabase numeric
+      amount: receivedAmount, // already string
       transaction_hash: txHash,
       funded_at: new Date().toISOString(),
     };
 
     console.log("📝 Inserting escrow_history:", insertData);
 
-    const { data, error: insertError } = await supabase
+    // ─── Execute insert ──────────────────────────────────────
+    const { error: insertError } = await supabase
       .from("escrow_history")
-      .insert(insertData)
-      .select();
+      .insert(insertData);
 
     if (insertError) {
       console.error("❌ Supabase insert error:", insertError);
@@ -137,7 +146,9 @@ exports.depositEscrow = async (req, res) => {
       });
     }
 
-    // ─── 8. Update agreement status to Active ────────────────────
+    console.log("✅ Insert succeeded.");
+
+    // ─── Update agreement status ─────────────────────────────
     const { error: updateError } = await supabase
       .from("agreements")
       .update({
@@ -148,14 +159,14 @@ exports.depositEscrow = async (req, res) => {
 
     if (updateError) {
       console.error("❌ Supabase update error:", updateError);
-      // Insert succeeded but status update failed – you may want to rollback or alert.
+      // Insert succeeded but status update failed – we still return success because the deposit is recorded
       return res.status(500).json({
         error: "Failed to update agreement status",
         details: updateError.message,
       });
     }
 
-    // ─── 9. Success ──────────────────────────────────────────────
+    console.log(`✅ Deposit recorded for agreement ${agreement.onchain_id}`);
     res.status(200).json({
       message: "Escrow deposited successfully! Agreement is now Active.",
       agreementId: agreement.onchain_id,

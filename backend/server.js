@@ -8,48 +8,40 @@ const PORT = process.env.PORT || 5100;
 app.use(cors());
 app.use(express.json());
 
-// =====================================================
-// FIXED PATH CONFIGURATION
-// =====================================================
-// This creates the perfect absolute path to your public folder
-const PUBLIC_DIR = path.join(__dirname, "../frontend", "pages", "public");
+// ─── Paths ──────────────────────────────────────────────
 const FRONTEND_PAGES_DIR = path.join(__dirname, "../frontend", "pages");
-const SHARED_DIR = path.join(__dirname, "../frontend", "pages", "shared");
+const PUBLIC_DIR = path.join(FRONTEND_PAGES_DIR, "public");
+const SHARED_DIR = path.join(FRONTEND_PAGES_DIR, "shared");
 
-// Serve root '/' out of the public folder
-app.use("/", express.static(PUBLIC_DIR));
+// ─── Public & shared (no role required) ──────────────
+app.use("/", express.static(PUBLIC_DIR)); // serves index.html, login.html, register.html
 app.use("/shared", express.static(SHARED_DIR));
 
-// Other structural static assets
+// ─── Role‑specific static folders ─────────────────────
+app.use("/shipper", express.static(path.join(FRONTEND_PAGES_DIR, "shipper")));
+app.use("/carrier", express.static(path.join(FRONTEND_PAGES_DIR, "carrier")));
+
+// ─── Other assets ──────────────────────────────────────
 app.use("/abi", express.static(path.join(__dirname, "../abi")));
 app.use("/css", express.static(path.join(__dirname, "../frontend/css")));
 app.use("/js", express.static(path.join(__dirname, "../frontend/js")));
 
-// Core Routes & Routers
+// ─── API routes ─────────────────────────────────────────
 app.get("/api/health", (req, res) => res.json({ status: "OK" }));
-
 const userRoutes = require("./routes/userRoutes");
 app.use("/api/users", userRoutes);
 
-// Mount main routes (ensure you updated PAGES_DIR inside this file as shown in step 1!)
+// ─── Main routes (login, register, etc.) ──────────────
 const pagesRouter = require("./routes/mainRoutes");
 app.use(pagesRouter);
 
-// SPA Dashboard Fallbacks
-// NOTE: regex form used so it works on Express 4 AND Express 5
-// (Express 5 / path-to-regexp v8 dropped the old "*" wildcard syntax)
+// ─── SPA fallbacks (serve the shell HTML) ─────────────
 app.get(/^\/shipper(?:\/.*)?$/, (req, res) => {
   res.sendFile(path.join(FRONTEND_PAGES_DIR, "shipper/shipper.html"));
 });
-
 app.get(/^\/carrier(?:\/.*)?$/, (req, res) => {
   res.sendFile(path.join(FRONTEND_PAGES_DIR, "carrier/carrier.html"));
 });
-
-// // 404 Handler
-// app.use((req, res) => {
-//   res.status(404).sendFile(path.join(SHARED_DIR, "404.html"));
-// });
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);

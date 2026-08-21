@@ -1,6 +1,17 @@
 const supabase = require('../config/supabase');
 const { ethers } = require('ethers');
 
+// ─── Helper: safe format Ether ──────────────────────────────
+function safeFormatEther(amount) {
+  try {
+    return ethers.formatEther(amount || '0');
+  } catch (e) {
+    console.warn('Format error:', e.message);
+    return '0';
+  }
+}
+
+// ─── Helper: find agreement by onchain_id ──────────────────
 async function findAgreementByOnchainId(onchainId) {
   const { data, error } = await supabase
     .from('agreements')
@@ -18,6 +29,8 @@ exports.getHistory = async (req, res) => {
   try {
     const { agreementId } = req.params;
     const userWallet = req.user?.wallet_address?.toLowerCase();
+    const roleFilter = req.query.role; // optional: 'shipper' or 'carrier'
+
     if (!userWallet) return res.status(401).json({ error: 'Unauthorized' });
 
     const agreement = await findAgreementByOnchainId(agreementId);
@@ -29,7 +42,7 @@ exports.getHistory = async (req, res) => {
       return res.status(403).json({ error: 'Unauthorized' });
     }
 
-    // Fetch deposits and payments – safe with fallback to empty arrays
+    // Fetch deposits and payments
     let deposits = [], payments = [];
     try {
       const depRes = await supabase
@@ -51,23 +64,29 @@ exports.getHistory = async (req, res) => {
 
     const events = [];
 
-    deposits.forEach(d => {
-      events.push({
-        type: 'Deposit',
-        amount: d.amount,
-        amountEth: ethers.formatEther(d.amount || '0'),
-        txHash: d.transaction_hash || '—',
-        timestamp: d.funded_at || agreement.created_at,
-        status: 'completed',
-        description: 'Escrow funded',
+    // ─── Include deposits only if role is NOT 'carrier' ────
+    if (roleFilter !== 'carrier') {
+      deposits.forEach(d => {
+        events.push({
+          agreementId: d.agreement_onchain_id,
+          type: 'Deposit',
+          amount: d.amount,
+          amountEth: safeFormatEther(d.amount),
+          txHash: d.transaction_hash || '—',
+          timestamp: d.funded_at || agreement.created_at,
+          status: 'completed',
+          description: 'Escrow funded',
+        });
       });
-    });
+    }
 
+    // ─── Include payments for all roles ──────────────────────
     payments.forEach(p => {
       events.push({
+        agreementId: p.agreement_onchain_id,
         type: `Payment Release (Milestone ${p.milestone_index + 1})`,
         amount: p.amount,
-        amountEth: ethers.formatEther(p.amount || '0'),
+        amountEth: safeFormatEther(p.amount),
         txHash: p.transaction_hash || '—',
         timestamp: p.paid_at || agreement.updated_at,
         status: 'completed',
@@ -75,26 +94,32 @@ exports.getHistory = async (req, res) => {
       });
     });
 
-    // Fallback if no events
+    // ─── Fallback from agreement (only if no events and role not 'carrier') ──
     if (events.length === 0) {
       const escrowWei = agreement.escrow_amount || '0';
       const releasedWei = agreement.released_amount || '0';
-      if (BigInt(escrowWei) > 0) {
+
+      // Only add fallback deposit if role is not 'carrier'
+      if (roleFilter !== 'carrier' && BigInt(escrowWei) > 0) {
         events.push({
+          agreementId: agreement.onchain_id,
           type: 'Deposit',
           amount: escrowWei,
-          amountEth: ethers.formatEther(escrowWei),
+          amountEth: safeFormatEther(escrowWei),
           txHash: '—',
           timestamp: agreement.created_at,
           status: 'completed',
           description: 'Escrow funded',
         });
       }
+
+      // Payment release fallback (always show)
       if (BigInt(releasedWei) > 0) {
         events.push({
+          agreementId: agreement.onchain_id,
           type: 'Payment Release',
           amount: releasedWei,
-          amountEth: ethers.formatEther(releasedWei),
+          amountEth: safeFormatEther(releasedWei),
           txHash: '—',
           timestamp: agreement.updated_at,
           status: 'completed',
@@ -117,6 +142,8 @@ exports.getHistory = async (req, res) => {
 exports.getAllHistory = async (req, res) => {
   try {
     const userWallet = req.user?.wallet_address?.toLowerCase();
+    const roleFilter = req.query.role; // 'shipper' or 'carrier'
+
     if (!userWallet) return res.status(401).json({ error: 'Unauthorized' });
 
     // Fetch all agreements where user is shipper or carrier
@@ -131,7 +158,7 @@ exports.getAllHistory = async (req, res) => {
 
     const agreementIds = agreements.map(a => a.onchain_id);
 
-    // Fetch deposits and payments in one go (safe)
+    // Fetch deposits and payments
     let deposits = [], payments = [];
     try {
       const depRes = await supabase
@@ -153,25 +180,29 @@ exports.getAllHistory = async (req, res) => {
 
     const events = [];
 
-    deposits.forEach(d => {
-      events.push({
-        agreementId: d.agreement_onchain_id,
-        type: 'Deposit',
-        amount: d.amount,
-        amountEth: ethers.formatEther(d.amount || '0'),
-        txHash: d.transaction_hash || '—',
-        timestamp: d.funded_at,
-        status: 'completed',
-        description: `Escrow funded for AGR-${String(d.agreement_onchain_id).padStart(4, '0')}`,
+    // ─── Include deposits only if role is NOT 'carrier' ────
+    if (roleFilter !== 'carrier') {
+      deposits.forEach(d => {
+        events.push({
+          agreementId: d.agreement_onchain_id,
+          type: 'Deposit',
+          amount: d.amount,
+          amountEth: safeFormatEther(d.amount),
+          txHash: d.transaction_hash || '—',
+          timestamp: d.funded_at,
+          status: 'completed',
+          description: `Escrow funded for AGR-${String(d.agreement_onchain_id).padStart(4, '0')}`,
+        });
       });
-    });
+    }
 
+    // ─── Include payments for all roles ──────────────────────
     payments.forEach(p => {
       events.push({
         agreementId: p.agreement_onchain_id,
         type: `Payment Release (Milestone ${p.milestone_index + 1})`,
         amount: p.amount,
-        amountEth: ethers.formatEther(p.amount || '0'),
+        amountEth: safeFormatEther(p.amount),
         txHash: p.transaction_hash || '—',
         timestamp: p.paid_at,
         status: 'completed',
@@ -179,29 +210,33 @@ exports.getAllHistory = async (req, res) => {
       });
     });
 
-    // Fallback from agreements
+    // ─── Fallback from agreements (only if no events and role not 'carrier') ──
     if (events.length === 0) {
       agreements.forEach(ag => {
         const escrowWei = ag.escrow_amount || '0';
         const releasedWei = ag.released_amount || '0';
-        if (BigInt(escrowWei) > 0) {
+
+        // Only add deposit fallback if role is not 'carrier'
+        if (roleFilter !== 'carrier' && BigInt(escrowWei) > 0) {
           events.push({
             agreementId: ag.onchain_id,
             type: 'Deposit',
             amount: escrowWei,
-            amountEth: ethers.formatEther(escrowWei),
+            amountEth: safeFormatEther(escrowWei),
             txHash: '—',
             timestamp: ag.created_at,
             status: 'completed',
             description: `Escrow funded for AGR-${String(ag.onchain_id).padStart(4, '0')}`,
           });
         }
+
+        // Payment release fallback (always show)
         if (BigInt(releasedWei) > 0) {
           events.push({
             agreementId: ag.onchain_id,
             type: 'Payment Release',
             amount: releasedWei,
-            amountEth: ethers.formatEther(releasedWei),
+            amountEth: safeFormatEther(releasedWei),
             txHash: '—',
             timestamp: ag.updated_at,
             status: 'completed',

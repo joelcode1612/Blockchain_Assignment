@@ -60,7 +60,7 @@ router.use("/api/users", userRoutes);
 router.use("/api/payment", paymentRoutes);
 router.use("/api/milestones", milestoneRoutes);
 router.use("/api/history", historyRoutes);
-router.use("/api/deposit", depositRoutes);
+router.use("/api/escrow", depositRoutes);
 
 // =====================================================
 // FRONTEND PAGE ROUTES (public – they will call protected APIs)
