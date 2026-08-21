@@ -1,65 +1,72 @@
 // ─── SPA ROUTER ──────────────────────────────────────────
-const ROLE_PATH = "/pages/shipper";
+const ROLE_PATH = "/shipper";
 
 document.addEventListener("DOMContentLoaded", function () {
-  (function () {
+  (async function () {
     const contentEl = document.getElementById("contentPlaceholder");
     if (!contentEl) {
       console.error("❌ contentPlaceholder not found. Router cannot start.");
       return;
     }
 
-    if (window.Auth && typeof window.Auth.ensureFullSession === "function") {
-      window.Auth.ensureFullSession();
+    // ─── SESSION GUARD ──────────────────────────────────────
+    // Ensure both auth data AND contract are valid.
+    // If not, Auth.ensureFullSession will redirect to /login.
+    const sessionOk = await window.Auth.ensureFullSession();
+    if (!sessionOk) {
+      // Redirect already happened.
+      return;
     }
 
+    // ─── UPDATE SIDEBAR ──────────────────────────────────────
     updateSidebarUser();
 
+    // ─── ROUTER SETUP ──────────────────────────────────────
     const navItems = document.querySelectorAll(".nav-item[data-page]");
     const pageTitleEl = document.getElementById("pageTitle");
     const pageSubEl = document.getElementById("pageSub");
     const topbarActions = document.querySelector(".topbar-actions");
 
-    // ─── PAGE MAPPING ────────────────────────────────────
+    // ─── PAGE MAPPING ──────────────────────────────────────
     const pageMap = {
       agreements: {
-        file: "/agreements.html",
+        file: "/shipper/agreements.html", // was "/agreements.html"
         title: "Agreements",
         sub: "All logistics agreements you're party to as a Shipper",
         button: { label: "+ Create Agreement", page: "create_agreement" },
       },
       create_agreement: {
-        file: "/create_agreement.html",
+        file: "/shipper/create_agreement.html", // was "/create_agreement.html"
         title: "Create Agreement",
         sub: "Start a new logistics contract with a Carrier",
       },
       deposit_balance: {
-        file: "/deposit_balance.html",
+        file: "/shipper/deposit_balance.html", // was "/deposit_balance.html"
         title: "Escrow Overview",
         sub: "View your locked and available escrow balances",
       },
       milestone_release: {
-        file: "/milestone_release.html",
+        file: "/shipper/milestone_release.html", // was "/milestone_release.html"
         title: "Milestone Tracking",
         sub: "Track and verify delivery milestones",
       },
       refund_expiry: {
-        file: "/refund_expiry.html",
+        file: "/shipper/refund_expiry.html", // was "/refund_expiry.html"
         title: "Refund Centre",
         sub: "Manage refunds and expiry of agreements",
       },
       history: {
-        file: "/history.html",
+        file: "/shared/history.html", // shared path
         title: "Transaction History",
         sub: "Complete record of all your transactions",
       },
       profile: {
-        file: "/shipper_profile.html",
+        file: "/shipper/shipper_profile.html", // was "/shipper_profile.html"
         title: "My Profile",
         sub: "Manage your shipper account and activity",
       },
       settings: {
-        file: "/settings.html",
+        file: "/shipper/settings.html", // was "/settings.html"
         title: "Settings",
         sub: "Configure your account preferences",
       },
@@ -67,9 +74,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function getPageDetails(pageKey) {
       if (pageKey === "agreement_details") {
-        const id = new URLSearchParams(window.location.search).get("id") || "";
+        const id =
+          new URLSearchParams(window.location.search).get("id") || "AG8901";
         return {
-          file: `/agreement_details_shipper.html?id=${id}`, // absolute path
+          file: `/shipper/agreement_details_shipper.html?id=${id}`, // role prefix
           title: "Agreement Details",
           sub: "Manage escrow, milestones, and disputes for this agreement",
         };
@@ -171,7 +179,6 @@ document.addEventListener("DOMContentLoaded", function () {
           console.warn("No wallet address available.");
           return;
         }
-        // Trim and lowercase just in case
         const cleanWallet = walletAddress.trim().toLowerCase();
         const response = await fetch("/api/agreements", {
           headers: { "x-wallet-address": cleanWallet },
@@ -268,15 +275,11 @@ document.addEventListener("DOMContentLoaded", function () {
       let displayName = localStorage.getItem("traxenUserName");
       let role = localStorage.getItem("traxenRole") || "Shipper";
 
-      // If no display name in localStorage, try to fetch from database
       if (!displayName && walletAddress) {
-        // Optionally fetch from API (but we can also fallback to wallet address)
-        // For now, we'll just use the wallet address as fallback
         displayName =
           walletAddress.slice(0, 6) + "..." + walletAddress.slice(-4);
       }
 
-      // Update name and role
       const nameEl = document.getElementById("miniName");
       const roleEl = document.getElementById("miniRole");
       const avatarEl = document.getElementById("miniAvatar");
@@ -284,7 +287,6 @@ document.addEventListener("DOMContentLoaded", function () {
       if (nameEl) nameEl.textContent = displayName || "User";
       if (roleEl) roleEl.textContent = role || "Shipper";
 
-      // Generate avatar initials
       if (avatarEl) {
         const initials = displayName
           ? displayName
@@ -300,6 +302,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // ─── Load a page ────────────────────────────────────────
     async function loadPage(pageKey) {
+      // ─── Guard every navigation ──────────────────────────
+      const sessionOk = await window.Auth.ensureFullSession();
+      if (!sessionOk) return; // redirect already happened
+
       if (pageKey === "dashboard") {
         contentEl.innerHTML = getDashboardHTML();
         updateSidebarUser();
@@ -315,12 +321,6 @@ document.addEventListener("DOMContentLoaded", function () {
         if (pageSubEl) pageSubEl.textContent = `Welcome back, ${userName}!`;
 
         await loadDashboardStats();
-        if (
-          window.Auth &&
-          typeof window.Auth.ensureFullSession === "function"
-        ) {
-          window.Auth.ensureFullSession();
-        }
         return;
       }
 
@@ -368,18 +368,11 @@ document.addEventListener("DOMContentLoaded", function () {
           history: "initHistory",
           profile: "initProfile",
           settings: "initSettings",
-          agreement_details: "initAgreementDetails", // ✅ ADDED
+          agreement_details: "initAgreementDetails",
         };
         const initName = pageInits[pageKey];
         if (initName && typeof window[initName] === "function") {
           window[initName]();
-        }
-
-        if (
-          window.Auth &&
-          typeof window.Auth.ensureFullSession === "function"
-        ) {
-          await window.Auth.ensureFullSession();
         }
       } catch (error) {
         console.error("Load error:", error);
@@ -397,17 +390,24 @@ document.addEventListener("DOMContentLoaded", function () {
       });
     });
 
+    // ─── BACK/FORWARD ──────────────────────────────────────
+    const availablePages = [
+      "dashboard",
+      ...Object.keys(pageMap),
+      "agreement_details",
+    ];
+
     window.addEventListener("popstate", function (e) {
       if (e.state && e.state.page) {
         loadPage(e.state.page);
       } else {
-        // Fallback: parse from URL
         const path = window.location.pathname;
         const segments = path.split("/").filter((s) => s.length > 0);
         let pageKey = "dashboard";
-
         if (segments.length >= 2 && segments[0] === "shipper") {
           pageKey = segments[1].replace(".html", "");
+          if (pageKey === "agreement_details_shipper")
+            pageKey = "agreement_details";
         }
         if (pageKey && availablePages.includes(pageKey)) {
           loadPage(pageKey);
@@ -417,30 +417,25 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     });
 
-    // ─── BACK/FORWARD ──────────────────────────────────────
-    const path = window.location.pathname;
-    const segments = path.split("/").filter((s) => s.length > 0);
-    let pageKey = "dashboard";
+    // // ─── INITIAL PAGE LOAD ────────────────────────────────
+    // const path = window.location.pathname;
+    // const segments = path.split("/").filter((s) => s.length > 0);
+    // let pageKey = "dashboard";
+    // if (segments.length >= 2 && segments[0] === "shipper") {
+    //   pageKey = segments[1].replace(".html", "");
+    //   if (pageKey === "agreement_details_shipper")
+    //     pageKey = "agreement_details";
+    // } else if (segments.length === 1 && segments[0] !== "shipper") {
+    //   // Redirect if someone visits /agreements without the shipper prefix
+    //   window.location.href = `${ROLE_PATH}/${segments[0]}.html`;
+    //   return;
+    // }
+    // if (!pageKey) pageKey = "dashboard";
+    // const initialPage = availablePages.includes(pageKey)
+    //   ? pageKey
+    //   : "dashboard";
 
-    if (segments.length >= 2 && segments[0] === "shipper") {
-      pageKey = segments[1].replace(".html", "");
-      // ← ADD THIS MAPPING
-      if (pageKey === "agreement_details_shipper")
-        pageKey = "agreement_details";
-    } else if (segments.length === 1 && segments[0] !== "shipper") {
-      window.location.href = `${ROLE_PATH}/${segments[0]}.html`;
-      return;
-    }
-
-    if (!pageKey) pageKey = "dashboard";
-    const availablePages = [
-      "dashboard",
-      ...Object.keys(pageMap),
-      "agreement_details",
-    ];
-    const initialPage = availablePages.includes(pageKey)
-      ? pageKey
-      : "dashboard";
+    // ─── START ──────────────────────────────────────────────
     loadPage(initialPage);
 
     // ─── EXPOSE loadPage GLOBALLY ──────────────────────────

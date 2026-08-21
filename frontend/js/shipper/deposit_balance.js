@@ -1,7 +1,7 @@
 // ─── Deposit & Balance – SPA‑ready (IIFE) ────────────────
 console.log('🚀 deposit_balance.js loaded');
 
-(function() {
+(function () {
   let currentAgreementId = null;
   let allAgreements = [];
   let agreementData = {};
@@ -171,13 +171,13 @@ console.log('🚀 deposit_balance.js loaded');
     const agreement = allAgreements.find(a => a.onchain_id === currentAgreementId);
     if (!agreement) { log(`❌ Agreement ${currentAgreementId} not found`); clearUI(); return; }
 
-    const totalEth = agreement.total_amount_eth || '0';
     const status = agreement.status || 'Pending';
     const funded = (status === 'Active' || status === 'Funded' || status === 'Completed');
     const completed = (status === 'Completed');
     const pendingAcceptance = (status === 'PendingAcceptance');
     const awaitingFunding = (status === 'AwaitingFunding');
 
+    let totalEth = '0';
     let balanceEth = '0';
     let remainingEth = '0';
 
@@ -185,8 +185,12 @@ console.log('🚀 deposit_balance.js loaded');
     if (window.contract) {
       try {
         const contractData = await window.contract.getAgreement(currentAgreementId);
+        // ✅ Read total from contract
+        const totalWei = contractData[3];
+        totalEth = ethers.formatEther(totalWei);
+
         const contractStatusNum = Number(contractData[6]);
-        const statusNames = ['PendingAcceptance','AwaitingFunding','Active','Completed','Rejected','Cancelled','Refunded','Expired'];
+        const statusNames = ['PendingAcceptance', 'AwaitingFunding', 'Active', 'Completed', 'Rejected', 'Cancelled', 'Refunded', 'Expired'];
         const contractStatus = statusNames[contractStatusNum] || 'Unknown';
         const contractFunded = (contractStatus === 'Active' || contractStatus === 'Completed');
         const isFunded = contractFunded;
@@ -195,6 +199,7 @@ console.log('🚀 deposit_balance.js loaded');
         agreementData.pendingAcceptance = (contractStatus === 'PendingAcceptance');
         agreementData.awaitingFunding = (contractStatus === 'AwaitingFunding');
         agreementData.completed = (contractStatus === 'Completed');
+
         const balWei = await window.contract.getEscrowBalance(currentAgreementId);
         balanceEth = ethers.formatEther(balWei);
         const total = parseFloat(totalEth);
@@ -202,12 +207,14 @@ console.log('🚀 deposit_balance.js loaded');
         remainingEth = (total - bal).toFixed(6);
       } catch (e) {
         console.warn('Could not fetch contract data, falling back to DB:', e.message);
+        // Fallback to DB values
         const isFunded = funded;
         agreementData.funded = isFunded;
         agreementData.status = status;
         agreementData.pendingAcceptance = pendingAcceptance;
         agreementData.awaitingFunding = awaitingFunding;
         agreementData.completed = completed;
+        totalEth = agreement.total_amount_eth || '0';
         remainingEth = funded ? '0' : totalEth;
         balanceEth = remainingEth;
       }
@@ -217,6 +224,7 @@ console.log('🚀 deposit_balance.js loaded');
       agreementData.pendingAcceptance = pendingAcceptance;
       agreementData.awaitingFunding = awaitingFunding;
       agreementData.completed = completed;
+      totalEth = agreement.total_amount_eth || '0';
       remainingEth = funded ? '0' : totalEth;
       balanceEth = remainingEth;
     }
@@ -412,7 +420,7 @@ console.log('🚀 deposit_balance.js loaded');
 
       // ─── Sync with backend ──────────────────────────────
       try {
-        await fetch(`/api/escrow/${currentAgreementId}/deposit`, {
+        await fetch(`/api/escrow/shipper/${currentAgreementId}/deposit`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -461,7 +469,7 @@ console.log('🚀 deposit_balance.js loaded');
     await loadAgreements();
   }
 
-  window.addEventListener('walletConnected', async function() {
+  window.addEventListener('walletConnected', async function () {
     if (document.getElementById('agreementSelect')) {
       await initDepositBalance(); // always refresh
     }

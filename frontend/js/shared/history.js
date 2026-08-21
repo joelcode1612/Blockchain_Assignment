@@ -21,6 +21,21 @@ console.log('🚀 history.js loaded');
     return null;
   }
 
+  function getCurrentRole() {
+    if (typeof window.Auth?.getCurrentRole === 'function') {
+      return window.Auth.getCurrentRole();
+    }
+    return localStorage.getItem('traxenUserRole') || 'Shipper';
+  }
+
+  function filterPaymentsForRole(payments, role) {
+    if (!payments || payments.length === 0) return payments;
+    if (role && role.toLowerCase() === 'carrier') {
+      return payments.filter(p => !p.type || !p.type.includes('Deposit'));
+    }
+    return payments;
+  }
+
   async function loadAgreements() {
     try {
       const address = getWalletAddress();
@@ -44,8 +59,11 @@ console.log('🚀 history.js loaded');
         opt.textContent = `AGR-${String(ag.onchain_id).padStart(4, '0')} (${ag.status})`;
         sel.appendChild(opt);
       });
-      if (allAgreements.length > 0) {
+      const toggle = document.getElementById('showAllToggle');
+      if (allAgreements.length > 0 && toggle && !toggle.checked) {
         sel.value = allAgreements[0].onchain_id;
+        loadHistory();
+      } else if (allAgreements.length > 0 && toggle && toggle.checked) {
         loadHistory();
       } else {
         const content = document.getElementById('historyContent');
@@ -65,11 +83,16 @@ console.log('🚀 history.js loaded');
     const container = document.getElementById('historyContent');
     const desc = document.getElementById('historyDesc');
 
+    const role = getCurrentRole();
+    const roleParam = role ? role.toLowerCase() : '';
+
     let url;
     if (showAll) {
-      url = '/api/history';
-      if (desc) desc.textContent = 'All transactions across all your agreements';
-      if (sel) { sel.disabled = true; sel.style.opacity = '0.6'; }
+      url = `/api/history${roleParam ? '?role=' + roleParam : ''}`;
+      if (desc) desc.textContent = roleParam === 'carrier'
+        ? 'All payment releases you have received'
+        : 'All transactions across all your agreements';
+      if (sel) { sel.disabled = false; sel.style.opacity = '1'; }
     } else {
       const id = parseInt(sel ? sel.value : '');
       currentAgreementId = isNaN(id) ? null : id;
@@ -78,7 +101,7 @@ console.log('🚀 history.js loaded');
         clearStats();
         return;
       }
-      url = `/api/history/${currentAgreementId}`;
+      url = `/api/history/${currentAgreementId}${roleParam ? '?role=' + roleParam : ''}`;
       if (desc) desc.textContent = `Transactions for AGR-${String(currentAgreementId).padStart(4, '0')}`;
       if (sel) { sel.disabled = false; sel.style.opacity = '1'; }
     }
@@ -94,9 +117,12 @@ console.log('🚀 history.js loaded');
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      renderHistory(data.payments || []);
-      updateStats(data.payments || []);
-      log(`✅ Loaded history (${showAll ? 'all' : 'selected'})`);
+      const payments = data.payments || [];
+      // Additional frontend filter (backup)
+      const filtered = filterPaymentsForRole(payments, role);
+      renderHistory(filtered);
+      updateStats(filtered);
+      log(`✅ Loaded history (${showAll ? 'all' : 'selected'}) for ${role}`);
     } catch (e) {
       console.error('Load history error:', e);
       if (container) container.innerHTML = `<div style="color:var(--text-faint);padding:12px 0;">❌ ${e.message}</div>`;
@@ -142,7 +168,6 @@ console.log('🚀 history.js loaded');
   }
 
   function updateStats(payments) {
-    // Only update if the elements exist
     const totalPaymentsEl = document.getElementById('totalPayments');
     const totalEthEl = document.getElementById('totalEth');
     const latestPaymentEl = document.getElementById('latestPayment');
@@ -179,7 +204,6 @@ console.log('🚀 history.js loaded');
     });
   }
 
-  // ─── Init ──────────────────────────────────────────────────
   async function initHistory() {
     const sel = document.getElementById('agreementSelect');
     if (!sel) {
@@ -188,7 +212,6 @@ console.log('🚀 history.js loaded');
     }
     console.log('🚀 initHistory() called (always reload)');
 
-    // Auto-connect if needed
     if (!window.contract) {
       try {
         if (typeof window.connectWallet === 'function') {
@@ -207,18 +230,28 @@ console.log('🚀 history.js loaded');
       toggle.addEventListener('change', loadHistory);
     }
 
-    // Always reload agreements and history
+    if (sel) {
+      sel.removeEventListener('change', onAgreementSelect);
+      sel.addEventListener('change', onAgreementSelect);
+    }
+
     await loadAgreements();
   }
 
-  // ─── Listen for wallet connection ──────────────────────
+  function onAgreementSelect() {
+    const toggle = document.getElementById('showAllToggle');
+    if (toggle && toggle.checked) {
+      toggle.checked = false;
+    }
+    loadHistory();
+  }
+
   window.addEventListener('walletConnected', async function() {
     if (document.getElementById('agreementSelect')) {
       await initHistory();
     }
   });
 
-  // ─── Expose ──────────────────────────────────────────────
   window.loadHistory = loadHistory;
   window.loadAgreements = loadAgreements;
   window.initHistory = initHistory;
