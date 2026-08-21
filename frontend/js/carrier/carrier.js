@@ -402,7 +402,6 @@
         else if (pageMap[raw]) pageKey = raw;
         else pageKey = "carrier_dashboard";
       } else {
-        // Redirect if user entered /carrier without a page
         window.location.href = `${ROLE_PATH}/carrier_dashboard.html`;
         return;
       }
