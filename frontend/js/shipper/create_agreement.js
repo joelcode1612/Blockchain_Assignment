@@ -576,6 +576,7 @@ async function submitCreateAgreement() {
         createTx: blockchainResult.transactionHash,
         cargoType: cargoType,
         weightKg: weightKg,
+        agreementName: agreementName, 
       }),
     });
 

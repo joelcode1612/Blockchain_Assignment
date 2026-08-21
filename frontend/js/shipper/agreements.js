@@ -171,7 +171,8 @@
           const agreementId = this.dataset.id;
           if (typeof window.loadPage === "function") {
             window.loadPage("agreement_details");
-            const newUrl = `/agreement_details?id=${agreementId}`;
+            // ← USE THE CORRECT PATH UNDER /shipper/
+            const newUrl = `/shipper/agreement_details_shipper.html?id=${agreementId}`;
             window.history.pushState({ page: "agreement_details" }, "", newUrl);
           } else {
             window.location.href = `agreement_details_shipper.html?id=${agreementId}`;

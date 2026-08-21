@@ -68,6 +68,7 @@ exports.createAgreement = async (req, res) => {
       createTx,
       cargoType,
       weightKg,
+      agreementName,
     } = req.body;
 
     const shipperAddress = req.user.wallet_address;
@@ -105,24 +106,18 @@ exports.createAgreement = async (req, res) => {
       createTx,
       cargoType,
       weightKg,
+      agreementName,
     });
 
     res.status(201).json({
-      message:
-        "Agreement created successfully. Waiting for carrier acceptance.",
-
+      message: "Agreement created successfully.",
       agreementId: result.agreementId,
-
       status: "PendingAcceptance",
-
       createTx: result.createTx,
     });
   } catch (error) {
     console.error("Create agreement error:", error);
-
-    res.status(500).json({
-      error: error.message,
-    });
+    res.status(500).json({ error: error.message });
   }
 };
 

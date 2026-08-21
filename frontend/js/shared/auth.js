@@ -256,7 +256,7 @@ async function finishRegister() {
       "success",
     );
     setTimeout(() => {
-      window.location.href = "/" + selectedRole.toLowerCase();
+      window.location.href = "/" + selectedRole.toLowerCase() + ".html";
     }, 1500);
   } catch (error) {
     console.error("Registration error:", error);
@@ -425,7 +425,7 @@ async function handleLogin() {
 
       setAuthData(loginResult.wallet, loginResult.role, displayName, email);
       setTimeout(() => {
-        window.location.href = "/" + loginResult.role.toLowerCase();
+        window.location.href = "/" + loginResult.role.toLowerCase() + ".html";
       }, 1200);
     } else {
       showToast("Wallet not recognized. Please register first.", "error");

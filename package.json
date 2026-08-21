@@ -16,6 +16,7 @@
     "@truffle/hdwallet-provider": "^2.1.15",
     "dotenv": "^17.4.2",
     "ethers": "^6.17.0",
+    "express": "^4.21.2",
     "touch": "^3.1.1"
   }
 }

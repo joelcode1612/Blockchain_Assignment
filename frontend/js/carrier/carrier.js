@@ -1,30 +1,34 @@
-// ============================================================
-// CARRIER SPA ROUTER
-// ============================================================
 (function () {
+  const ROLE_PATH = "/carrier";
   const contentEl = document.getElementById("contentPlaceholder");
   const navItems = document.querySelectorAll(".nav-item[data-page]");
   const pageTitleEl = document.getElementById("pageTitle");
   const pageSubEl = document.getElementById("pageSub");
 
+  // ─── PAGE MAPPING (absolute paths) ──────────────────────
   const pageMap = {
+    dashboard: {
+      file: "/carrier_dashboard.html", 
+      title: "Dashboard",
+      sub: "Here's what's happening with your deliveries",
+    },
     "available-jobs": {
-      file: "carrier_available_job.html",
+      file: "/carrier_available_job.html",
       title: "Available Jobs",
       sub: "Browse and accept decentralized logistics contracts.",
     },
     agreements: {
-      file: "carrier_agreement_history.html",
+      file: "/carrier_agreement_history.html",
       title: "Agreement History",
       sub: "Past contracts and escrow payout logs.",
     },
     "my-deliveries": {
-      file: "carrier_my_delivery.html",
+      file: "/carrier_my_delivery.html",
       title: "My Deliveries",
       sub: "Track and update your active logistics contracts.",
     },
     milestone_release: {
-      file: "milestone_release.html",
+      file: "/milestone_release.html",
       title: "Milestone Tracking",
       sub: "Submit and verify delivery milestones.",
     },
@@ -34,123 +38,118 @@
       sub: "Complete record of all your transactions.",
     },
     profile: {
-      file: "carrier_profile.html",
+      file: "/carrier_profile.html",
       title: "My Profile",
       sub: "Manage your carrier account and delivery performance.",
     },
+    agreement_details: {
+      file: "/agreement_details_carrier.html", // to be created
+      title: "Agreement Details",
+      sub: "Manage this delivery contract",
+    },
   };
 
-  const dashboardTitles = {
-    title: "Dashboard",
-    sub: "Here's what's happening with your deliveries",
-  };
+  // ─── DASHBOARD HTML (inline) ────────────────────────────
+  function getDashboardHTML() {
+    return `
+      <div class="view active">
+        <!-- Stats -->
+        <div class="stat-row">
+          <div class="stat-card">
+            <div class="lbl">Active Deliveries</div>
+            <div class="val" id="stat-active">—</div>
+            <div class="delta up">↑ Updated live</div>
+          </div>
+          <div class="stat-card">
+            <div class="lbl">Total Earned</div>
+            <div class="val lime" id="stat-earned">— ETH</div>
+            <div class="delta">Released across milestones</div>
+          </div>
+          <div class="stat-card">
+            <div class="lbl">Pending Milestones</div>
+            <div class="val" id="stat-pending">—</div>
+            <div class="delta">Awaiting verification</div>
+          </div>
+          <div class="stat-card">
+            <div class="lbl">Completed Deliveries</div>
+            <div class="val" id="stat-completed">—</div>
+            <div class="delta up">On-time performance</div>
+          </div>
+        </div>
 
-  // Preserve the inline dashboard markup so it can be restored on back-nav.
-  const dashboardHTML = contentEl ? contentEl.innerHTML : "";
+        <!-- CTA -->
+        <div class="cta-banner">
+          <div>
+            <h3>New jobs are waiting</h3>
+            <p>Browse open agreements from verified shippers and lock in your next delivery.</p>
+          </div>
+          <button class="btn btn-primary" onclick="window.loadPage('available-jobs')">Browse Available Jobs</button>
+        </div>
 
-  // ─── After injecting new content ──────────────────────────
-  if (typeof window.initPage === "function") {
-    window.initPage();
+        <!-- My Deliveries + Available Jobs -->
+        <div class="grid-2col" style="grid-template-columns:1fr 1fr;">
+          <div class="panel">
+            <div class="panel-head">
+              <h2>My Active Deliveries</h2>
+              <button class="btn btn-ghost" onclick="window.loadPage('my-deliveries')">View All</button>
+            </div>
+            <div id="active-deliveries">
+              <div style="color:var(--text-faint);padding:12px 0;">Loading deliveries...</div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <h2>Available Jobs Nearby</h2>
+              <button class="btn btn-ghost" onclick="window.loadPage('available-jobs')">Browse All</button>
+            </div>
+            <div id="available-jobs">
+              <div style="color:var(--text-faint);padding:12px 0;">Loading available jobs...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
   }
 
-  // ─── Set active nav state ────────────────────────────────
+  // ─── Helpers ──────────────────────────────────────────────
   function setActiveNav(pageKey) {
     navItems.forEach((item) => {
       item.classList.toggle("active", item.dataset.page === pageKey);
     });
   }
 
-  // ─── Set page title / subtitle ────────────────────────────
   function setTitles(title, sub) {
     if (pageTitleEl) pageTitleEl.textContent = title;
     if (pageSubEl) pageSubEl.textContent = sub;
   }
 
-  // ─── Load a page into the content area ────────────────────
-  async function loadPage(pageKey) {
-    if (!Auth || !Auth.requireRoleForUrl("/carrier/")) return;
-
-    setActiveNav(pageKey);
-
-    if (pageKey === "dashboard") {
-      setTitles(dashboardTitles.title, dashboardTitles.sub);
-      contentEl.innerHTML = dashboardHTML;
-      if (typeof window.initPage === "function") {
-        window.initPage();
-      }
-      await loadDashboard();
-      // 🟢 Validate session after dashboard loads
-      if (window.Auth && typeof window.Auth.ensureFullSession === "function") {
-        window.Auth.ensureFullSession();
-      }
-      return;
+  function getPageDetails(pageKey) {
+    if (pageKey === "agreement_details") {
+      const id =
+        new URLSearchParams(window.location.search).get("id") || "AG8901";
+      return {
+        file: `/agreement_details_carrier.html?id=${id}`,
+        title: "Agreement Details",
+        sub: "Manage this delivery contract",
+      };
     }
-
-    const cfg = pageMap[pageKey];
-    if (!cfg) {
-      setTitles(dashboardTitles.title, dashboardTitles.sub);
-      await loadDashboard();
-      return;
-    }
-
-    setTitles(cfg.title, cfg.sub);
-    contentEl.innerHTML = `
-    <div style="padding:40px;text-align:center;color:var(--text-faint);">
-      Loading...
-    </div>
-  `;
-
-    try {
-      const response = await fetch(cfg.file);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-      const html = await response.text();
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(html, "text/html");
-
-      const newContent = doc.querySelector(".content");
-      contentEl.innerHTML = newContent
-        ? newContent.innerHTML
-        : doc.body.innerHTML;
-
-      if (typeof window.initPage === "function") {
-        window.initPage();
-      }
-
-      // 🟢 Validate session after loading any page
-      if (window.Auth && typeof window.Auth.ensureFullSession === "function") {
-        window.Auth.ensureFullSession();
-      }
-    } catch (error) {
-      console.error("Failed to load page:", error);
-      contentEl.innerHTML = `
-      <div style="padding:40px;text-align:center;color:var(--red);">
-        <h3>❌ Failed to load page</h3>
-        <p>${error.message}</p>
-      </div>
-    `;
-    }
+    return pageMap[pageKey] || null;
   }
 
-  // ─── Render the dashboard (inline content + data) ─────────
-  async function loadDashboard() {
-    // Default dashboard markup is already inside #contentPlaceholder.
-    // Re-render it in case the user navigated away.
-    const view = document.querySelector(".view");
-    if (!view) return;
-
-    const walletAddress = localStorage.getItem("traxenWallet");
+  // ─── Load dashboard stats ────────────────────────────────
+  async function loadDashboardStats() {
+    const walletAddress =
+      window.Session?.getWalletAddress?.() ||
+      localStorage.getItem("traxenWallet");
     if (!walletAddress) return;
 
     try {
-      const agsRes = await fetch(
-        `/api/agreements?carrier_wallet=${walletAddress}`,
-        {
-          headers: { "x-wallet-address": walletAddress },
-        },
-      );
-      if (!agsRes.ok) throw new Error("Failed to fetch agreements");
-      const agreements = await agsRes.json();
+      const response = await fetch("/api/agreements", {
+        headers: { "x-wallet-address": walletAddress.trim().toLowerCase() },
+      });
+      if (!response.ok) throw new Error("Failed to fetch agreements");
+      const agreements = await response.json();
 
       const active = agreements.filter(
         (ag) =>
@@ -158,38 +157,35 @@
           ag.status === "AwaitingFunding" ||
           ag.status === "PendingAcceptance",
       );
-      const available = agreements.filter(
+      const pending = agreements.filter(
         (ag) => ag.status === "PendingAcceptance",
       );
+      const completed = agreements.filter((ag) => ag.status === "Completed");
 
-      const statActive = document.getElementById("stat-active");
-      if (statActive) statActive.textContent = active.length;
+      document.getElementById("stat-active").textContent = active.length;
+      document.getElementById("stat-completed").textContent = completed.length;
 
       const earned = agreements
         .filter((ag) => ag.status === "Active" || ag.status === "Completed")
         .reduce((sum, ag) => sum + (Number(ag.total_amount_eth) || 0), 0);
-      const statEarned = document.getElementById("stat-earned");
-      if (statEarned) statEarned.textContent = `${earned.toFixed(2)} ETH`;
+      document.getElementById("stat-earned").textContent =
+        `${earned.toFixed(2)} ETH`;
+      document.getElementById("stat-pending").textContent = pending.length;
 
-      const completed = agreements.filter(
-        (ag) => ag.status === "Completed",
-      ).length;
-      const statCompleted = document.getElementById("stat-completed");
-      if (statCompleted) statCompleted.textContent = completed;
-
+      // ── Active deliveries list ──
       const deliveryEl = document.getElementById("active-deliveries");
       if (deliveryEl) {
-        deliveryEl.innerHTML =
-          active.length === 0
-            ? `<div style="color:var(--text-faint);padding:12px 0;">No active deliveries yet.</div>`
-            : active
-                .map(
-                  (ag) => `
-            <div class="job-card clickable" onclick="location.href='agreement_details_carrier.html?id=${ag.onchain_id}'">
+        if (active.length === 0) {
+          deliveryEl.innerHTML = `<div style="color:var(--text-faint);padding:12px 0;">No active deliveries yet.</div>`;
+        } else {
+          deliveryEl.innerHTML = active
+            .map(
+              (ag) => `
+            <div class="job-card clickable" onclick="window.loadPage('agreement_details', { id: ${ag.onchain_id} })">
               <div class="job-top">
                 <div>
                   <div class="job-title">#${ag.onchain_id} — ${ag.agreement_name || "Agreement"}</div>
-                  <div class="job-sub">Shipper: ${ag.shipper || "Unknown"}</div>
+                  <div class="job-sub">Shipper: ${ag.shipper?.display_name || ag.shipper_wallet || "Unknown"}</div>
                 </div>
                 <div class="job-value">${ag.total_amount_eth || "0"} ETH</div>
               </div>
@@ -197,66 +193,122 @@
                 <span>Next: <b>${ag.status}</b></span>
                 <span>Deadline: <b>${ag.deadline ? new Date(ag.deadline).toLocaleDateString() : "—"}</b></span>
               </div>
-              <button class="btn btn-primary" style="width:100%;" onclick="event.stopPropagation();location.href='agreement_details_carrier.html?id=${ag.onchain_id}'">View Agreement</button>
+              <button class="btn btn-primary" style="width:100%;" onclick="event.stopPropagation();window.loadPage('agreement_details', { id: ${ag.onchain_id} })">View Agreement</button>
             </div>
           `,
-                )
-                .join("");
+            )
+            .join("");
+        }
       }
 
+      // ── Available jobs list ──
       const availEl = document.getElementById("available-jobs");
       if (availEl) {
-        availEl.innerHTML =
-          available.length === 0
-            ? `<div style="color:var(--text-faint);padding:12px 0;">No available jobs right now.</div>`
-            : available
-                .map(
-                  (ag) => `
-            <div class="job-card clickable" onclick="location.href='agreement_pending.html?id=${ag.onchain_id}'">
+        const available = agreements.filter(
+          (ag) => ag.status === "PendingAcceptance",
+        );
+        if (available.length === 0) {
+          availEl.innerHTML = `<div style="color:var(--text-faint);padding:12px 0;">No available jobs right now.</div>`;
+        } else {
+          availEl.innerHTML = available
+            .map(
+              (ag) => `
+            <div class="job-card clickable" onclick="window.loadPage('agreement_details', { id: ${ag.onchain_id} })">
               <div class="job-top">
                 <div>
                   <div class="job-title">${ag.agreement_name || "Agreement"}</div>
-                  <div class="job-sub">Shipper: ${ag.shipper || "Unknown"}</div>
+                  <div class="job-sub">Shipper: ${ag.shipper?.display_name || ag.shipper_wallet || "Unknown"}</div>
                 </div>
                 <div class="job-value">${ag.total_amount_eth || "0"} ETH</div>
               </div>
               <div class="job-meta"><span>${ag.milestone_count || 0} milestones</span><span>Deadline: <b>${ag.deadline ? new Date(ag.deadline).toLocaleDateString() : "—"}</b></span></div>
-              <button class="btn btn-ghost" style="width:100%;" onclick="event.stopPropagation();location.href='agreement_pending.html?id=${ag.onchain_id}'">View &amp; Accept</button>
+              <button class="btn btn-ghost" style="width:100%;" onclick="event.stopPropagation();window.loadPage('agreement_details', { id: ${ag.onchain_id} })">View &amp; Accept</button>
             </div>
           `,
-                )
-                .join("");
+            )
+            .join("");
+        }
       }
     } catch (error) {
-      console.error("Error loading carrier dashboard:", error);
+      console.error("Dashboard stats error:", error);
+      if (typeof showToast === "function")
+        showToast("Failed to load dashboard data", "error");
     }
   }
 
-  // ─── Intercept clicks on nav items ────────────────────────
-  navItems.forEach((item) => {
-    item.addEventListener("click", function (e) {
-      e.preventDefault();
-      loadPage(this.dataset.page);
-      window.history.pushState(
-        { page: this.dataset.page },
+  // ─── Load a page ──────────────────────────────────────────
+  async function loadPage(pageKey, params = {}) {
+    // If we have params (e.g., id), update the query string
+    if (params.id) {
+      const url = new URL(window.location);
+      url.searchParams.set("id", params.id);
+      window.history.replaceState(
+        { page: pageKey },
         "",
-        `?page=${this.dataset.page}`,
+        url.pathname + url.search,
       );
-    });
-  });
+    }
 
-  // ─── Handle browser back/forward ──────────────────────────
-  window.addEventListener("popstate", function (e) {
-    if (e.state && e.state.page) loadPage(e.state.page);
-  });
+    setActiveNav(pageKey);
 
-  // ─── Load initial page from URL ───────────────────────────
-  const initial =
-    new URLSearchParams(window.location.search).get("page") || "dashboard";
+    if (pageKey === "dashboard") {
+      setTitles("Dashboard", "Here's what's happening with your deliveries");
+      contentEl.innerHTML = getDashboardHTML();
+      await loadDashboardStats();
+      return;
+    }
 
-  // ─── Fill user info into sidebar ──────────────────────────
+    const details = getPageDetails(pageKey);
+    if (!details) {
+      contentEl.innerHTML = `<div style="padding:40px;color:var(--red);">❌ Page not found</div>`;
+      return;
+    }
+
+    setTitles(details.title, details.sub);
+    contentEl.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text-faint);">Loading...</div>`;
+
+    try {
+      const response = await fetch(details.file);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const html = await response.text();
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, "text/html");
+      const newContent = doc.querySelector(".content");
+      contentEl.innerHTML = newContent
+        ? newContent.innerHTML
+        : doc.body.innerHTML;
+
+      // Call page-specific init if exists
+      const pageInits = {
+        "available-jobs": "initAvailableJobs",
+        agreements: "initCarrierAgreements",
+        "my-deliveries": "initMyDeliveries",
+        milestone_release: "initMilestoneRelease",
+        history: "initHistory",
+        profile: "initCarrierProfile",
+        agreement_details: "initAgreementDetails",
+      };
+      const initFn = pageInits[pageKey];
+      if (initFn && typeof window[initFn] === "function") {
+        window[initFn]();
+      }
+    } catch (error) {
+      console.error("Load error:", error);
+      contentEl.innerHTML = `<div style="padding:40px;color:var(--red);">❌ Failed to load page: ${error.message}</div>`;
+    }
+  }
+
+  // ─── Update sidebar user info ─────────────────────────────
+  function updateSidebar(name, role) {
+    document.querySelector(".mini-name").textContent = name;
+    document.querySelector(".mini-role").textContent = role;
+    const initials = name.substring(0, 2).toUpperCase();
+    document
+      .querySelectorAll(".mini-avatar")
+      .forEach((el) => (el.textContent = initials));
+  }
+
   async function fillUserInfo() {
-    // If Session module is available, use it directly
     if (window.Session) {
       const session = window.Session.getSession();
       const name =
@@ -265,43 +317,53 @@
       updateSidebar(name, role);
       return;
     }
-
-    // Fallback: fetch from API (as before)
-    const walletAddress = localStorage.getItem("traxenWallet");
-    if (!walletAddress) return;
+    const wallet = localStorage.getItem("traxenWallet");
+    if (!wallet) return;
     try {
-      const userRes = await fetch("/api/users/me", {
-        headers: { "x-wallet-address": walletAddress },
+      const res = await fetch("/api/users/me", {
+        headers: { "x-wallet-address": wallet },
       });
-      if (!userRes.ok) return;
-      const userData = await userRes.json();
-      const name =
-        userData.display_name ||
-        localStorage.getItem("traxenUserName") ||
-        "Carrier";
-      const role =
-        userData.role || localStorage.getItem("traxenUserRole") || "Carrier";
-      updateSidebar(name, role);
-    } catch (error) {
-      console.error("Error loading user info:", error);
+      if (res.ok) {
+        const user = await res.json();
+        updateSidebar(user.display_name || "Carrier", user.role || "Carrier");
+      }
+    } catch (e) {
+      /* ignore */
     }
   }
 
-  function updateSidebar(name, role) {
-    const miniName = document.querySelector(".mini-name");
-    if (miniName) miniName.textContent = name;
-    const miniRole = document.querySelector(".mini-role");
-    if (miniRole) miniRole.textContent = role;
-    const initials = name.substring(0, 2).toUpperCase();
-    document
-      .querySelectorAll(".mini-avatar")
-      .forEach((el) => (el.textContent = initials));
-  }
+  // ─── Intercept nav clicks ──────────────────────────────────
+  navItems.forEach((item) => {
+    item.addEventListener("click", function (e) {
+      e.preventDefault();
+      const page = this.dataset.page;
+      loadPage(page);
+      const url = `${ROLE_PATH}/${page}.html`;
+      window.history.pushState({ page }, "", url);
+    });
+  });
 
+  // ─── Back/forward ──────────────────────────────────────────
+  window.addEventListener("popstate", function (e) {
+    if (e.state && e.state.page) {
+      loadPage(e.state.page);
+    } else {
+      // Parse from URL
+      const path = window.location.pathname;
+      const segments = path.split("/").filter((s) => s.length > 0);
+      let pageKey = "dashboard";
+      if (segments.length >= 2 && segments[0] === "carrier") {
+        pageKey = segments[1].replace(".html", "");
+      }
+      const availablePages = ["dashboard", ...Object.keys(pageMap)];
+      loadPage(availablePages.includes(pageKey) ? pageKey : "dashboard");
+    }
+  });
+
+  // ─── Initial load ──────────────────────────────────────────
   document.addEventListener("DOMContentLoaded", async () => {
-    const walletAddress = localStorage.getItem("traxenWallet");
-    if (!walletAddress) {
-      // 🟢 Use Auth.ensureFullSession to handle missing session
+    const wallet = localStorage.getItem("traxenWallet");
+    if (!wallet) {
       if (window.Auth && typeof window.Auth.ensureFullSession === "function") {
         window.Auth.ensureFullSession();
       } else {
@@ -310,13 +372,19 @@
       return;
     }
     await fillUserInfo();
-    await loadPage(initial);
-    // 🟢 Validate session after the initial page load
-    if (window.Auth && typeof window.Auth.ensureFullSession === "function") {
-      window.Auth.ensureFullSession();
+
+    const path = window.location.pathname;
+    const segments = path.split("/").filter((s) => s.length > 0);
+    let pageKey = "dashboard";
+    if (segments.length >= 2 && segments[0] === "carrier") {
+      pageKey = segments[1].replace(".html", "");
     }
+    const availablePages = ["dashboard", ...Object.keys(pageMap)];
+    const initial = availablePages.includes(pageKey) ? pageKey : "dashboard";
+    loadPage(initial);
   });
 
-  // ─── Expose for inline onclick handlers ───────────────────
+  // ─── Expose for inline handlers ───────────────────────────
+  window.loadPage = loadPage;
   window.carrierNavigate = loadPage;
 })();

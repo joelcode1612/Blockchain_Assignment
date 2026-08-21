@@ -98,35 +98,10 @@ const create = async ({
   status = "PendingAcceptance",
   cargoType,
   weightKg,
+  agreementName,
 }) => {
-  // ------------------------------------------------------------------
-  // 🔍 Check if an agreement with this onchain_id already exists
-  // ------------------------------------------------------------------
-  const { data: existing, error: findError } = await supabase
-    .from("agreements")
-    .select("*")
-    .eq("onchain_id", onchainId)
-    .maybeSingle();
+  // ... duplicate check ...
 
-  if (findError) {
-    throw findError;
-  }
-
-  // ------------------------------------------------------------------
-  // ✅ Already exists – return it without inserting again
-  // ------------------------------------------------------------------
-  if (existing) {
-    console.log(`⚠️ Agreement ${onchainId} already exists in database.`);
-    return {
-      success: true,
-      alreadyExists: true,
-      agreement: existing,
-    };
-  }
-
-  // ------------------------------------------------------------------
-  // ➕ Insert new agreement
-  // ------------------------------------------------------------------
   const { data: agreement, error } = await supabase
     .from("agreements")
     .insert({
@@ -137,8 +112,9 @@ const create = async ({
       released_amount: "0",
       deadline,
       status,
-      cargo_type: cargoType, // ✅ new
-      weight_kg: weightKg, // ✅ new
+      cargo_type: cargoType,
+      weight_kg: weightKg,
+      agreement_name: agreementName,
     })
     .select()
     .single();
@@ -286,7 +262,7 @@ const findByWallet = async (walletAddress) => {
   return data;
 };
 
-  module.exports = {
+module.exports = {
   findAll,
   findByOnchainId,
   findByWallet,

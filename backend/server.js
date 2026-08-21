@@ -36,11 +36,13 @@ const pagesRouter = require("./routes/mainRoutes");
 app.use(pagesRouter);
 
 // SPA Dashboard Fallbacks
-app.get("/shipper/*", (req, res) => {
+// NOTE: regex form used so it works on Express 4 AND Express 5
+// (Express 5 / path-to-regexp v8 dropped the old "*" wildcard syntax)
+app.get(/^\/shipper(?:\/.*)?$/, (req, res) => {
   res.sendFile(path.join(FRONTEND_PAGES_DIR, "shipper/shipper.html"));
 });
 
-app.get("/carrier/*", (req, res) => {
+app.get(/^\/carrier(?:\/.*)?$/, (req, res) => {
   res.sendFile(path.join(FRONTEND_PAGES_DIR, "carrier/carrier.html"));
 });
 

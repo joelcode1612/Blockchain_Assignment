@@ -77,6 +77,7 @@ const createAgreement = async ({
   createTx,
   cargoType,
   weightKg,
+  agreementName,
 }) => {
   // ---------------------------------------------
   // Validate amount
@@ -153,6 +154,7 @@ const createAgreement = async ({
     status: "PendingAcceptance",
     cargoType,
     weightKg,
+    agreementName,
   });
 
   // ---------------------------------------------

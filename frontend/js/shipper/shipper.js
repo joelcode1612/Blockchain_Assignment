@@ -1,5 +1,5 @@
 // ─── SPA ROUTER ──────────────────────────────────────────
-const ROLE_PATH = "/shipper";
+const ROLE_PATH = "/pages/shipper";
 
 document.addEventListener("DOMContentLoaded", function () {
   (function () {
@@ -12,6 +12,8 @@ document.addEventListener("DOMContentLoaded", function () {
     if (window.Auth && typeof window.Auth.ensureFullSession === "function") {
       window.Auth.ensureFullSession();
     }
+
+    updateSidebarUser();
 
     const navItems = document.querySelectorAll(".nav-item[data-page]");
     const pageTitleEl = document.getElementById("pageTitle");
@@ -65,8 +67,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function getPageDetails(pageKey) {
       if (pageKey === "agreement_details") {
+        const id = new URLSearchParams(window.location.search).get("id") || "";
         return {
-          file: `agreement_details_shipper.html?id=${new URLSearchParams(window.location.search).get("id") || "AG8901"}`,
+          file: `/agreement_details_shipper.html?id=${id}`, // absolute path
           title: "Agreement Details",
           sub: "Manage escrow, milestones, and disputes for this agreement",
         };
@@ -307,7 +310,6 @@ document.addEventListener("DOMContentLoaded", function () {
         );
         if (active) active.classList.add("active");
 
-        // ✅ Dynamic welcome message with user's name
         if (pageTitleEl) pageTitleEl.textContent = "Dashboard";
         const userName = localStorage.getItem("traxenUserName") || "User";
         if (pageSubEl) pageSubEl.textContent = `Welcome back, ${userName}!`;
@@ -366,7 +368,7 @@ document.addEventListener("DOMContentLoaded", function () {
           history: "initHistory",
           profile: "initProfile",
           settings: "initSettings",
-          agreement_details: "initAgreementDetails",
+          agreement_details: "initAgreementDetails", // ✅ ADDED
         };
         const initName = pageInits[pageKey];
         if (initName && typeof window[initName] === "function") {
@@ -395,21 +397,47 @@ document.addEventListener("DOMContentLoaded", function () {
       });
     });
 
+    window.addEventListener("popstate", function (e) {
+      if (e.state && e.state.page) {
+        loadPage(e.state.page);
+      } else {
+        // Fallback: parse from URL
+        const path = window.location.pathname;
+        const segments = path.split("/").filter((s) => s.length > 0);
+        let pageKey = "dashboard";
+
+        if (segments.length >= 2 && segments[0] === "shipper") {
+          pageKey = segments[1].replace(".html", "");
+        }
+        if (pageKey && availablePages.includes(pageKey)) {
+          loadPage(pageKey);
+        } else {
+          loadPage("dashboard");
+        }
+      }
+    });
+
     // ─── BACK/FORWARD ──────────────────────────────────────
     const path = window.location.pathname;
     const segments = path.split("/").filter((s) => s.length > 0);
     let pageKey = "dashboard";
+
     if (segments.length >= 2 && segments[0] === "shipper") {
       pageKey = segments[1].replace(".html", "");
+      // ← ADD THIS MAPPING
+      if (pageKey === "agreement_details_shipper")
+        pageKey = "agreement_details";
     } else if (segments.length === 1 && segments[0] !== "shipper") {
-      // Redirect to shipper route with .html
       window.location.href = `${ROLE_PATH}/${segments[0]}.html`;
       return;
     }
 
-    // Remove .html if present
     if (!pageKey) pageKey = "dashboard";
-    const availablePages = ["dashboard", ...Object.keys(pageMap)];
+    const availablePages = [
+      "dashboard",
+      ...Object.keys(pageMap),
+      "agreement_details",
+    ];
     const initialPage = availablePages.includes(pageKey)
       ? pageKey
       : "dashboard";
