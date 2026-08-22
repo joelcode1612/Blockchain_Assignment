@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Traxen — Agreement #AG8901</title>
+  <title>Traxen — Agreement Details</title>
   <link rel="stylesheet" href="/css/styles.css">
   <link rel="stylesheet" href="/css/dashboard.css">
   <link rel="stylesheet" href="/css/carrier_agreements.css">
@@ -15,7 +15,7 @@
     <div class="main">
       <div class="topbar">
         <div>
-          <h1>Agreement #AG8901</h1>
+          <h1>Agreement Details</h1>
           <div class="sub">Track your delivery and submit milestone proof</div>
         </div>
 
@@ -24,114 +24,81 @@
         <div class="back-link" onclick="location.href='carrier.html'">← Back to Carrier Dashboard</div>
         <div class="detail-header">
           <div>
-            <h2>Agreement #AG8901 <span class="pill amber" style="margin-left:8px"><span class="dot"></span>In
-                Transit</span></h2>
-            <div style="color:var(--text-faint);font-size:13px">Electronics Shipment to New York · Shipper: Mike Johnson
+            <h2 id="agreement-title">Agreement</h2>
+
+            <div id="agreement-sub" style="color:var(--text-faint);font-size:13px">
+              Loading...
             </div>
           </div>
           <div class="escrow-box">
-            <div class="amt">5.00 ETH</div>
-            <div class="lbl">Escrow Balance · Locked</div>
+            <div id="escrow-amount" class="amt">0.0000 ETH</div>
+            <div id="escrow-status" class="lbl">Loading...</div>
           </div>
         </div>
         <div class="detail-grid">
           <div class="info-card">
             <h3>Job Info</h3>
-            <div class="kv"><span class="k">Shipper</span><span class="v">Mike Johnson</span></div>
-            <div class="kv"><span class="k">Deadline</span><span class="v">2025-07-15, 12:00 PM</span></div>
-            <div class="kv"><span class="k">Accepted</span><span class="v">2025-05-21</span></div>
-            <div class="kv"><span class="k">Contract</span><span class="v"
-                style="font-family:var(--mono);font-size:11px">0x7a83…4F2E</span></div>
+            <div class="kv">
+              <span class="k">Shipper</span>
+              <span id="shipper-name" class="v">Loading...</span>
+            </div>
+
+            <div class="kv">
+              <span class="k">Deadline</span>
+              <span id="deadline-date" class="v">Loading...</span>
+            </div>
+
+            <div class="kv">
+              <span class="k">Accepted</span>
+              <span id="accepted-date" class="v">Loading...</span>
+            </div>
+
+            <div class="kv">
+              <span class="k">Contract</span>
+              <span id="contract-address" class="v" style="font-family:var(--mono);font-size:11px">
+                Loading...
+              </span>
+            </div>
             <div class="btn-row"><button class="btn btn-ghost btn-sm">View Contract</button><button
                 class="btn btn-ghost btn-sm">Message Shipper</button></div>
           </div>
           <div class="info-card">
             <h3>Delivery Progress</h3>
-            <div class="track">
-              <div class="track-fill" style="width:8%"></div>
-              <div class="tnode complete">
-                <div class="tdot">✓</div>
-                <div class="tname">Pickup</div>
-                <div class="tamt">30%</div>
-              </div>
-              <div class="tnode current">
-                <div class="tdot">2</div>
-                <div class="tname">In Transit</div>
-                <div class="tamt">20%</div>
-              </div>
-              <div class="tnode">
-                <div class="tdot">3</div>
-                <div class="tname">Out for Delivery</div>
-                <div class="tamt">20%</div>
-              </div>
-              <div class="tnode">
-                <div class="tdot">4</div>
-                <div class="tname">Delivered</div>
-                <div class="tamt">30%</div>
-              </div>
-            </div>
+            <div id="milestone-track"></div>
           </div>
         </div>
         <div class="info-card" style="margin-bottom:18px">
-          <h3>Submit Proof — Milestone 2: In Transit</h3>
-          <div class="upload-box" onclick="alert('Opens file picker / GPS checkpoint capture.')">📎 Click to upload
-            proof (photo, GPS checkpoint, or signed receipt)</div>
-            <button class="btn btn-primary btn-block" onclick="submitProof(3)">
-                Submit Milestone Proof
-            </button>
+          <h3 id="submit-proof-title">Submit Milestone Proof</h3>
+
+          <div id="proof-upload-box" class="upload-box" onclick="alert('Opens file picker / GPS checkpoint capture.')">
+            📎 Click to upload proof
+            (photo, GPS checkpoint, or signed receipt)
+          </div>
+
+          <div id="milestone-action-message"></div>
+
+          <button id="submit-proof-btn" class="btn btn-primary btn-block" onclick="submitProof()" disabled>
+            Loading...
+          </button>
         </div>
         <div class="info-card">
           <h3>Milestone &amp; Payout Schedule</h3>
-          <div class="milestone-row">
-            <div>
-              <div class="name">1. Pickup</div>
-              <div class="sub">Verified &amp; paid out</div>
-            </div>
-            <div class="right">
-              <div class="amt">1.50 ETH</div>
-              <div class="sub" style="color:var(--lime)">Received</div>
-            </div>
-          </div>
-          <div class="milestone-row">
-            <div>
-              <div class="name">2. In Transit</div>
-              <div class="sub">Proof submitted — awaiting shipper verification</div>
-            </div>
-            <div class="right">
-              <div class="amt">1.00 ETH</div>
-              <div class="sub" style="color:var(--amber)">Pending Verification</div>
-            </div>
-          </div>
-          <div class="milestone-row">
-            <div>
-              <div class="name">3. Out for Delivery</div>
-              <div class="sub">Not yet reached</div>
-            </div>
-            <div class="right">
-              <div class="amt">1.00 ETH</div>
-              <div class="sub">Locked</div>
-            </div>
-          </div>
-          <div class="milestone-row">
-            <div>
-              <div class="name">4. Delivered</div>
-              <div class="sub">Not yet reached</div>
-            </div>
-            <div class="right">
-              <div class="amt">1.50 ETH</div>
-              <div class="sub">Locked</div>
+
+          <div id="milestone-list">
+            <div style="padding:20px;color:var(--text-faint);">
+              Loading milestones...
             </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
 
-  <script src="/js/shared/common.js"></script>
-  <script src="/js/shared/auth.js"></script>
-  <script src="/js/blockchain/web3_integration.js"></script>
-  <script src="/js/shared/actions.js"></script>
+    <script src="/js/shared/common.js"></script>
+    <script src="/js/shared/auth.js"></script>
+    <script src="/js/blockchain/web3_integration.js"></script>
+    <script src="/js/shared/actions.js"></script>
+    <script src="/js/carrier/agreement_details_carrier.js"></script>
 </body>
 
 </html>

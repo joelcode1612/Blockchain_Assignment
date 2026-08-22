@@ -286,11 +286,11 @@
         milestone_release: "initMilestoneRelease",
         history: "initHistory",
         profile: "initCarrierProfile",
-        agreement_details: "initAgreementDetails",
+        agreement_details: "initCarrierAgreementDetails",
       };
       const initFn = pageInits[pageKey];
       if (initFn && typeof window[initFn] === "function") {
-        window[initFn]();
+          await window[initFn]();
       }
     } catch (error) {
       console.error("Load error:", error);

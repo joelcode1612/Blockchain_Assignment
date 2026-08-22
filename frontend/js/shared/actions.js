@@ -22,24 +22,31 @@ function raiseDispute() {
     "agreement_details_shipper.html?id=AG8901",
   );
 }
-async function submitProof(milestoneId) {
+async function submitProof() {
     try {
-        const params = new URLSearchParams(window.location.search);
-        const agreementId = Number(params.get("id"));
-
-        if (!agreementId) {
-            throw new Error("Invalid agreement ID.");
+        if (currentMilestoneId === null) {
+            alert("No milestone is currently available for submission.");
+            return;
         }
 
-        await window.submitMilestone(agreementId, milestoneId);
-
-        openSuccess(
-            "Proof Submitted",
-            "Your milestone proof has been uploaded and sent to the shipper for verification.",
-            `<div class="kv"><span class="k">Milestone</span><span class="v">#${milestoneId + 1}</span></div>
-             <div class="kv"><span class="k">Agreement</span><span class="v">#AG${agreementId}</span></div>`,
-            `agreement_details_carrier.html?id=${agreementId}`
+        const agreementId = Number(
+            new URLSearchParams(window.location.search).get("id")
         );
+
+        console.log("Submitting milestone:", {
+            agreementId,
+            milestoneId: currentMilestoneId
+        });
+
+        const result = await window.submitMilestone(
+            agreementId,
+            currentMilestoneId
+        );
+
+        console.log("Submit result:", result);
+
+        // Reload the milestone state after transaction
+        await updateMilestoneAction(agreementId);
 
     } catch (error) {
         console.error("Submit proof failed:", error);
