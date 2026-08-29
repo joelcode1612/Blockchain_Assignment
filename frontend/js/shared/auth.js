@@ -255,7 +255,8 @@ async function finishRegister() {
       "success",
     );
     setTimeout(() => {
-      window.location.href = "/" + selectedRole.toLowerCase() + ".html";
+      window.location.href =
+        "/" + selectedRole.toLowerCase() + "_dashboard.html";
     }, 1500);
   } catch (error) {
     console.error("Registration error:", error);
@@ -328,7 +329,7 @@ function doLogin() {
   // Proceed with login
   localStorage.setItem("traxenWallet", address);
   const role = localStorage.getItem("traxenUserRole") || "Shipper";
-  window.location.href = "/" + role.toLowerCase();
+  window.location.href = "/" + role.toLowerCase() + "_dashboard.html";
 }
 
 function selectWallet(el, ctx) {
@@ -424,7 +425,8 @@ async function handleLogin() {
 
       setAuthData(loginResult.wallet, loginResult.role, displayName, email);
       setTimeout(() => {
-        window.location.href = "/" + loginResult.role.toLowerCase() + ".html";
+        window.location.href =
+          "/" + loginResult.role.toLowerCase() + "_dashboard.html";
       }, 1200);
     } else {
       showToast("Wallet not recognized. Please register first.", "error");
