@@ -1,7 +1,7 @@
 // ─── Transaction History ──────────────────────────────────
 console.log('🚀 history.js loaded');
 
-(function() {
+(function () {
   let currentAgreementId = null;
   let allAgreements = [];
 
@@ -139,14 +139,18 @@ console.log('🚀 history.js loaded');
     }
 
     let rows = payments.map(p => {
-      const amount = p.amountEth || (p.amount ? ethers.formatEther(p.amount) : '—');
+      const amount = p.amountEth || (
+        p.amount != null
+          ? ethers.formatEther(String(p.amount))
+          : '—'
+      );
       const type = p.type || 'Event';
       const txHash = p.txHash || '—';
       const time = p.timestamp || '—';
       const status = p.status || 'completed';
       const statusClass = status === 'completed' ? 'lime' : 'amber';
-      const shortHash = txHash.length > 12 ? `${txHash.slice(0,6)}…${txHash.slice(-4)}` : txHash;
-      const agreementLabel = p.agreementId ? `AGR-${String(p.agreementId).padStart(4,'0')}` : '';
+      const shortHash = txHash.length > 12 ? `${txHash.slice(0, 6)}…${txHash.slice(-4)}` : txHash;
+      const agreementLabel = p.agreementId ? `AGR-${String(p.agreementId).padStart(4, '0')}` : '';
 
       return `
         <tr>
@@ -179,8 +183,11 @@ console.log('🚀 history.js loaded');
 
     const total = payments.length;
     const totalEth = payments.reduce((sum, p) => {
-      const amt = p.amountEth || (p.amount ? ethers.formatEther(p.amount) : '0');
-      return sum + parseFloat(amt);
+      const amt = p.amountEth || (
+        p.amount != null
+          ? ethers.formatEther(String(p.amount))
+          : '0'
+      ); return sum + parseFloat(amt);
     }, 0);
     const latest = payments.length > 0 ? payments[0] : null;
 
@@ -193,7 +200,7 @@ console.log('🚀 history.js loaded');
     if (showAll) {
       agreementIdDisplayEl.textContent = 'All';
     } else {
-      agreementIdDisplayEl.textContent = currentAgreementId !== null ? `AGR-${String(currentAgreementId).padStart(4,'0')}` : '—';
+      agreementIdDisplayEl.textContent = currentAgreementId !== null ? `AGR-${String(currentAgreementId).padStart(4, '0')}` : '—';
     }
   }
 
@@ -246,7 +253,7 @@ console.log('🚀 history.js loaded');
     loadHistory();
   }
 
-  window.addEventListener('walletConnected', async function() {
+  window.addEventListener('walletConnected', async function () {
     if (document.getElementById('agreementSelect')) {
       await initHistory();
     }

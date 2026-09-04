@@ -228,7 +228,7 @@ document.addEventListener("DOMContentLoaded", function () {
             else if (status === "PendingAcceptance") pillClass = "pill amber";
             else if (status === "Completed") pillClass = "pill gray";
             const value = a.escrow_amount
-              ? parseFloat(ethers.formatEther(a.escrow_amount)).toFixed(2)
+              ? parseFloat(ethers.formatEther(String(a.escrow_amount))).toFixed(2)
               : "0.00";
             const carrierName =
               a.carrier?.display_name || a.carrier?.wallet_address || "Unknown";
@@ -288,11 +288,11 @@ document.addEventListener("DOMContentLoaded", function () {
       if (avatarEl) {
         const initials = displayName
           ? displayName
-              .split(" ")
-              .map((w) => w[0])
-              .join("")
-              .toUpperCase()
-              .slice(0, 2)
+            .split(" ")
+            .map((w) => w[0])
+            .join("")
+            .toUpperCase()
+            .slice(0, 2)
           : "U";
         avatarEl.textContent = initials;
       }

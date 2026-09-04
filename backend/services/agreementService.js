@@ -1,15 +1,45 @@
 const { ethers } = require("ethers");
 
 const agreementModel = require("../models/agreementModel");
+const escrowService = require("./escrowService");
 
 // =====================================================
 // GET ALL AGREEMENTS
 // =====================================================
 
 const getAllAgreements = async () => {
+  console.log("🔥 getAllAgreements CALLED");
+
   const agreements = await agreementModel.findAll();
 
-  return agreements.map((agreement) => {
+  console.log(
+    "🔥 agreements from DB:",
+    agreements.map(a => ({
+      onchain_id: a.onchain_id,
+      status: a.status,
+      escrow_amount: a.escrow_amount,
+      released_amount: a.released_amount
+    }))
+  );
+
+  // Sync agreement data from blockchain before returning dashboard data
+  await Promise.all(
+    agreements.map(async (agreement) => {
+      try {
+        await syncAgreementFromBlockchain(agreement.onchain_id);
+      } catch (error) {
+        console.error(
+          `⚠️ Failed to sync agreement ${agreement.onchain_id}:`,
+          error.message
+        );
+      }
+    })
+  );
+
+  // Reload agreements after blockchain sync
+  const syncedAgreements = await agreementModel.findAll();
+
+  return syncedAgreements.map((agreement) => {
     const milestones = agreement.milestones || [];
     const total = milestones.length;
 
@@ -38,6 +68,10 @@ const getAllAgreements = async () => {
       // ✅ ADDED: Convert Wei to ETH for the frontend dashboard
       total_amount_eth: ethers.formatEther(agreement.escrow_amount.toString()),
 
+      released_amount_eth: ethers.formatEther(
+        String(agreement.released_amount || 0)
+      ),
+
       status: agreement.status || "PendingAcceptance",
       deadline: agreement.deadline,
       progress,
@@ -52,6 +86,21 @@ const getAllAgreements = async () => {
 // =====================================================
 
 const getAgreementById = async (agreementId) => {
+  console.log(`🔄 Syncing agreement ${agreementId} before loading...`);
+
+  try {
+    await syncAgreementFromBlockchain(agreementId);
+    console.log(`✅ Sync completed for agreement ${agreementId}`);
+  } catch (error) {
+    console.error(
+      `⚠️ Blockchain sync failed for agreement ${agreementId}:`,
+      error
+    );
+
+    // Don't completely break the page if blockchain RPC fails.
+    // We can still return the last known DB state.
+  }
+
   return await agreementModel.findByOnchainId(agreementId);
 };
 
@@ -283,7 +332,190 @@ const getAvailableAgreements = async () => {
 
 // In agreementService.js
 const getAgreementsByWallet = async (walletAddress) => {
+  const agreements = await agreementModel.findByWallet(walletAddress);
+
+  console.log(
+    "🔄 Syncing agreements for wallet:",
+    walletAddress
+  );
+
+  await Promise.all(
+    agreements.map(async (agreement) => {
+      try {
+        await syncAgreementFromBlockchain(agreement.onchain_id);
+      } catch (error) {
+        console.error(
+          `⚠️ Failed to sync agreement ${agreement.onchain_id}:`,
+          error.message
+        );
+      }
+    })
+  );
+
+  // Get fresh data after blockchain sync
   return await agreementModel.findByWallet(walletAddress);
+};
+
+// =====================================================
+// SYNC AGREEMENT FROM BLOCKCHAIN
+// =====================================================
+
+const syncAgreementFromBlockchain = async (agreementId) => {
+  console.log(`🔄 Syncing agreement ${agreementId} from blockchain...`);
+
+  // ---------------------------------------------
+  // Get agreement from blockchain
+  // ---------------------------------------------
+
+  const blockchainAgreement =
+    await escrowService.getAgreement(agreementId);
+  console.log("🔥 BACKEND getAgreement RESULT:");
+  console.log(blockchainAgreement);
+  console.log(
+    "🔥 keys:",
+    Object.keys(blockchainAgreement || {})
+  );
+
+  console.log("========== DEBUG AGREEMENT SYNC ==========");
+  console.log("Agreement ID:", agreementId);
+  console.log("Blockchain status:", Number(blockchainAgreement.status));
+  console.log("Blockchain escrowAmountWei:", blockchainAgreement.escrowAmountWei);
+  console.log("Blockchain releasedAmountWei:", blockchainAgreement.releasedAmountWei);
+  console.log(
+    "Blockchain released ETH:",
+    ethers.formatEther(String(blockchainAgreement.releasedAmountWei))
+  );
+  console.log("==========================================");
+
+  // ─── Sync agreement-level blockchain data to DB ───
+  const blockchainStatusMap = {
+    0: "PendingAcceptance",
+    1: "AwaitingFunding",
+    2: "Active",
+    3: "Completed",
+    4: "Rejected",
+    5: "Cancelled",
+    6: "Refunded",
+    7: "Expired",
+  };
+
+  const blockchainStatus =
+    blockchainStatusMap[Number(blockchainAgreement.status)];
+
+  let effectiveStatus = blockchainStatus;
+
+  const deadline = Number(blockchainAgreement.deadline);
+
+  if (
+    (blockchainStatus === "Active" ||
+      blockchainStatus === "AwaitingFunding") &&
+    deadline > 0 &&
+    Date.now() > deadline * 1000
+  ) {
+    effectiveStatus = "Expired";
+  }
+
+  if (effectiveStatus) {
+    await agreementModel.updateAgreementFromBlockchain(
+      agreementId,
+      {
+        status: effectiveStatus,
+        escrow_amount: String(blockchainAgreement.escrowAmountWei),
+        released_amount: String(blockchainAgreement.releasedAmountWei),
+      });
+    
+    console.log("========== AFTER DB UPDATE ==========");
+    console.log("DB update finished successfully");
+    console.log("====================================");
+    console.log(`💾 Agreement ${agreementId} DB synced`);
+  }
+
+  console.log(
+    "⛓️ Blockchain agreement:",
+    blockchainAgreement
+  );
+
+  // ---------------------------------------------
+  // Sync agreement status
+  // ---------------------------------------------
+
+  // We will map blockchain status later if needed.
+  // For now, don't blindly overwrite DB status.
+
+  // ---------------------------------------------
+  // Get milestone count
+  // ---------------------------------------------
+
+  const milestoneCount =
+    Number(blockchainAgreement.milestoneCount);
+
+  // ---------------------------------------------
+  // Sync every milestone
+  // ---------------------------------------------
+
+  for (let i = 0; i < milestoneCount; i++) {
+    const m = await escrowService.getMilestone(
+      agreementId,
+      i
+    );
+
+    console.log(`Blockchain milestone ${i}:`, m);
+
+    /*
+      Based on the current contract return structure:
+
+      m[0] = milestoneId
+      m[1] = paymentPercentage
+      m[2] = status
+      m[3] = submittedAt
+      m[4] = verifiedAt
+      m[5] = paymentReleasedAt
+    */
+
+    const blockchainStatus = Number(m[2]);
+
+    let status = "Pending";
+
+    if (blockchainStatus === 1) {
+      status = "Submitted";
+    } else if (blockchainStatus === 2) {
+      status = "Verified";
+    } else if (blockchainStatus === 3) {
+      status = "Paid";
+    }
+
+    const submittedAt =
+      Number(m[3]) > 0
+        ? new Date(Number(m[3]) * 1000).toISOString()
+        : null;
+
+    const verifiedAt =
+      Number(m[4]) > 0
+        ? new Date(Number(m[4]) * 1000).toISOString()
+        : null;
+
+    const paidAt =
+      Number(m[5]) > 0
+        ? new Date(Number(m[5]) * 1000).toISOString()
+        : null;
+
+    await agreementModel.updateMilestoneFromBlockchain(
+      agreementId,
+      i,
+      {
+        status,
+        submitted_at: submittedAt,
+        verified_at: verifiedAt,
+        paid_at: paidAt,
+      }
+    );
+  }
+
+  console.log(
+    `Agreement ${agreementId} blockchain sync complete`
+  );
+
+  return blockchainAgreement;
 };
 
 module.exports = {
@@ -295,4 +527,5 @@ module.exports = {
   fundAgreement,
   getAvailableAgreements,
   getAgreementsByWallet,
+  syncAgreementFromBlockchain,
 };

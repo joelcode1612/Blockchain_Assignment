@@ -34,95 +34,111 @@
           <h1 id="pageTitle">↩ Refund &amp; Expiry Tracking</h1>
           <div class="sub" id="pageSub">Deadline monitoring and automatic refund execution</div>
         </div>
-        <div class="agreement-select">
-          Agreement:
-          <select id="agreementSelect" onchange="loadRefundData()">
-            <option value="">— Select —</option>
-          </select>
-        </div>
+
       </div>
 
       <div class="content">
+
         <div class="view active" id="view-refund">
           <!-- Banner -->
           <div id="refundBanner"></div>
 
           <div class="two-col">
-            <div class="panel" style="text-align:center;">
-              <h2 style="text-align:left;">Deadline Countdown</h2>
-              <div class="desc" style="text-align:left;" id="agreementDesc">Select an agreement to view refund status.
+            <div class="panel">
+              <h2>Refund Details</h2>
+
+              <div class="desc" id="agreementDesc">
+                Select an expired agreement below to review the refund.
               </div>
-              <div class="countdown-ring">
-                <svg width="120" height="120" viewBox="0 0 120 120">
-                  <circle class="bg" cx="60" cy="60" r="52" />
-                  <circle class="fg" cx="60" cy="60" r="52" stroke-dasharray="327" stroke-dashoffset="0"
-                    id="countdownCircle" />
-                </svg>
-                <div class="countdown-center">
-                  <div class="num" id="timeLeftPercent">—</div>
-                  <div class="lbl">Time Left</div>
-                </div>
+
+              <div class="kv">
+                <span class="k">Agreement</span>
+                <span class="v" id="agreementIdDisplay">—</span>
               </div>
-              <div class="kv"><span class="k">Deadline</span><span class="v" id="deadlineDisplay">—</span></div>
-              <div class="kv"><span class="k">Time Remaining</span><span class="v" id="timeRemainingDisplay"
-                  style="color:var(--lime);">—</span></div>
-              <div class="kv"><span class="k">Expiry Status</span><span class="v" id="expiryStatusDisplay">—</span>
+
+              <div class="kv">
+                <span class="k">Deadline</span>
+                <span class="v" id="deadlineDisplay">—</span>
+              </div>
+
+              <div class="kv">
+                <span class="k">Escrow Amount</span>
+                <span class="v" id="totalAmountDisplay">—</span>
+              </div>
+
+              <div class="kv">
+                <span class="k">Released</span>
+                <span class="v" id="releasedAmountDisplay">—</span>
+              </div>
+
+              <div class="kv">
+                <span class="k">Refundable</span>
+                <span class="v" id="remainingLockedDisplay">—</span>
+              </div>
+
+              <div class="kv">
+                <span class="k">Status</span>
+                <span class="v" id="expiryStatusDisplay">—</span>
               </div>
             </div>
 
             <div class="panel">
-              <h2>Refund Logic</h2>
-              <div class="desc">Automatic refund is triggered if the deadline passes and there is remaining balance.
-              </div>
-              <div class="formula-box">
-                if (block.timestamp &gt; <span class="hl">agreement.deadline</span> &amp;&amp;<br>
-                &nbsp;&nbsp;<span class="hl">remainingBalance</span> &gt; 0) {<br>
-                &nbsp;&nbsp;&nbsp;&nbsp;shipper.transfer(<span class="hl">remainingBalance</span>);<br>
-                &nbsp;&nbsp;&nbsp;&nbsp;agreement.status = <span class="hl">REFUNDED</span>;<br>
-                }
-              </div>
-              <div class="kv"><span class="k">Refund Trigger</span><span class="v" id="triggerDisplay">Deadline passed +
-                  balance &gt; 0</span></div>
-              <div class="kv"><span class="k">Refund Recipient</span><span class="v">Shipper (original depositor)</span>
-              </div>
-              <div class="kv"><span class="k">Remaining Locked</span><span class="v"
-                  id="remainingLockedDisplay">—</span></div>
-              <button class="btn btn-danger btn-block" id="refundBtn" style="margin-top:14px;" onclick="handleRefund()"
-                disabled>↩ Request Refund</button>
-            </div>
-          </div>
+              <h2>Refund Available</h2>
 
-          <div class="panel">
-            <h2>Expiry Status Across Agreements</h2>
-            <div class="expiry-grid" id="expiryGrid">
-              <div style="color:var(--text-faint);padding:12px 0;">Select an agreement to view expiry status.</div>
-            </div>
-          </div>
+              <div class="desc">
+                The agreement deadline has passed and the remaining escrow can be returned to the shipper.
+              </div>
 
-          <div class="panel">
-            <h2>Refund Execution Log</h2>
-            <div id="refundLog">
-              <div style="color:var(--text-faint);font-size:12px;">No refunds recorded yet.</div>
-            </div>
-          </div>
+              <div class="kv">
+                <span class="k">Refund Trigger</span>
+                <span class="v">Deadline passed</span>
+              </div>
 
-          <div class="panel" style="background:rgba(0,0,0,0.2);padding:10px 16px;">
-            <div id="output"
-              style="font-family:monospace;font-size:12px;color:var(--text-faint);max-height:100px;overflow-y:auto;white-space:pre-wrap;">
-              Ready...</div>
+              <div class="kv">
+                <span class="k">Refund Recipient</span>
+                <span class="v">Shipper</span>
+              </div>
+
+              <div class="kv">
+                <span class="k">Amount to Refund</span>
+                <span class="v" id="refundAmountDisplay">—</span>
+              </div>
+
+              <button class="btn btn-danger btn-block" id="refundBtn" style="margin-top:18px;" onclick="handleRefund()"
+                disabled>
+                ↩ Request Refund
+              </button>
+            </div>
+
+            <div class="panel">
+              <h2>Refundable Agreements</h2>
+
+              <div id="expiryGrid">
+                <div style="color:var(--text-faint);padding:12px 0;">
+                  Expired agreements with remaining escrow will appear here.
+                </div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <h2>Refund Execution Log</h2>
+              <div id="refundLog">
+                <div style="color:var(--text-faint);font-size:12px;">No refunds recorded yet.</div>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- Scripts -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
-  <script src="/js/shared/common.js"></script>
-  <script src="/js/blockchain/web3_integration.js"></script>
-  <script src="/js/shared/api.js"></script>
-  <script src="/js/shipper/refund_expiry.js"></script>
-  <script src="/js/shared/auth.js"></script>
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+    <script src="/js/shared/common.js"></script>
+    <script src="/js/blockchain/web3_integration.js"></script>
+    <script src="/js/shared/api.js"></script>
+    <script src="/js/shared/auth.js"></script>
+    <script src="/js/shipper/refund_expiry.js"></script>
 </body>
 
 </html>

@@ -576,7 +576,7 @@ async function submitCreateAgreement() {
         createTx: blockchainResult.transactionHash,
         cargoType: cargoType,
         weightKg: weightKg,
-        agreementName: agreementName, 
+        agreementName: agreementName,
       }),
     });
 
@@ -602,7 +602,7 @@ async function submitCreateAgreement() {
 
     alert(
       "Agreement created successfully!\n\n" +
-        "Waiting for the carrier to accept the agreement.",
+      "Waiting for the carrier to accept the agreement.",
     );
 
     // =====================================================
@@ -899,7 +899,9 @@ function validateDeadline() {
     return false;
   }
 
-  const minDeadline = new Date(Date.now() + 60 * 60 * 1000);
+//  const minDeadline = new Date(Date.now() + 60 * 60 * 1000);
+  const minDeadline = new Date(Date.now() + 1 * 60 * 1000);
+
   if (deadline <= minDeadline) {
     showDeadlineError("Delivery deadline must be at least 1 hour from now.");
     return false;

@@ -1,0 +1,285 @@
+<div class="content">
+    <style>
+  .milestone-tracking-page {
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .tracking-toolbar {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 22px;
+  }
+
+  .tracking-toolbar h2 {
+    margin: 0;
+    font-size: 20px;
+  }
+
+  .tracking-toolbar p {
+    margin: 6px 0 0;
+    color: var(--text-faint);
+    font-size: 13px;
+  }
+
+  .tracking-card {
+    background: var(--panel);
+    border: 1px solid var(--border-soft);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+
+  .tracking-card:hover {
+    border-color: rgba(200, 255, 50, 0.35);
+  }
+
+  .tracking-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+
+  .tracking-title {
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .tracking-sub {
+    margin-top: 5px;
+    color: var(--text-faint);
+    font-size: 12px;
+  }
+
+  .tracking-status-active,
+  .tracking-status-waiting {
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .tracking-status-active {
+    background: var(--lime-glow);
+    color: var(--lime);
+  }
+
+  .tracking-status-waiting {
+    background: var(--amber-glow);
+    color: var(--amber);
+  }
+
+  .tracking-summary {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .tracking-summary > div {
+    background: var(--panel-2);
+    border: 1px solid var(--border-soft);
+    border-radius: 8px;
+    padding: 12px;
+  }
+
+  .tracking-summary span {
+    display: block;
+    color: var(--text-faint);
+    font-size: 11px;
+    margin-bottom: 5px;
+  }
+
+  .tracking-summary strong {
+    font-size: 13px;
+  }
+
+  .tracking-progress-row {
+    margin-bottom: 16px;
+  }
+
+  .tracking-progress-label {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 7px;
+    font-size: 12px;
+    color: var(--text-faint);
+  }
+
+  .tracking-progress-label strong {
+    color: var(--lime);
+  }
+
+  .tracking-progress {
+    height: 7px;
+    background: var(--border);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .tracking-progress-fill {
+    height: 100%;
+    background: var(--lime);
+    border-radius: 999px;
+    transition: width 0.3s ease;
+  }
+
+  .tracking-counts {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border-soft);
+    color: var(--text-faint);
+    font-size: 11px;
+  }
+
+  .tracking-milestones {
+    margin-top: 12px;
+  }
+
+  .tracking-milestone {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 12px;
+    border: 1px solid var(--border-soft);
+    border-radius: 8px;
+    margin-top: 8px;
+    background: var(--panel-2);
+  }
+
+  .tracking-milestone-icon {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--text-faint);
+    font-size: 11px;
+    font-weight: 800;
+  }
+
+  .tracking-milestone-main {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .tracking-milestone-title {
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .tracking-milestone-meta {
+    margin-top: 3px;
+    color: var(--text-faint);
+    font-size: 10px;
+  }
+
+  .tracking-milestone-status {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-faint);
+  }
+
+  .tracking-milestone-paid .tracking-milestone-icon {
+    border-color: var(--lime);
+    color: var(--lime);
+  }
+
+  .tracking-milestone-paid .tracking-milestone-status {
+    color: var(--lime);
+  }
+
+  .tracking-milestone-verified .tracking-milestone-icon {
+    border-color: var(--blue);
+    color: var(--blue);
+  }
+
+  .tracking-milestone-verified .tracking-milestone-status {
+    color: var(--blue);
+  }
+
+  .tracking-milestone-submitted {
+    border-color: rgba(255, 190, 60, 0.35);
+  }
+
+  .tracking-milestone-submitted .tracking-milestone-icon {
+    border-color: var(--amber);
+    color: var(--amber);
+  }
+
+  .tracking-milestone-submitted .tracking-milestone-status {
+    color: var(--amber);
+  }
+
+  .tracking-view-btn {
+    width: 100%;
+    margin-top: 16px;
+  }
+
+  .tracking-empty {
+    text-align: center;
+    padding: 50px 20px;
+    color: var(--text-faint);
+    background: var(--panel);
+    border: 1px solid var(--border-soft);
+    border-radius: 12px;
+  }
+
+  .tracking-empty h3 {
+    color: var(--text);
+    margin: 10px 0 6px;
+  }
+
+  .tracking-empty p {
+    margin: 0;
+    font-size: 12px;
+  }
+
+  .tracking-empty-icon {
+    font-size: 28px;
+    color: var(--lime);
+  }
+
+  @media (max-width: 700px) {
+    .tracking-toolbar {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .tracking-summary {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .tracking-card-head {
+      flex-direction: column;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .tracking-summary {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+  <div class="milestone-tracking-page">
+
+    
+    <div id="milestone-tracking-list">
+      <div class="tracking-empty">
+        Loading milestone tracking...
+      </div>
+    </div>
+
+  </div>
+</div>
+

@@ -87,6 +87,24 @@ const getMilestone = async (agreementId, milestoneId) => {
     return readContract('getMilestone', agreementId, milestoneId);
 };
 
+const getAgreement = async (agreementId) => {
+    const result = await readContract('getAgreement', agreementId);
+
+    return {
+        agreementId: Number(result[0]),
+        shipper: result[1],
+        carrier: result[2],
+        escrowAmountWei: result[3].toString(),
+        releasedAmountWei: result[4].toString(),
+        deadline: Number(result[5]),
+        status: Number(result[6]),
+        createdAt: Number(result[7]),
+        carrierAccepted: result[8],
+        refundExecuted: result[9],
+        milestoneCount: Number(result[10]),
+    };
+};
+
 module.exports = {
     depositEscrow,
     getEscrowBalance,
@@ -94,5 +112,6 @@ module.exports = {
     verifyMilestone,
     isPaymentReleased,
     getAgreementCounter,
-    getMilestone,   // 👈 Added
+    getMilestone,
+    getAgreement,
 };

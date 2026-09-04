@@ -212,3 +212,213 @@
   border-color: var(--lime);
   color: var(--lime);
 }
+
+/* =========================================================
+   SHIPPER MILESTONE PAYOUT CARDS
+   ========================================================= */
+
+#milestone-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+#milestone-list .milestone-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+
+  padding: 20px;
+  min-height: 76px;
+
+  background: var(--panel);
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+#milestone-list .milestone-row:hover {
+  background: rgba(255, 255, 255, 0.025);
+  border-color: var(--border);
+  transform: translateY(-1px);
+}
+
+/* Left side */
+
+#milestone-list .milestone-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+#milestone-list .milestone-icon {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+  border: 2px solid var(--border);
+
+  color: var(--text-faint);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+#milestone-list .milestone-info {
+  min-width: 0;
+}
+
+#milestone-list .name {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+#milestone-list .sub {
+  margin-top: 5px;
+  color: var(--text-faint);
+  font-size: 12px;
+}
+
+/* Right side */
+
+#milestone-list .right {
+  min-width: 140px;
+  text-align: right;
+}
+
+#milestone-list .amt {
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 800;
+}
+
+#milestone-list .percentage {
+  margin-top: 3px;
+  color: var(--text-faint);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+#milestone-list .status-label {
+  margin-top: 5px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* -------------------------
+   Status styles
+   ------------------------- */
+
+#milestone-list .milestone-paid {
+  border-color: rgba(190, 255, 40, 0.18);
+}
+
+#milestone-list .milestone-paid .milestone-icon {
+  border-color: var(--lime);
+  background: var(--lime-glow);
+  color: var(--lime);
+}
+
+#milestone-list .milestone-paid .amt,
+#milestone-list .milestone-paid .status-label {
+  color: var(--lime);
+}
+
+#milestone-list .milestone-submitted {
+  border-color: rgba(255, 190, 60, 0.35);
+}
+
+#milestone-list .milestone-submitted .milestone-icon {
+  border-color: var(--amber);
+  background: var(--amber-glow);
+  color: var(--amber);
+}
+
+#milestone-list .milestone-submitted .status-label {
+  color: var(--amber);
+}
+
+#milestone-list .milestone-verified {
+  border-color: rgba(80, 160, 255, 0.3);
+}
+
+#milestone-list .milestone-verified .milestone-icon {
+  border-color: var(--blue);
+  background: rgba(80, 160, 255, 0.1);
+  color: var(--blue);
+}
+
+#milestone-list .milestone-verified .status-label {
+  color: var(--blue);
+}
+
+#milestone-list .milestone-pending {
+  opacity: 0.65;
+}
+
+#milestone-list .milestone-pending .milestone-icon {
+  color: var(--text-faint);
+}
+
+/* -------------------------
+   Mobile
+   ------------------------- */
+
+@media (max-width: 700px) {
+  #milestone-list .milestone-row {
+    padding: 16px;
+    gap: 12px;
+  }
+
+  #milestone-list .milestone-left {
+    gap: 12px;
+  }
+
+  #milestone-list .milestone-icon {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+  }
+
+  #milestone-list .right {
+    min-width: 100px;
+  }
+
+  #milestone-list .amt {
+    font-size: 14px;
+  }
+}
+
+/* Milestone action buttons */
+#milestone-list .milestone-action-btn {
+  margin-top: 9px;
+  min-width: 132px;
+}
+
+#milestone-list .milestone-action-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+@media (max-width: 700px) {
+  #milestone-list .milestone-row {
+    align-items: flex-start;
+  }
+
+  #milestone-list .right {
+    min-width: 120px;
+  }
+}

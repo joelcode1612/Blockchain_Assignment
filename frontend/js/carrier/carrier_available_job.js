@@ -84,10 +84,10 @@ function renderJobs(container, agreements) {
     const value = ag.escrowAmountETH || "0.00";
     const deadline = ag.deadline
       ? new Date(ag.deadline * 1000).toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        })
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
       : "Not set";
     const milestones = ag.milestoneCount || "—";
     const route = `Agreement #${ag.id}`;
@@ -177,12 +177,7 @@ async function acceptJob(agreementId) {
 
 // ─── Toast helper ──────────────────────────────────────────
 function showToast(message, type = "info") {
-  if (typeof window.showToast === "function") {
-    window.showToast(message, type);
-  } else {
-    console.log(`[${type}] ${message}`);
-    alert(message);
-  }
+  console.log(`[${type}] ${message}`);
 }
 
 // ─── SPA Router initialisation ──────────────────────────

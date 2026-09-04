@@ -753,11 +753,7 @@ function handleBlockchainError(error, defaultMessage) {
 }
 
 function showToast(msg, type = "info") {
-  if (typeof window.showToast === "function") {
-    window.showToast(msg, type);
-  } else {
-    console.log(`[${type}] ${msg}`);
-  }
+  console.log(`[${type}] ${msg}`);
 }
 
 /* ============================================================
@@ -1061,8 +1057,8 @@ window.checkUserRegistered = checkUserRegistered;
 window.getUserRole = getUserRole;
 window.createAgreement = createAgreement;
 window.getAgreement = getAgreement;
-window.acceptAgreement = acceptAgreement;
-window.rejectAgreement = rejectAgreement;
+window.acceptAgreementOnChain = acceptAgreement;
+window.rejectAgreementOnChain = rejectAgreement;
 window.cancelAgreement = cancelAgreement;
 window.getMilestone = getMilestone;
 window.submitMilestone = submitMilestone;

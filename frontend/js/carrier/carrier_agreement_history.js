@@ -19,10 +19,12 @@
       }
       let agreements = await response.json();
 
-      // Filter only completed and refunded
-      agreements = agreements.filter(
-        (ag) => ag.status === "Completed" || ag.status === "Refunded",
-      );
+      // // Filter only completed and refunded
+      // agreements = agreements.filter(
+      //   (ag) => ag.status === "Completed" || ag.status === "Refunded",
+      // );
+
+      // Show all agreements regardless of status
 
       renderHistory(agreements);
     } catch (error) {
@@ -65,17 +67,24 @@
       const shipper =
         ag.shipper?.display_name || ag.shipper_wallet || "Unknown";
       const cargo = ag.cargo_type || "—";
-      const amount = ag.escrow_amount
-        ? parseFloat(ethers.formatEther(ag.escrow_amount)).toFixed(2)
+      const amount = ag.escrow_amount != null
+        ? parseFloat(ethers.formatEther(String(ag.escrow_amount))).toFixed(2)
         : "0.00";
       const status = ag.status || "Unknown";
       const statusBadge =
         status === "Completed"
           ? `<span class="status-badge status-done">✔ Completed</span>`
-          : `<span class="status-badge status-refunded">✖ Refunded</span>`;
+          : status === "Refunded"
+            ? `<span class="status-badge status-refunded">✖ Refunded</span>`
+            : status === "Expired"
+              ? `<span class="status-badge status-refunded">⚠ Expired</span>`
+              : `<span class="status-badge">${status}</span>`;
 
       html += `
-        <tr>
+        <tr
+          onclick="window.location.href='/carrier/carrier_agreement_detail.html?id=${id}'"
+          style="cursor:pointer;"
+        >
           <td class="mono">#${id}</td>
           <td>${completedDate}</td>
           <td>${shipper}</td>

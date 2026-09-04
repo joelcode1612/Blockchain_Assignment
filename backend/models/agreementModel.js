@@ -28,7 +28,8 @@ const findAll = async () => {
         status,
         submitted_at,
         verified_at,
-        paid_at
+        paid_at,
+        proof_url
       )
     `,
     )
@@ -71,7 +72,8 @@ const findByOnchainId = async (onchainId) => {
         status,
         submitted_at,
         verified_at,
-        paid_at
+        paid_at,
+        proof_url
       )
     `,
     )
@@ -209,7 +211,8 @@ const findAvailable = async () => {
         status,
         submitted_at,
         verified_at,
-        paid_at
+        paid_at,
+        proof_url
       )
     `,
     )
@@ -249,7 +252,8 @@ const findByWallet = async (walletAddress) => {
         status,
         submitted_at,
         verified_at,
-        paid_at
+        paid_at,
+        proof_url
       )
     `,
     )
@@ -262,6 +266,63 @@ const findByWallet = async (walletAddress) => {
   return data;
 };
 
+// =====================================================
+// SYNC MILESTONE FROM BLOCKCHAIN
+// =====================================================
+
+const updateMilestoneFromBlockchain = async (
+  agreementOnchainId,
+  milestoneIndex,
+  updates
+) => {
+  const { data, error } = await supabase
+    .from("milestones")
+    .update({
+      status: updates.status,
+      submitted_at: updates.submitted_at,
+      verified_at: updates.verified_at,
+      paid_at: updates.paid_at,
+    })
+    .eq("agreement_onchain_id", agreementOnchainId)
+    .eq("milestone_index", milestoneIndex)
+    .select()
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+};
+
+const updateAgreementFromBlockchain = async (onchainId, updates) => {
+  console.log("========== SUPABASE UPDATE ==========");
+  console.log("onchainId:", onchainId);
+  console.log("updates:", updates);
+  console.log("======================================");
+  const { data, error } = await supabase
+    .from("agreements")
+    .update({
+      status: updates.status,
+      escrow_amount: updates.escrow_amount,
+      released_amount: updates.released_amount,
+      deadline: updates.deadline,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("onchain_id", onchainId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("❌ SUPABASE UPDATE ERROR:", error);
+    throw error;
+  }
+
+  console.log("✅ SUPABASE UPDATE RESULT:", data);
+
+  return data;
+};
+
 module.exports = {
   findAll,
   findByOnchainId,
@@ -269,5 +330,7 @@ module.exports = {
   create,
   createMilestones,
   updateStatus,
+  updateMilestoneFromBlockchain,
+  updateAgreementFromBlockchain,
   findAvailable,
 };
