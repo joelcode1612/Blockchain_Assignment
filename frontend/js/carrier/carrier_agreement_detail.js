@@ -1,24 +1,21 @@
 // ─── CARRIER AGREEMENT DETAILS ────────────────────────────
-// This file is loaded when the router navigates to "agreement_details"
-// for a carrier.
-
 (function () {
-  // ─── State ──────────────────────────────────────────────
   let currentAgreement = null;
   let currentMilestones = [];
   let contract = null;
 
+<<<<<<< Updated upstream
   let selectedProofFile = null;
   let proofPreviewUrl = null;
 
   // ─── Init function called by the SPA router ──────────────
+=======
+>>>>>>> Stashed changes
   window.initAgreementDetails = async function () {
     try {
-      // 1. Check session
       const sessionOk = await window.Auth.ensureFullSession();
       if (!sessionOk) return;
 
-      // 2. Get agreement ID from URL
       const params = new URLSearchParams(window.location.search);
       const agreementId = params.get("id");
       if (!agreementId) {
@@ -26,20 +23,19 @@
         return;
       }
 
-      // 3. Get contract instance
       if (typeof window.getContract === "function") {
         contract = window.getContract();
       } else {
         throw new Error("Web3 contract not available.");
       }
 
-      // 4. Fetch agreement data (from API)
       const wallet = localStorage.getItem("traxenWallet");
       if (!wallet) {
         showError("Wallet not connected.");
         return;
       }
 
+      // 1. Fetch from database
       const response = await fetch(`/api/agreements/${agreementId}`, {
         headers: { "x-wallet-address": wallet },
       });
@@ -47,40 +43,57 @@
         const err = await response.json();
         throw new Error(err.error || "Failed to fetch agreement");
       }
+<<<<<<< Updated upstream
       const agreement = await response.json();
       currentAgreement = agreement;
 
       currentMilestones = [...(agreement.milestones || [])].sort(
         (a, b) => Number(a.milestone_index) - Number(b.milestone_index)
       );
+=======
+      const dbAgreement = await response.json();
+      currentAgreement = dbAgreement;
+      currentMilestones = dbAgreement.milestones || [];
+>>>>>>> Stashed changes
 
-      // 5. Populate UI
-      populateUI(agreement);
+      // 2. Fetch from blockchain for verification
+      try {
+        const onchainAgreement = await window.getAgreement(agreementId);
+        console.log("On-chain agreement:", onchainAgreement);
+        // Compare status, escrow amount, etc. and log discrepancies
+        // You can display a warning if they differ
+        if (onchainAgreement.status !== dbAgreement.status) {
+          console.warn(
+            `Status mismatch: DB=${dbAgreement.status}, On-chain=${onchainAgreement.status}`,
+          );
+        }
+        // You could also update UI with on-chain data if DB is stale
+        // For now we trust DB, but we could override status if needed.
+      } catch (e) {
+        console.warn("Could not fetch on-chain agreement:", e);
+      }
 
-      // 6. Enable/disable action buttons based on status
-      setupActions(agreement);
+      // 3. Populate UI
+      populateUI(dbAgreement);
+
+      // 4. Enable/disable action buttons
+      setupActions(dbAgreement);
     } catch (error) {
       console.error("Agreement details error:", error);
       showError(error.message);
     }
   };
 
-  // ─── Populate UI ──────────────────────────────────────────
   function populateUI(agreement) {
-    // Agreement ID
-    const idEl = document.getElementById("agreement-id");
-    if (idEl) idEl.textContent = agreement.onchain_id || "—";
-
-    // Status badge
+    document.getElementById("agreement-id").textContent =
+      agreement.onchain_id || "—";
     const statusBadge = document.getElementById("agreement-status-badge");
     if (statusBadge) {
       const status = agreement.status || "PendingAcceptance";
-      const statusClass = getStatusClass(status);
-      statusBadge.className = `pill ${statusClass}`;
+      statusBadge.className = `pill ${getStatusClass(status)}`;
       statusBadge.innerHTML = `<span class="dot"></span>${status}`;
     }
 
-    // Title & sub
     const titleEl = document.querySelector(".detail-header h2");
     if (titleEl) {
       const id = agreement.onchain_id || "—";
@@ -97,7 +110,6 @@
       subEl.textContent = `${cargo} · Shipper: ${shipperName}`;
     }
 
-    // Escrow amount
     const escrowAmt = document.querySelector(".escrow-box .amt");
     if (escrowAmt) {
       const amount = agreement.escrow_amount
@@ -110,54 +122,33 @@
       escrowAmt.textContent = `${amount} ETH`;
     }
 
-    // Job Info card
-    const shipperEl = document.querySelector(".kv .v");
-    if (shipperEl) {
-      // Find the row that says "Shipper"
-      const kvItems = document.querySelectorAll(".kv");
-      kvItems.forEach((item) => {
-        const label = item.querySelector(".k");
-        if (label && label.textContent === "Shipper") {
-          const value = item.querySelector(".v");
-          if (value)
-            value.textContent =
-              agreement.shipper?.display_name ||
-              agreement.shipper_wallet ||
-              "—";
-        }
-        if (label && label.textContent === "Deadline") {
-          const value = item.querySelector(".v");
-          if (value && agreement.deadline) {
-            value.textContent = new Date(agreement.deadline).toLocaleString();
-          }
-        }
-        if (label && label.textContent === "Accepted") {
-          const value = item.querySelector(".v");
-          // If carrier_accepted_at is available, use it; otherwise fallback to created_at
-          if (value)
-            value.textContent = agreement.carrier_accepted_at
-              ? new Date(agreement.carrier_accepted_at).toLocaleString()
-              : "—";
-        }
-        if (label && label.textContent === "Contract") {
-          const value = item.querySelector(".v");
-          if (value)
-            value.textContent = agreement.contract_address || "0x7a83…4F2E";
-        }
-      });
-    }
+    // Job Info
+    const kvItems = document.querySelectorAll(".kv");
+    kvItems.forEach((item) => {
+      const label = item.querySelector(".k");
+      if (!label) return;
+      const value = item.querySelector(".v");
+      if (!value) return;
+      if (label.textContent === "Shipper") {
+        value.textContent =
+          agreement.shipper?.display_name || agreement.shipper_wallet || "—";
+      } else if (label.textContent === "Deadline") {
+        value.textContent = agreement.deadline
+          ? new Date(agreement.deadline).toLocaleString()
+          : "—";
+      } else if (label.textContent === "Accepted") {
+        value.textContent = agreement.carrier_accepted_at
+          ? new Date(agreement.carrier_accepted_at).toLocaleString()
+          : "—";
+      } else if (label.textContent === "Contract") {
+        value.textContent = agreement.contract_address || "0x7a83…4F2E";
+      }
+    });
 
-    // Milestone progress track
     renderMilestoneTrack(currentMilestones);
-
-    // Milestone list
     renderMilestoneList(currentMilestones, agreement.escrow_amount);
-
-    // Enable/disable submit proof based on status
-    // We'll handle in setupActions
   }
 
-  // ─── Render milestone progress track ──────────────────────
   function renderMilestoneTrack(milestones) {
     milestones = [...milestones].sort(
       (a, b) => Number(a.milestone_index) - Number(b.milestone_index)
@@ -165,21 +156,22 @@
 
     const trackContainer = document.querySelector(".track");
     if (!trackContainer) return;
-
     if (!milestones || milestones.length === 0) {
       trackContainer.innerHTML =
         '<div style="padding:20px;text-align:center;color:var(--text-faint);">No milestones defined.</div>';
       return;
     }
-
-    // Calculate progress
     const paidCount = milestones.filter((m) => m.status === "Paid").length;
+<<<<<<< Updated upstream
 
     const progress =
       milestones.length > 1
         ? Math.max(0, (paidCount - 1) / (milestones.length - 1)) * 75
         : 0;
 
+=======
+    const progress = (paidCount / milestones.length) * 100;
+>>>>>>> Stashed changes
     let html = `<div class="track-fill" style="width:${progress}%"></div>`;
     const firstUnfinishedIndex = milestones.findIndex(
       m => m.status !== "Paid"
@@ -210,7 +202,6 @@
     trackContainer.innerHTML = html;
   }
 
-  // ─── Render milestone list with payouts ──────────────────
   function renderMilestoneList(milestones, totalWei) {
     milestones = [...milestones].sort(
       (a, b) => Number(a.milestone_index) - Number(b.milestone_index)
@@ -219,12 +210,12 @@
     const container = document.getElementById("milestone-list");
 
     if (!container) return;
-
     if (!milestones || milestones.length === 0) {
       container.innerHTML =
         '<div style="padding:12px;color:var(--text-faint);">No milestones defined.</div>';
       return;
     }
+<<<<<<< Updated upstream
 
     const totalEth = totalWei
       ? ethers.formatEther(
@@ -232,6 +223,9 @@
       )
       : 0;
 
+=======
+    const totalEth = totalWei ? parseFloat(ethers.formatEther(totalWei)) : 0;
+>>>>>>> Stashed changes
     let html = "";
     milestones.forEach((m, i) => {
       const pct = m.payment_percentage || 0;
@@ -308,8 +302,8 @@
     container.innerHTML = html;
   }
 
-  // ─── Setup action buttons (submit proof, accept, reject) ──
   function setupActions(agreement) {
+<<<<<<< Updated upstream
     const status = agreement.status || "PendingAcceptance";
 
     // Clear previously selected proof when refreshing agreement state
@@ -362,30 +356,31 @@
 
     // Hide proof section if not applicable (e.g., completed or pending acceptance)
     // Hide proof section only for terminated agreements
+=======
+    const proofSection = document.querySelector(".info-card:has(.upload-box)");
+    if (!proofSection) return;
+    const status = agreement.status || "PendingAcceptance";
+>>>>>>> Stashed changes
     if (
       status === "Rejected" ||
       status === "Cancelled" ||
       status === "Refunded" ||
       status === "Expired"
     ) {
-      if (proofSection) proofSection.style.display = "none";
+      proofSection.style.display = "none";
       return;
     }
-
-    // For pending acceptance, show accept/reject buttons instead of proof
     if (status === "PendingAcceptance") {
-      // Remove proof section and show accept/reject
-      if (proofSection) {
-        proofSection.innerHTML = `
-          <h3>Job Offer — Pending Your Acceptance</h3>
-          <div class="btn-row" style="margin-top:12px;">
-            <button class="btn btn-primary" onclick="acceptAgreement()">Accept Job</button>
-            <button class="btn btn-danger" onclick="rejectAgreement()">Decline Job</button>
-          </div>
-        `;
-      }
+      proofSection.innerHTML = `
+        <h3>Job Offer — Pending Your Acceptance</h3>
+        <div class="btn-row" style="margin-top:12px;">
+          <button class="btn btn-primary" onclick="acceptAgreement()">Accept Job</button>
+          <button class="btn btn-danger" onclick="rejectAgreement()">Decline Job</button>
+        </div>
+      `;
       return;
     }
+<<<<<<< Updated upstream
 
     // ─── Agreement fully completed ───
     if (status === "Completed") {
@@ -625,15 +620,43 @@
             submitMilestoneProof(milestoneIndex);
           };
         }
+=======
+    if (status === "Active" || status === "AwaitingFunding") {
+      const nextMilestone = currentMilestones.find(
+        (m) => m.status === "Pending",
+      );
+      if (nextMilestone) {
+        const idx =
+          nextMilestone.milestone_index ??
+          currentMilestones.indexOf(nextMilestone);
+        const label = proofSection.querySelector("h3");
+        if (label)
+          label.textContent = `Submit Proof — ${nextMilestone.description || `Milestone ${idx + 1}`}`;
+        const btn = proofSection.querySelector(".btn-primary");
+        if (btn)
+          btn.onclick = function () {
+            submitMilestoneProof(idx);
+          };
+        const upload = proofSection.querySelector(".upload-box");
+        if (upload)
+          upload.onclick = function () {
+            alert("📎 Upload proof (photo, GPS checkpoint, or signed receipt)");
+          };
+      } else {
+        const allPaid = currentMilestones.every((m) => m.status === "Paid");
+        proofSection.innerHTML = allPaid
+          ? "<h3>All milestones completed and paid</h3>"
+          : "<h3>Awaiting shipper verification for submitted milestones</h3>";
+>>>>>>> Stashed changes
       }
     }
   }
 
-  // ─── Submit milestone proof (calls smart contract) ──────
   window.submitMilestoneProof = async function (milestoneIndex) {
     try {
       const agreementId = currentAgreement.onchain_id;
       if (!agreementId) throw new Error("No agreement ID");
+<<<<<<< Updated upstream
 
       if (!selectedProofFile) {
         showToast("Please upload a proof photo first.", "error");
@@ -717,6 +740,16 @@
         proofPreviewUrl = null;
       }
 
+=======
+      const sessionOk = await window.Auth.ensureFullSession();
+      if (!sessionOk) return;
+      if (typeof window.submitMilestone !== "function")
+        throw new Error("submitMilestone function not available");
+      showToast("Submitting proof...", "info");
+      const result = await window.submitMilestone(agreementId, milestoneIndex);
+      console.log("Proof submitted:", result);
+      showToast("✅ Proof submitted successfully!", "success");
+>>>>>>> Stashed changes
       await window.initAgreementDetails();
 
     } catch (error) {
@@ -728,14 +761,13 @@
     }
   };
 
-  // ─── Accept agreement ─────────────────────────────────────
   window.acceptAgreement = async function () {
     try {
       const agreementId = currentAgreement.onchain_id;
       if (!agreementId) throw new Error("No agreement ID");
-
       const sessionOk = await window.Auth.ensureFullSession();
       if (!sessionOk) return;
+<<<<<<< Updated upstream
 
       if (typeof window.acceptAgreementOnChain !== "function") {
         throw new Error("acceptAgreementOnChain function not available");
@@ -747,11 +779,14 @@
         button.textContent = "Processing...";
       });
 
+=======
+      if (typeof window.acceptAgreement !== "function")
+        throw new Error("acceptAgreement function not available");
+>>>>>>> Stashed changes
       showToast("Accepting agreement...", "info");
 
       const result = await window.acceptAgreementOnChain(agreementId);
       console.log("Accept result:", result);
-
       showToast("✅ Agreement accepted! Awaiting shipper funding.", "success");
       await window.initAgreementDetails();
     } catch (error) {
@@ -760,25 +795,26 @@
     }
   };
 
-  // ─── Reject agreement ─────────────────────────────────────
   window.rejectAgreement = async function () {
     try {
       const agreementId = currentAgreement.onchain_id;
       if (!agreementId) throw new Error("No agreement ID");
-
       const sessionOk = await window.Auth.ensureFullSession();
       if (!sessionOk) return;
+<<<<<<< Updated upstream
 
       if (typeof window.rejectAgreementOnChain !== "function") {
         throw new Error("rejectAgreementOnChain function not available");
       }
 
+=======
+      if (typeof window.rejectAgreement !== "function")
+        throw new Error("rejectAgreement function not available");
+>>>>>>> Stashed changes
       if (!confirm("Are you sure you want to reject this agreement?")) return;
-
       showToast("Rejecting agreement...", "info");
       const result = await window.rejectAgreementOnChain(agreementId);
       console.log("Reject result:", result);
-
       showToast("Agreement rejected.", "warning");
       await window.initAgreementDetails();
     } catch (error) {
@@ -787,7 +823,6 @@
     }
   };
 
-  // ─── Helpers ──────────────────────────────────────────────
   function getStatusClass(status) {
     const map = {
       PendingAcceptance: "amber",
@@ -818,7 +853,7 @@
     console.log(`[${type}] ${message}`);
   }
 
-  // ─── Auto‑init if the page is loaded directly ──────────
+  // Auto-init if directly loaded
   if (document.querySelector(".detail-header")) {
     if (
       document.readyState === "complete" ||

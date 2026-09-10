@@ -37,10 +37,20 @@
         `<span class="pill ${getStatusClass(agreement.status)}" id="agreement-status-badge">` +
         `<span class="dot"></span>${agreement.status || "PendingAcceptance"}</span>`;
 
-      const subText =
-        agreement.agreement_name ||
-        `${agreement.cargo_type || "Logistics"} · Carrier: ${agreement.carrier?.display_name || agreement.carrier_wallet || "Unknown"}`;
-      document.getElementById("agreement-sub").textContent = subText;
+      const titleEl = document.querySelector(".detail-header h2");
+      if (titleEl) {
+        const id = agreement.onchain_id || "—";
+        titleEl.innerHTML = `Agreement #${id} <span class="pill ${getStatusClass(agreement.status)}" style="margin-left:8px"><span class="dot"></span>${agreement.status || "PendingAcceptance"}</span>`;
+      }
+
+      // Subtitle – use the specific ID
+      // Subtitle – show agreement name + cargo type (from DB)
+      const subEl = document.getElementById("agreement-sub");
+      if (subEl) {
+        const name = agreement.agreement_name || "Logistics Agreement";
+        const cargo = agreement.cargo_type ? ` · ${agreement.cargo_type}` : "";
+        subEl.textContent = name + cargo;
+      }
 
       const status = agreement.status || "PendingAcceptance";
       const escrowAmount = agreement.escrow_amount
