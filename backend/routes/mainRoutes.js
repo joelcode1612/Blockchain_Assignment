@@ -33,12 +33,14 @@ router.get("/", (req, res) => {
   res.sendFile(path.join(PAGES_DIR, "public/index.html"));
 });
 
-router.get("/login", (req, res) => {
-  res.sendFile(path.join(PAGES_DIR, "public/login.html"));
+// Unified Connect Wallet Page (replaces login/register)
+router.get("/connect.html", (req, res) => {
+  res.sendFile(path.join(PAGES_DIR, "public/connect.html"));
 });
 
-router.get("/register", (req, res) => {
-  res.sendFile(path.join(PAGES_DIR, "public/register.html"));
+// Optional: Add a clean URL alias so /connect also works
+router.get("/connect", (req, res) => {
+  res.sendFile(path.join(PAGES_DIR, "public/connect.html"));
 });
 
 // Static shared pages
@@ -52,7 +54,7 @@ router.get("/history.html", (req, res) => {
   );
 });
 
-// Auth routes (login/register) – public
+// Auth routes (login/register endpoints) – public
 router.use("/api/auth", authRoutes);
 
 router.use("/api/agreements", agreementRoutes);

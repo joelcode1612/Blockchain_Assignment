@@ -34,6 +34,7 @@ let userWalletAddress = null;
 let isWalletConnected = false;
 let isInitializing = false;
 let isConnecting = false;
+let cachedABI = null; // NEW: Cached ABI to reduce latency
 
 /* ============================================================
    RETRY & CACHE HELPERS
@@ -48,9 +49,9 @@ async function fetchWithRetry(fn, retries = 3, delay = 500) {
       return await fn();
     } catch (e) {
       lastError = e;
-      console.warn(`⏳ Attempt ${i+1} failed:`, e.message);
+      console.warn(`⏳ Attempt ${i + 1} failed:`, e.message);
       if (i < retries - 1) {
-        await new Promise(r => setTimeout(r, delay));
+        await new Promise((r) => setTimeout(r, delay));
       }
     }
   }
@@ -58,7 +59,7 @@ async function fetchWithRetry(fn, retries = 3, delay = 500) {
 }
 
 function cacheKey(prefix, ...args) {
-  return `${prefix}:${args.join('|')}`;
+  return `${prefix}:${args.join("|")}`;
 }
 
 async function withCache(prefix, args, fn) {
@@ -82,13 +83,18 @@ async function withCache(prefix, args, fn) {
    ============================================================ */
 
 async function loadContractABI() {
+  // NEW: Return instantly if already in memory
+  if (cachedABI) return cachedABI;
+
   const response = await fetch(CONFIG.abiPath);
   if (!response.ok) throw new Error("Unable to load LogisticsEscrow ABI.");
   const artifact = await response.json();
   if (!artifact.abi || !Array.isArray(artifact.abi)) {
     throw new Error("Invalid Truffle ABI format.");
   }
-  return artifact.abi;
+
+  cachedABI = artifact.abi; // Save to cache
+  return cachedABI;
 }
 
 /* ============================================================
@@ -116,21 +122,6 @@ async function getNetwork() {
 }
 
 /* ============================================================
-   NETWORK CHECK (optional – commented out for public networks)
-   ============================================================ */
-/*
-async function checkNetwork() {
-  const network = await getNetwork();
-  const chainId = Number(network.chainId);
-  console.log("🌐 Current Chain ID:", chainId);
-
-  // You may add a list of supported public chain IDs here if needed.
-  // For public networks, this check is often omitted.
-  return true;
-}
-*/
-
-/* ============================================================
    CONNECT METAMASK
    ============================================================ */
 async function connectWallet() {
@@ -155,10 +146,7 @@ async function connectWallet() {
     syncWalletToStorage(userWalletAddress);
     await initContract();
     updateWalletUI(userWalletAddress);
-    showToast(
-      "Wallet connected: " + truncateAddress(userWalletAddress),
-      "success",
-    );
+    showToast("MetaMask successfully connected", "success");
     window.dispatchEvent(
       new CustomEvent("walletConnected", {
         detail: { address: userWalletAddress },
@@ -167,7 +155,6 @@ async function connectWallet() {
     return userWalletAddress;
   } catch (error) {
     console.error("❌ Connect failed:", error);
-    // If the error is "pending request", show a user-friendly message
     if (error.code === -32002) {
       showToast(
         "MetaMask is already waiting for your confirmation. Please check the MetaMask popup.",
@@ -293,16 +280,11 @@ async function registerBlockchainUser(role) {
       throw new Error("This wallet is already registered.");
     }
 
-    console.log("📝 Registering user on Blockchain...");
-    console.log("Wallet:", userWalletAddress);
-    console.log("Role:", roleNumber);
-
     const transaction = await contract.registerUser(roleNumber);
 
     console.log("⏳ Registration transaction:", transaction.hash);
     const receipt = await transaction.wait();
     console.log("✅ Registration confirmed.");
-    console.log("Receipt:", receipt);
 
     return {
       success: true,
@@ -326,9 +308,6 @@ async function blockchainLogin() {
     const result = await contract.login();
     const authenticated = result[0];
     const roleNumber = Number(result[1]);
-
-    console.log("Authenticated:", authenticated);
-    console.log("Role:", roleNumber);
 
     if (!authenticated) {
       return { success: false, authenticated: false, role: null };
@@ -425,9 +404,8 @@ function paymentStatusToName(status) {
    READ FUNCTIONS (with retry + cache)
    ============================================================ */
 
-/** Get full agreement details (all fields) */
 async function getAgreement(agreementId) {
-  return withCache('agreement', [agreementId], async () => {
+  return withCache("agreement", [agreementId], async () => {
     if (!isConnected()) await connectWallet();
     const contract = getContract();
     const result = await contract.getAgreement(agreementId);
@@ -450,9 +428,8 @@ async function getAgreement(agreementId) {
   });
 }
 
-/** Get escrow balance (remaining) */
 async function getEscrowBalance(agreementId) {
-  return withCache('balance', [agreementId], async () => {
+  return withCache("balance", [agreementId], async () => {
     if (!isConnected()) await connectWallet();
     const contract = getContract();
     const balance = await contract.getEscrowBalance(agreementId);
@@ -460,9 +437,8 @@ async function getEscrowBalance(agreementId) {
   });
 }
 
-/** Get milestone details */
 async function getMilestone(agreementId, milestoneId) {
-  return withCache('milestone', [agreementId, milestoneId], async () => {
+  return withCache("milestone", [agreementId, milestoneId], async () => {
     if (!isConnected()) await connectWallet();
     const contract = getContract();
     const result = await contract.getMilestone(agreementId, milestoneId);
@@ -478,7 +454,7 @@ async function getMilestone(agreementId, milestoneId) {
 }
 
 /* ============================================================
-   WRITE FUNCTIONS (no cache, no retry – user signs)
+   WRITE FUNCTIONS
    ============================================================ */
 
 async function createAgreement(
@@ -525,17 +501,13 @@ async function acceptAgreement(agreementId) {
     if (!isConnected()) await connectWallet();
     const contract = getContract();
     const transaction = await contract.acceptAgreement(agreementId);
-
-    console.log("⏳ Accept transaction:", transaction.hash);
     const receipt = await transaction.wait();
-
     return {
       success: true,
       transactionHash: transaction.hash,
       receipt: receipt,
     };
   } catch (error) {
-    console.error("❌ Accept agreement failed:", error);
     handleBlockchainError(error, "Failed to accept agreement.");
     throw error;
   }
@@ -546,17 +518,13 @@ async function rejectAgreement(agreementId) {
     if (!isConnected()) await connectWallet();
     const contract = getContract();
     const transaction = await contract.rejectAgreement(agreementId);
-
-    console.log("⏳ Reject transaction:", transaction.hash);
     const receipt = await transaction.wait();
-
     return {
       success: true,
       transactionHash: transaction.hash,
       receipt: receipt,
     };
   } catch (error) {
-    console.error("❌ Reject agreement failed:", error);
     handleBlockchainError(error, "Failed to reject agreement.");
     throw error;
   }
@@ -567,17 +535,13 @@ async function cancelAgreement(agreementId) {
     if (!isConnected()) await connectWallet();
     const contract = getContract();
     const transaction = await contract.cancelAgreement(agreementId);
-
-    console.log("⏳ Cancel transaction:", transaction.hash);
     const receipt = await transaction.wait();
-
     return {
       success: true,
       transactionHash: transaction.hash,
       receipt: receipt,
     };
   } catch (error) {
-    console.error("❌ Cancel agreement failed:", error);
     handleBlockchainError(error, "Failed to cancel agreement.");
     throw error;
   }
@@ -587,20 +551,17 @@ async function submitMilestone(agreementId, milestoneId) {
   try {
     if (!isConnected()) await connectWallet();
     const contract = getContract();
-    const transaction = await contract.submitMilestone(agreementId, milestoneId);
-
-    console.log("Submit milestone transaction:", transaction.hash);
+    const transaction = await contract.submitMilestone(
+      agreementId,
+      milestoneId,
+    );
     const receipt = await transaction.wait();
-
-    console.log("Milestone submitted.");
-
     return {
       success: true,
       transactionHash: transaction.hash,
       receipt: receipt,
     };
   } catch (error) {
-    console.error("Submit milestone failed:", error);
     handleBlockchainError(error, "Failed to submit milestone.");
     throw error;
   }
@@ -610,20 +571,17 @@ async function verifyMilestone(agreementId, milestoneId) {
   try {
     if (!isConnected()) await connectWallet();
     const contract = getContract();
-    const transaction = await contract.verifyMilestone(agreementId, milestoneId);
-
-    console.log("Verify milestone transaction:", transaction.hash);
+    const transaction = await contract.verifyMilestone(
+      agreementId,
+      milestoneId,
+    );
     const receipt = await transaction.wait();
-
-    console.log("Milestone verified.");
-
     return {
       success: true,
       transactionHash: transaction.hash,
       receipt: receipt,
     };
   } catch (error) {
-    console.error("Verify milestone failed:", error);
     handleBlockchainError(error, "Failed to verify milestone.");
     throw error;
   }
@@ -634,19 +592,13 @@ async function releasePayment(agreementId, milestoneId) {
     if (!isConnected()) await connectWallet();
     const contract = getContract();
     const transaction = await contract.releasePayment(agreementId, milestoneId);
-
-    console.log("Release payment transaction:", transaction.hash);
     const receipt = await transaction.wait();
-
-    console.log("Payment released.");
-
     return {
       success: true,
       transactionHash: transaction.hash,
       receipt: receipt,
     };
   } catch (error) {
-    console.error("Release payment failed:", error);
     handleBlockchainError(error, "Failed to release payment.");
     throw error;
   }
@@ -657,18 +609,13 @@ async function markExpired(agreementId) {
     if (!isConnected()) await connectWallet();
     const contract = getContract();
     const transaction = await contract.markExpired(agreementId);
-
-    console.log("⏳ Mark expired transaction:", transaction.hash);
     const receipt = await transaction.wait();
-    console.log("✅ Agreement marked as expired.");
-
     return {
       success: true,
       transactionHash: transaction.hash,
       receipt: receipt,
     };
   } catch (error) {
-    console.error("❌ Mark expired failed:", error);
     handleBlockchainError(error, "Failed to mark agreement as expired.");
     throw error;
   }
@@ -679,25 +626,20 @@ async function refund(agreementId) {
     if (!isConnected()) await connectWallet();
     const contract = getContract();
     const transaction = await contract.refund(agreementId);
-
-    console.log("⏳ Refund transaction:", transaction.hash);
     const receipt = await transaction.wait();
-    console.log("✅ Refund executed successfully.");
-
     return {
       success: true,
       transactionHash: transaction.hash,
       receipt: receipt,
     };
   } catch (error) {
-    console.error("❌ Refund failed:", error);
     handleBlockchainError(error, "Failed to execute refund.");
     throw error;
   }
 }
 
 /* ============================================================
-   ADDITIONAL QUERY FUNCTIONS (with retry, no cache)
+   ADDITIONAL QUERY FUNCTIONS
    ============================================================ */
 
 async function getAgreementsByShipper(shipperAddress) {
@@ -925,8 +867,8 @@ function setupListeners() {
       syncWalletToStorage(null);
       updateWalletUI(null);
       const current = window.location.pathname;
-      if (!["/login", "/register", "/"].includes(current)) {
-        window.location.href = "/login";
+      if (!["/connect.html", "/login", "/register", "/"].includes(current)) {
+        window.location.href = "/connect.html";
       }
       return;
     }
@@ -950,8 +892,12 @@ function setupListeners() {
     isWalletConnected = false;
     syncWalletToStorage(null);
     updateWalletUI(null);
-    if (!["/login", "/register", "/"].includes(window.location.pathname)) {
-      window.location.href = "/login";
+    if (
+      !["/connect.html", "/login", "/register", "/"].includes(
+        window.location.pathname,
+      )
+    ) {
+      window.location.href = "/connect.html";
     }
   });
 
@@ -973,7 +919,7 @@ async function initializeWeb3() {
 
   const currentPath = window.location.pathname;
   const isPublic =
-    ["/", "/login", "/register"].includes(currentPath) ||
+    ["/", "/login", "/register", "/connect.html"].includes(currentPath) ||
     currentPath.startsWith("/login") ||
     currentPath.startsWith("/register");
 
@@ -999,11 +945,11 @@ async function initializeWeb3() {
         window.Auth.clearAuthData();
       }
       syncWalletToStorage(null);
-      if (!isPublic) window.location.href = "/login";
+      if (!isPublic) window.location.href = "/connect.html";
     }
   } else {
-    console.log("No account – redirect to login.");
-    if (!isPublic) window.location.href = "/login";
+    console.log("No account – redirect to connect.");
+    if (!isPublic) window.location.href = "/connect.html";
   }
 }
 
@@ -1043,6 +989,50 @@ Object.defineProperty(window, "userWalletAddress", {
   configurable: true,
 });
 
+async function ensureWeb3Ready() {
+  if (!window.ethereum) {
+    throw new Error("MetaMask is not installed.");
+  }
+
+  const accounts = await window.ethereum.request({
+    method: "eth_accounts",
+  });
+
+  if (!accounts || accounts.length === 0) {
+    throw new Error("No MetaMask account is connected.");
+  }
+
+  const currentAccount = accounts[0];
+
+  // Recreate provider if needed
+  if (!provider) {
+    provider = new ethers.BrowserProvider(window.ethereum);
+  }
+
+  // Always refresh signer
+  signer = await provider.getSigner();
+
+  // Keep wallet state synchronized
+  userWalletAddress = await signer.getAddress();
+
+  // Recreate contract if missing
+  if (!contractInstance) {
+    await initContract();
+  }
+
+  if (!contractInstance) {
+    throw new Error("Blockchain contract is unavailable.");
+  }
+
+  return {
+    provider,
+    signer,
+    contract: contractInstance,
+    wallet: userWalletAddress,
+  };
+}
+
+window.ensureWeb3Ready = ensureWeb3Ready;
 window.connectWallet = connectWallet;
 window.initContract = initContract;
 window.getContract = getContract;

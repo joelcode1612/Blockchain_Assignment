@@ -12,8 +12,9 @@
         return;
       }
 
+      const token = localStorage.getItem("traxenAuthToken");
       const response = await fetch("/api/agreements", {
-        headers: { "x-wallet-address": wallet },
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) {
         const err = await response.json();

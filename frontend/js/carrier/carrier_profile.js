@@ -35,8 +35,12 @@
     }
 
     try {
+      const token = localStorage.getItem("traxenAuthToken");
+
       const response = await fetch("/api/users/me", {
-        headers: { "x-wallet-address": walletAddress },
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
       if (!response.ok) {
         const err = await response.json();
@@ -58,7 +62,7 @@
       if (!wallet) return;
 
       const res = await fetch("/api/reputation/me", {
-        headers: { "x-wallet-address": wallet },
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) return;
 
@@ -124,7 +128,7 @@
 
     try {
       const res = await fetch("/api/agreements", {
-        headers: { "x-wallet-address": wallet },
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) return;
 
@@ -184,7 +188,7 @@
 
     try {
       const res = await fetch("/api/history", {
-        headers: { "x-wallet-address": wallet },
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error("HTTP " + res.status);
 
@@ -258,15 +262,14 @@
     if (roleValue) roleValue.textContent = role;
 
     const roleEl = document.getElementById("profileRole");
-    if (roleEl) roleEl.textContent = role === "Carrier" ? "Verified Carrier" : role;
+    if (roleEl)
+      roleEl.textContent = role === "Carrier" ? "Verified Carrier" : role;
 
     const statusEl = document.getElementById("accountStatus");
-    if (statusEl)
-      statusEl.textContent = data.verification_status || "Active";
+    if (statusEl) statusEl.textContent = data.verification_status || "Active";
 
     const badgeEl = document.getElementById("statusBadgeCarrier");
-    if (badgeEl)
-      badgeEl.textContent = data.verification_status || "Verified";
+    if (badgeEl) badgeEl.textContent = data.verification_status || "Verified";
 
     const walletShortEl = document.getElementById("walletShortValue");
     if (walletShortEl)
@@ -341,13 +344,18 @@
     }
 
     try {
+      const token = localStorage.getItem("traxenAuthToken");
+
       const response = await fetch("/api/users/me", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          "x-wallet-address": walletAddress,
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ display_name: displayName, email: email }),
+        body: JSON.stringify({
+          display_name: displayName,
+          email: email,
+        }),
       });
 
       if (!response.ok) {
@@ -402,7 +410,10 @@
   window.handleWalletConnection = function () {
     const wallet = localStorage.getItem("traxenWallet");
     if (!wallet) {
-      showToast("No wallet connected. Please connect MetaMask first.", "warning");
+      showToast(
+        "No wallet connected. Please connect MetaMask first.",
+        "warning",
+      );
       return;
     }
     copyWallet(wallet);
