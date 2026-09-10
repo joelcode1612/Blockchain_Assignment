@@ -609,8 +609,12 @@ async function submitCreateAgreement() {
     // 12. REDIRECT
     // =====================================================
 
+    // ═══ YON : deposit_balance page was removed; redirect to
+    // the agreement detail page instead so the shipper can track the
+    // acceptance / funding status of the new agreement. ═══
     window.location.href =
-      "deposit_balance.html?agreementId=" + blockchainResult.agreementId;
+      "agreement_details_shipper.html?id=" + blockchainResult.agreementId;
+    // ═══ YON End ═══
   } catch (error) {
     console.error("❌ Agreement creation error:", error);
 

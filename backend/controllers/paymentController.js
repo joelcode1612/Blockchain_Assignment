@@ -98,6 +98,28 @@ exports.recordPaymentRelease = async (req, res) => {
       // Guarded by agreement id so the reward is recorded only once.
       const REWARD_TOKENS = 1; // +1 REP per completed agreement
       const REPUTATION_CAP = 120; // REP cannot exceed 120
+
+      // ═══ YON : the contract mints nothing when the carrier is
+      // already at the 120 cap, so reflect that in the DB mirror by checking
+      // the on-chain balance and recording the effective reward. ═══
+      let effectiveReward = REWARD_TOKENS;
+      try {
+        const reputationService = require('../services/reputationService');
+        const rawBalance = await reputationService.getBalance(
+          agreement.carrier_wallet,
+        );
+        const capWei = 120n * 10n ** 18n;
+        if (BigInt(rawBalance) >= capWei) {
+          effectiveReward = 0; // capped → nothing was actually minted
+        }
+      } catch (capCheckError) {
+        console.warn(
+          '⚠️ [Yon] On-chain REP read failed, defaulting to +1:',
+          capCheckError.message,
+        );
+      }
+      // ═══ YON End ═══
+
       const { data: existingReward } = await supabase
         .from('reputation_history')
         .select('id')
@@ -112,7 +134,7 @@ exports.recordPaymentRelease = async (req, res) => {
           .insert({
             agreement_onchain_id: agreement.onchain_id,
             carrier_wallet: agreement.carrier_wallet,
-            amount: REWARD_TOKENS,
+            amount: effectiveReward,
             transaction_hash: txHash,
             rewarded_at: new Date().toISOString(),
           });
@@ -128,7 +150,7 @@ exports.recordPaymentRelease = async (req, res) => {
             .eq('wallet_address', carrierWallet)
             .maybeSingle();
           const currentBalance = Number(carrierUser?.reputation_balance ?? 100);
-          const newBalance = Math.min(currentBalance + REWARD_TOKENS, REPUTATION_CAP);
+          const newBalance = Math.min(currentBalance + effectiveReward, REPUTATION_CAP);
           const { error: balError } = await supabase
             .from('users')
             .update({ reputation_balance: newBalance })

@@ -38,16 +38,8 @@ document.addEventListener("DOMContentLoaded", function () {
         title: "Create Agreement",
         sub: "Start a new logistics contract with a Carrier",
       },
-      deposit_balance: {
-        file: "/fragments/shipper/deposit_balance.html",
-        title: "Escrow Overview",
-        sub: "View your locked and available escrow balances",
-      },
-      milestone_release: {
-        file: "/fragments/shipper/milestone_release.html",
-        title: "Milestone Tracking",
-        sub: "Track and verify delivery milestones",
-      },
+      // ═══ YON : "deposit_balance" & "milestone_release" pages
+      // removed (redundant with Agreement Detail). ═══
       refund_expiry: {
         file: "/fragments/shipper/refund_expiry.html",
         title: "Refund Centre",
@@ -147,8 +139,8 @@ document.addEventListener("DOMContentLoaded", function () {
             <div class="desc">What would you like to do?</div>
             <div style="display:flex; flex-direction:column; gap:10px; margin-top:12px;">
               <button class="btn btn-primary btn-block" onclick="window.loadPage('create_agreement')">+ Create New Agreement</button>
-              <button class="btn btn-ghost btn-block" onclick="window.loadPage('deposit_balance')">💰 View Escrow Balances</button>
-              <button class="btn btn-ghost btn-block" onclick="window.loadPage('milestone_release')">📍 Track Milestones</button>
+              <!-- ═══ YON : removed removed-page quick actions
+                   ("Escrow Overview", "Milestone Tracking") ═══ -->
             </div>
             <hr style="border-color:var(--border-soft); margin:18px 0;">
             <div>
@@ -364,8 +356,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const pageInits = {
           agreements: "initAgreements",
           create_agreement: "initCreateAgreement",
-          deposit_balance: "initDepositBalance",
-          milestone_release: "initMilestoneRelease",
+          // ═══ YON : removed deposit_balance & milestone_release ═══
           refund_expiry: "initRefundExpiry",
           history: "initHistory",
           profile: "initProfile",

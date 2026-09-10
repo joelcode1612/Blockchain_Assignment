@@ -32,13 +32,19 @@
                     Dashboard
                 </a>
 
-                <!-- Available Jobs -->
-                <a href="#" class="nav-item" data-page="carrier_available_jobs">
+                <!-- /// Yon : "Available Jobs" nav item removed —
+                     acceptance is handled by My Deliveries /// -->
+
+                <!-- /// Yon : nav order switched — My Deliveries
+                     now comes before Agreements History /// -->
+
+                <!-- My Deliveries -->
+                <a href="#" class="nav-item" data-page="carrier_my_deliveries">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="9" />
-                        <path d="M8 12l3 3 5-6" />
+                        <path d="M9 12l2 2 4-4" />
                     </svg>
-                    Available Jobs
+                    My Deliveries
                 </a>
 
                 <!-- Agreements (History) -->
@@ -50,22 +56,8 @@
                     Agreements History
                 </a>
 
-                <a href="#" class="nav-item" data-page="carrier_milestone_release">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M9 12h6M9 16h6M9 8h6" />
-                        <rect x="4" y="4" width="16" height="16" rx="2" />
-                    </svg>
-                    Milestone Tracking
-                </a>
-
-                <!-- My Deliveries -->
-                <a href="#" class="nav-item" data-page="carrier_my_deliveries">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="9" />
-                        <path d="M9 12l2 2 4-4" />
-                    </svg>
-                    My Deliveries
-                </a>
+                <!-- /// Yon : "Milestone Tracking" nav item removed —
+                     covered by Agreement Detail page /// -->
 
                 <!-- Transaction History -->
                 <a href="#" class="nav-item" data-page="carrier_history">
@@ -208,11 +200,11 @@
     <script src="/js/shared/auth.js"></script>
     <script src="/js/carrier/carrier.js"></script>
     <script src="/js/carrier/carrier_profile.js"></script>
-    <script src="/js/carrier/carrier_available_job.js"></script>
     <script src="/js/carrier/carrier_my_delivery.js"></script>
     <script src="/js/carrier/carrier_agreement_detail.js"></script>
     <script src="/js/carrier/carrier_agreement_history.js"></script>
-    <script src="/js/carrier/milestone_tracking.js"></script>
+    <!-- /// Yon : removed milestone_tracking.js & carrier_available_job.js
+         (pages deleted) /// -->
     <script src="/js/shared/agreements.js"></script>
 </body>
 

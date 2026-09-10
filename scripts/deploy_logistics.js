@@ -167,7 +167,7 @@ function writeArtifacts({ abi, bytecode, deployedBytecode, address, chainId, txH
 
 /* -------------------------------------------------------- address syncing */
 
-// /// Fix - 2026-09-11 : keeps every hardcoded copy of the contract address in
+// /// Fix : keeps every hardcoded copy of the contract address in
 // //  sync after a redeploy. Previously this was a manual 4-file edit and any
 // //  missed file silently pointed the app at the old contract.
 function syncAddresses(newAddress) {

@@ -68,9 +68,13 @@
       const name = ag.agreement_name || `Agreement #${id}`;
       const cargo = ag.cargo_type || "General Cargo";
       // Use window.ethers (loaded globally)
+      // ═══ YON : wrap escrow_amount in String() — ethers
+      // formatEther throws "overflow (INVALID_ARGUMENT)" when given a JS
+      // number instead of a string/bigint. ═══
       const escrow = ag.escrow_amount
-        ? parseFloat(window.ethers.formatEther(ag.escrow_amount)).toFixed(2)
+        ? parseFloat(window.ethers.formatEther(String(ag.escrow_amount))).toFixed(2)
         : "0.00";
+      // ═══ YON End ═══
       const deadline = ag.deadline
         ? new Date(ag.deadline).toLocaleDateString()
         : "—";

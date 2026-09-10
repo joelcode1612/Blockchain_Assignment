@@ -23,11 +23,9 @@
 
       // ─── PAGE MAPPING (all fragments served from /fragments) ──
       const pageMap = {
-        carrier_available_jobs: {
-          file: "/fragments/carrier/carrier_available_job.html",
-          title: "Available Jobs",
-          sub: "Browse and accept decentralized logistics contracts.",
-        },
+        // ═══ YON : removed "carrier_available_jobs" (redundant
+        // with My Deliveries) & "carrier_milestone_release" (redundant with
+        // Agreement Detail) ═══
         carrier_agreements: {
           file: "/fragments/carrier/carrier_agreement_history.html",
           title: "Agreement History",
@@ -38,11 +36,7 @@
           title: "My Deliveries",
           sub: "Track and update your active logistics contracts.",
         },
-        carrier_milestone_release: {
-          file: "/fragments/carrier/milestone_tracking.html",
-          title: "Milestone Tracking",
-          sub: "Monitor your accepted deliveries and milestone progress.",
-        },
+        // ═══ YON : removed carrier_milestone_release entry ═══
         carrier_history: {
           file: "/fragments/shared/history.html",
           title: "Transaction History",
@@ -325,10 +319,10 @@
             : doc.body.innerHTML;
 
           const pageInits = {
-            carrier_available_jobs: "initAvailableJobs",
+            // ═══ YON : removed carrier_available_jobs &
+            // carrier_milestone_release entries ═══
             carrier_agreements: "initCarrierAgreements",
             carrier_my_deliveries: "initMyDeliveries",
-            carrier_milestone_release: "initMilestoneTracking",
             carrier_history: "initHistory",
             carrier_profile: "initCarrierProfile",
             agreement_details: "initAgreementDetails",

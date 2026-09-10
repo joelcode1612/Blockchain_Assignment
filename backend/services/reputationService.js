@@ -4,7 +4,7 @@
 const { ethers } = require('ethers');
 const artifact = require('../../abi/LogisticsEscrow.json');
 
-/// Fix - 2026-09-10 : use the one shared RPC config module, and require it
+/// Fix : use the one shared RPC config module, and require it
 /// before reading LOGISTICS_ESCROW_ADDRESS. Previously this used the removed
 /// process.env.RPC_URL (with a stale ankr fallback), and the contract address
 /// could be undefined when dotenv had not been loaded yet.

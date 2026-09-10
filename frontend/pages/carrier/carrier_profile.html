@@ -18,7 +18,7 @@
       <div class="content">
         <div class="profile-layout">
           <aside class="profile-card">
-            <!-- /// Fix - 2026-09-10 : removed hardcoded demo identity (Mike Johnson /
+            <!-- /// Fix : removed hardcoded demo identity (Mike Johnson /
                  0x18cD72a9...9E41B8c0 / alert() wallet button). Values are now rendered
                  from /api/users/me by carrier_profile.js. -->
             <div class="profile-avatar" id="profileAvatar">—</div>
@@ -42,7 +42,9 @@
               <div class="reputation-bar">
                 <div class="reputation-fill" id="reputationFill" style="width:0%;"></div>
               </div>
-              <div class="reputation-note" id="reputationNote">Reputation tokens (REP) earned from completed agreements</div>
+              <!-- ═══ YON ═══ -->
+              <div class="reputation-note" id="reputationNote">Max 120 REP</div>
+              <!-- ═══ YON End ═══ -->
             </div>
             <!-- ═══ YON End ═══ -->
           </aside>
@@ -52,7 +54,7 @@
               <div class="section-head">
                 <h2 class="section-title">Account Information</h2><span class="section-caption">Personal details</span>
               </div>
-              <!-- /// Fix - 2026-09-10 : hardcoded Frank Rivera / April 2025 / fake wallet
+              <!-- /// Fix : hardcoded Frank Rivera / April 2025 / fake wallet
                    replaced with ids populated from /api/users/me. -->
               <div class="detail-grid">
                 <div class="detail-item">
@@ -95,7 +97,7 @@
               <div class="section-head">
                 <h2 class="section-title">Carrier Statistics</h2><span class="section-caption">Delivery activity</span>
               </div>
-              <!-- /// Fix - 2026-09-10 : fake figures (27 / 3 / 22 / 31.4) replaced with
+              <!-- /// Fix : fake figures (27 / 3 / 22 / 31.4) replaced with
                    values computed from /api/agreements. -->
               <div class="stats-grid">
                 <div class="stat">
@@ -126,7 +128,7 @@
               <div class="section-head">
                 <h2 class="section-title">Account Performance</h2><span class="section-caption">Current overview</span>
               </div>
-              <!-- /// Fix - 2026-09-10 : fake performance figures (96% / 97% / 1 / 2)
+              <!-- /// Fix : fake performance figures (96% / 97% / 1 / 2)
                    replaced with computed values; metrics with no data source show "—". -->
               <div class="metric-grid">
                 <div class="metric">
@@ -153,7 +155,7 @@
               <div class="section-head">
                 <h2 class="section-title">Recent Activity</h2><span class="section-caption">Latest account events</span>
               </div>
-              <!-- /// Fix - 2026-09-10 : hardcoded fake activity rows (#AG8901/#AG8804)
+              <!-- /// Fix : hardcoded fake activity rows (#AG8901/#AG8804)
                    replaced with real events rendered from /api/history. -->
               <div class="activity" id="carrierActivityList">
                 <div style="padding:20px;text-align:center;color:var(--text-faint);">Loading activity…</div>

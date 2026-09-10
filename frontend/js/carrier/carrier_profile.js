@@ -12,7 +12,7 @@
       await loadReputation();
       // ═══ YON End ═══
 
-      /// Fix - 2026-09-10 : load the real statistics + activity feed. These
+      /// Fix : load the real statistics + activity feed. These
       /// values used to be hardcoded demo numbers in carrier_profile.html.
       await Promise.all([loadStats(), loadActivity()]);
       /// Fix end
@@ -73,7 +73,7 @@
       if (scoreEl) scoreEl.textContent = formatted + " " + symbol;
       if (fillEl) {
         const bal = parseFloat(formatted) || 0;
-        /// Fix - 2026-09-10 : the REP token is capped at 120 on-chain
+        /// Fix : the REP token is capped at 120 on-chain
         /// (REPUTATION_CAP), so the progress bar must not use 500.
         const REPUTATION_CAP = 120;
         const pct = Math.min((bal / REPUTATION_CAP) * 100, 100);
@@ -81,8 +81,9 @@
         fillEl.style.width = pct + "%";
       }
       if (noteEl) {
-        noteEl.textContent =
-          "Earned " + formatted + " " + symbol + " from completed agreements";
+        // ═══ YON — avoid "earned" wording (100 REP is granted at start) ═══
+        noteEl.textContent = "Max 120 REP";
+        // ═══ YON End ═══
       }
     } catch (e) {
       console.warn("[Yon] Failed to load reputation:", e.message);
@@ -90,7 +91,7 @@
   }
   // ═══ YON End ═══
 
-  /// Fix - 2026-09-10 : real carrier statistics computed from /api/agreements,
+  /// Fix : real carrier statistics computed from /api/agreements,
   /// replacing the hardcoded figures that previously shipped in the HTML.
   const ACTIVE_STATUSES = ["AwaitingFunding", "Active"];
   const CLOSED_STATUSES = [
@@ -252,7 +253,7 @@
     const emailValue = document.getElementById("emailValue");
     if (emailValue) emailValue.textContent = email || "—";
 
-    /// Fix - 2026-09-10 : fill the fields that were previously hardcoded in
+    /// Fix : fill the fields that were previously hardcoded in
     /// carrier_profile.html (role, member since, short wallet, status).
     const roleValue = document.getElementById("roleValue");
     if (roleValue) roleValue.textContent = role;
@@ -396,7 +397,7 @@
       });
   };
 
-  /// Fix - 2026-09-10 : the profile "Wallet" button used to call the
+  /// Fix : the profile "Wallet" button used to call the
   /// placeholder alert('Wallet connection screen'). It now performs a real
   /// action against the connected wallet.
   window.handleWalletConnection = function () {
