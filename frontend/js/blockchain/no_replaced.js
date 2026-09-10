@@ -19,7 +19,7 @@
    ============================================================ */
 
 const CONFIG = {
-  contractAddress: "0x9972D19Df7884931a12146C66D89e126A643FC4F", // Update with your deployed contract address (public network)
+  contractAddress: "0xc56637c672ab37cc6545A42b1cf97a3CE9b4166a", // Update with your deployed contract address (public network)
   abiPath: "/abi/LogisticsEscrow.json",
 };
 

@@ -140,7 +140,7 @@ const getAgreement = async (agreementId) => {
     };
 };
 
-/// Fix - 2026-09-10 : removed duplicate export keys. isPaymentReleased,
+/// Fix : removed duplicate export keys. isPaymentReleased,
 /// getAgreementCounter and getMilestone were each listed twice.
 module.exports = {
     // Reads

@@ -38,8 +38,16 @@
       currentAgreement = agreement;
 
       // 3. Populate UI
-      document.getElementById("agreement-id").textContent =
-        agreement.onchain_id || agreementId;
+      // ═══ YON — FIX ═══
+      // `agreement-title.innerHTML` (below) replaces the whole <h2>, which
+      // removes the `#agreement-id` span from the DOM. On the second render
+      // (e.g. after funding), the old code crashed with
+      // "Cannot set properties of null (setting 'textContent')".
+      const agreementIdEl = document.getElementById("agreement-id");
+      if (agreementIdEl) {
+        agreementIdEl.textContent = agreement.onchain_id || agreementId;
+      }
+      // ═══ YON End ═══
       document.getElementById("agreement-title").innerHTML =
         `Agreement #${agreement.onchain_id || agreementId} ` +
         `<span class="pill ${getStatusClass(agreement.status)}" id="agreement-status-badge">` +
@@ -198,11 +206,13 @@
         rowClass = "milestone-verified";
         icon = "✓";
         statusText = "Verified";
-        subText = "Verified — releasing payment…";
+        subText = "Verified — release payment";
       }
 
       let actionHtml = "";
 
+      // ═══ YON : merged from Jed's variant — verify & release
+      // are combined into a single action. ═══
       if (status === "Submitted") {
         actionHtml = `
     ${
@@ -228,6 +238,7 @@
     </span>
   `;
       }
+      // ═══ YON End ═══
 
       listHtml += `
     <div class="milestone-row ${rowClass}">
@@ -278,8 +289,13 @@
   }
 
   // ─── Milestone actions ────────────────────────────────────
+  // ═══ YON : merged from Jed's variant ═══
+  // Verify + auto-release in a single flow, with a duplicate guard and a
+  // single guaranteed reload point.
   window.verifyMilestoneAction = async function (milestoneIndex) {
     if (milestoneActionInProgress) return;
+
+    let actionAttempted = false;
 
     try {
       if (!currentAgreement?.onchain_id) throw new Error("No agreement ID");
@@ -290,6 +306,91 @@
       if (typeof window.verifyMilestone !== "function") {
         throw new Error("verifyMilestone function not available");
       }
+
+      milestoneActionInProgress = true;
+      renderMilestones(currentAgreement.milestones || [],
+        currentAgreement.escrow_amount
+          ? parseFloat(ethers.formatEther(String(currentAgreement.escrow_amount))).toFixed(4)
+          : "0.00"
+      );
+
+      showToast("Verifying milestone...", "info");
+      const result = await window.verifyMilestone(
+        currentAgreement.onchain_id,
+        milestoneIndex,
+      );
+
+      console.log("🔥 VERIFY RESULT:", result);
+      console.log("🔥 VERIFY FUNCTION:", window.verifyMilestone.toString());
+
+      // Sync the verified status to Supabase
+      const wallet = localStorage.getItem("traxenWallet");
+
+      const syncResponse = await fetch("/api/milestones/verify", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-wallet-address": wallet,
+        },
+        body: JSON.stringify({
+          agreementId: currentAgreement.onchain_id,
+          milestoneId: milestoneIndex,
+          txHash: result?.hash || result?.transactionHash || null,
+        }),
+      });
+
+      if (!syncResponse.ok) {
+        const errorData = await syncResponse.json();
+        throw new Error(errorData.error || "Failed to sync milestone status");
+      }
+
+      console.log("✅ Milestone status synced to database");
+
+      // Update the current milestone locally.
+      // The backend has already been synced successfully.
+      const verifiedMilestone = (currentAgreement.milestones || []).find(
+        (m) => Number(m.milestone_index) === Number(milestoneIndex)
+      );
+
+      if (verifiedMilestone) {
+        verifiedMilestone.status = "Verified";
+      }
+
+      // Re-render only the milestone section.
+      // This will immediately show the "Release Payment" button.
+      renderMilestones(
+        currentAgreement.milestones || [],
+        currentAgreement.escrow_amount
+          ? parseFloat(
+            ethers.formatEther(String(currentAgreement.escrow_amount))
+          ).toFixed(4)
+          : "0.00"
+      );
+
+      showToast(
+        "Milestone verified. You can now release the payment.",
+        "success"
+      );
+
+    } catch (error) {
+      console.error("Verify milestone error:", error);
+      showToast(error.message || "Failed to verify milestone", "error");
+    } finally {
+      milestoneActionInProgress = false;
+    }
+  };
+
+  window.releaseMilestonePayment = async function (milestoneIndex) {
+    if (milestoneActionInProgress) return;
+
+    try {
+      if (!currentAgreement?.onchain_id) {
+        throw new Error("No agreement ID");
+      }
+
+      const sessionOk = await window.Auth?.ensureFullSession?.();
+      if (!sessionOk) return;
+
       if (typeof window.releasePayment !== "function") {
         throw new Error("releasePayment function not available");
       }
@@ -334,6 +435,33 @@
       );
 
       const wallet = localStorage.getItem("traxenWallet");
+
+      // ═══ YON — HISTORY/REPUTATION SYNC ═══
+      // Record the payment release (payment_history) and, when this release
+      // completes the agreement, the REP reward (reputation_history).
+      try {
+        const paymentSyncResponse = await fetch("/api/payment/release", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-wallet-address": wallet,
+          },
+          body: JSON.stringify({
+            agreementId: currentAgreement.onchain_id,
+            milestoneId: milestoneIndex,
+            txHash: result?.hash || result?.transactionHash || null,
+          }),
+        });
+        if (!paymentSyncResponse.ok) {
+          console.warn(
+            "[Yon] payment/release DB sync failed:",
+            paymentSyncResponse.status,
+          );
+        }
+      } catch (paymentSyncError) {
+        console.warn("[Yon] payment/release sync skipped:", paymentSyncError);
+      }
+      // ═══ YON End ═══
 
       // ─── Step 1/2: VERIFY ─────────────────────────────
       showToast("Step 1/2: Verifying milestone…", "info");
@@ -426,90 +554,18 @@
   };
 
   // ─── Existing actions ────────────────────────────────────
-  window.fundEscrow = async function () {
-    if (!currentAgreement?.onchain_id) {
-      showToast("No agreement loaded", "error");
-      return;
-    }
-    const status = currentAgreement.status || "PendingAcceptance";
-    if (status !== "AwaitingFunding") {
-      showToast("Deposit not available for this status.", "error");
-      return;
-    }
-
-    const wallet = localStorage.getItem("traxenWallet");
-    if (!wallet) {
-      showToast("Wallet not connected.", "error");
-      return;
-    }
-
-    const totalEth = currentAgreement.escrow_amount
-      ? parseFloat(
-          ethers.formatEther(String(currentAgreement.escrow_amount)),
-        ).toFixed(6)
-      : "0";
-    if (!totalEth || parseFloat(totalEth) <= 0) {
-      showToast("Invalid escrow amount.", "error");
-      return;
-    }
-
-    if (!confirm(`Deposit ${totalEth} ETH into escrow for this agreement?`))
-      return;
-
-    const fundBtn = document.getElementById("fund-escrow-btn");
-    const originalText = fundBtn?.textContent || "Fund Escrow";
-    if (fundBtn) {
-      fundBtn.disabled = true;
-      fundBtn.textContent = "Processing...";
-    }
-
-    try {
-      const amountWei = ethers.parseEther(totalEth);
-      const tx = await window.contract.depositEscrow(
-        currentAgreement.onchain_id,
-        {
-          value: amountWei,
-          from: wallet,
-        },
-      );
-      await tx.wait();
-      showToast(`✅ ${totalEth} ETH deposited!`, "success");
-
-      // Sync with backend
-      try {
-        await fetch(
-          `/api/escrow/shipper/${currentAgreement.onchain_id}/deposit`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              amount: amountWei.toString(),
-              txHash: tx.hash,
-            }),
-          },
-        );
-      } catch (e) {
-        console.warn("Backend sync failed:", e);
-      }
-
-      // Invalidate list cache so dashboard sees fresh data
-      if (typeof window.invalidateAgreementsCache === "function") {
-        window.invalidateAgreementsCache();
-      }
-
-      // Reload the agreement details (new status = Active)
-      await window.initAgreementDetails();
-    } catch (e) {
-      console.error("Deposit failed:", e);
-      const msg = e.reason || e.message || "Deposit failed";
-      showToast("❌ " + msg, "error");
-      if (fundBtn) {
-        fundBtn.disabled = false;
-        fundBtn.textContent = originalText;
-      }
-    }
+  window.fundEscrow = function () {
+    alert("Fund escrow functionality will be implemented in the next step.");
   };
+  window.raiseDispute = function () {
+    alert("Dispute functionality will be implemented in the next step.");
+  };
+
+  // Auto‑init fallback (if loaded directly, not via SPA)
+  if (
+    document.readyState === "complete" ||
+    document.readyState === "interactive"
+  ) {
+    if (window.initAgreementDetails) window.initAgreementDetails();
+  }
 })();

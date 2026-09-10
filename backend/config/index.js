@@ -1,4 +1,4 @@
-/// Fix - 2026-09-10 : single source of truth for RPC endpoints.
+/// Fix : single source of truth for RPC endpoints.
 /// This module now loads .env itself so the value is correct no matter which
 /// module is required first, keeps working if the legacy singular RPC_URL is
 /// still set, and always yields at least one endpoint (previously it could

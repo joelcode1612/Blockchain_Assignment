@@ -546,7 +546,11 @@
                   preview.innerHTML = "";
 
                   if (submitBtn) {
+                    // ═══ YON — UI FIX ═══
                     submitBtn.disabled = true;
+                    submitBtn.style.opacity = "0.45";
+                    submitBtn.style.cursor = "not-allowed";
+                    // ═══ YON End ═══
                   }
 
                   upload.innerHTML = "📷 Click to upload delivery proof photo";
@@ -555,7 +559,14 @@
             }
 
             if (submitBtn) {
+              // ═══ YON — UI FIX ═══
+              // The button's disabled state was cleared before, but its
+              // dimmed opacity/cursor styles were not — reset them too so
+              // the button visually becomes clickable after a photo is chosen.
               submitBtn.disabled = false;
+              submitBtn.style.opacity = "1";
+              submitBtn.style.cursor = "pointer";
+              // ═══ YON End ═══
             }
 
             upload.innerHTML = "📷 Photo selected — click to replace";

@@ -19,7 +19,7 @@ let isWalletConnected = false;
 
 // ─── Config ────────────────────────────────────────────────
 const CONFIG = {
-  contractAddress: "0x9972D19Df7884931a12146C66D89e126A643FC4F",
+  contractAddress: "0xc56637c672ab37cc6545A42b1cf97a3CE9b4166a",
   abiPath: "/abi/LogisticsEscrow.json",
 };
 

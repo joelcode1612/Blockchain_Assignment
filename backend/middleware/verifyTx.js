@@ -5,7 +5,7 @@
 // unreachable, so a temporary RPC outage never blocks other team flows.
 const { ethers } = require('ethers');
 
-/// Fix - 2026-09-10 : read the RPC list from the one shared config module.
+/// Fix : read the RPC list from the one shared config module.
 /// Previously this read the now-removed process.env.RPC_URL and fell back to a
 /// local list that still contained the deprecated ankr endpoint, so the
 /// backend ignored the team's configured RPC_URLS.

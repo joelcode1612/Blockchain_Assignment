@@ -158,13 +158,29 @@ document.addEventListener("DOMContentLoaded", function () {
       return `
         <div class="view active">
 
-          <!-- Stats Row -->
-
-          <div class="stat-row">
-
-            <div class="stat-card">
-              <div class="lbl">
-                Total Agreements
+        <!-- Two‑column layout -->
+        <div class="two-col">
+          <div class="panel">
+            <h2>Recent Agreements</h2>
+            <div class="desc">Your latest logistics contracts</div>
+            <div id="recent-agreements-list"><div style="padding:20px;text-align:center;color:var(--text-faint);">Loading...</div></div>
+            <div style="margin-top:14px;">
+              <button class="btn btn-ghost" onclick="window.loadPage('agreements')">View All →</button>
+            </div>
+          </div>
+          <div class="panel">
+            <h2>Quick Actions</h2>
+            <div class="desc">What would you like to do?</div>
+            <div style="display:flex; flex-direction:column; gap:10px; margin-top:12px;">
+              <button class="btn btn-primary btn-block" onclick="window.loadPage('create_agreement')">+ Create New Agreement</button>
+              <!-- ═══ YON : removed removed-page quick actions
+                   ("Escrow Overview", "Milestone Tracking") ═══ -->
+            </div>
+            <hr style="border-color:var(--border-soft); margin:18px 0;">
+            <div>
+              <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--text-faint);">
+                <span>Next Milestone Due</span>
+                <span style="color:var(--amber);" id="next-milestone-days">--</span>
               </div>
 
               <div

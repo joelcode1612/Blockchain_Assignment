@@ -41,7 +41,7 @@
     document.getElementById("walletShort").textContent =
       wallet.slice(0, 6) + "…" + wallet.slice(-4);
 
-    /// Fix - 2026-09-10 : reputation is a capped REP token balance (100 minted
+    /// Fix : reputation is a capped REP token balance (100 minted
     /// on carrier registration, hard cap 120), not a 0–5 star rating.
     /// loadReputation() replaces this database mirror with the on-chain value.
     applyReputation(Number(data.reputation_balance || 0));
@@ -112,7 +112,7 @@
     document.getElementById("editForm").style.display = "none";
   }
 
-  /// Fix - 2026-09-10 : the profile page used to render "0.0 / 5.0" reputation
+  /// Fix : the profile page used to render "0.0 / 5.0" reputation
   /// and all-zero statistics, because /api/users/me does not return a
   /// statistics object. Reputation now follows the REP token model and the
   /// numbers are computed from the real agreements endpoint.
@@ -253,7 +253,7 @@
       const data = await fetchProfile();
       renderProfile(data);
 
-      /// Fix - 2026-09-10 : hydrate reputation + statistics from real sources.
+      /// Fix : hydrate reputation + statistics from real sources.
       await Promise.all([loadReputation(), loadStats()]);
       /// Fix end
     } catch (error) {
