@@ -1,17 +1,13 @@
 const { ethers } = require('ethers');
-const artifact = require('../../abi/LogisticsEscrow.json');
+const path = require('path');
+const artifact = require(path.resolve(__dirname, '../../abi/LogisticsEscrow.json'));
+const { RPC_URLS }  = require(path.resolve(__dirname, '../config/index'));
+
 
 const abi = artifact.abi || artifact;
 
 const contractAddress = process.env.LOGISTICS_ESCROW_ADDRESS;
 const privateKey = process.env.PRIVATE_KEY;
-
-const RPC_URLS = [
-    process.env.RPC_URL,
-    'https://ethereum-sepolia.publicnode.com',
-    'https://rpc.ankr.com/eth_sepolia',
-    'https://sepolia.gateway.tenderly.co',
-].filter(Boolean);
 
 console.log('🔍 [backend] Using RPCs:', RPC_URLS);
 
@@ -56,30 +52,69 @@ async function writeContract(method, ...args) {
     return receipt;
 }
 
-// ─── Exported Functions ─────────────────────────────────────
+// ─── READ FUNCTIONS ─────────────────────────────────────────
 
-const depositEscrow = async (agreementId, amount, shipperAddress) => {
-    return writeContract('depositEscrow', agreementId, { value: amount, from: shipperAddress });
-};
-
+/** Get escrow balance (remaining) */
 const getEscrowBalance = async (agreementId) => {
     return readContract('getEscrowBalance', agreementId);
 };
 
+/** Get number of milestones in an agreement */
+const getMilestoneCount = async (agreementId) => {
+    return readContract('getMilestoneCount', agreementId);
+};
+
+/** Get total amount released so far */
+const getReleasedAmount = async (agreementId) => {
+    return readContract('getReleasedAmount', agreementId);
+};
+
+/** Get agreement counter (total agreements created) */
+const getAgreementCounter = async () => {
+    return readContract('agreementCounter');
+};
+
+/** Check if a wallet is registered */
+const isRegistered = async (walletAddress) => {
+    return readContract('isRegistered', walletAddress);
+};
+
+/** Get role of a wallet (0=None, 1=Shipper, 2=Carrier) */
+const getRole = async (walletAddress) => {
+    return readContract('getRole', walletAddress);
+};
+
+/** Check if a milestone payment has been released (alias) */
+const isPaymentReleased = async (agreementId, milestoneId) => {
+    const m = await getMilestone(agreementId, milestoneId);
+    return m[2] === 3; // status === Paid (3)
+};
+
+// ─── WRITE FUNCTIONS (server-signed) ───────────────────────
+
+/** Deposit escrow (server‑side, if needed) */
+const depositEscrow = async (agreementId, amount, shipperAddress) => {
+    return writeContract('depositEscrow', agreementId, { value: amount, from: shipperAddress });
+};
+
+/** Release payment (server‑side, e.g., auto‑release) */
 const releasePayment = async (agreementId, milestoneId) => {
     return writeContract('releasePayment', agreementId, milestoneId);
 };
 
+/** Verify milestone (server‑side, if needed) */
 const verifyMilestone = async (agreementId, milestoneId, shipperAddress) => {
     return writeContract('verifyMilestone', agreementId, milestoneId, { from: shipperAddress });
 };
 
-const isPaymentReleased = async (agreementId, milestoneId) => {
-    return readContract('getMilestone', agreementId, milestoneId).then(m => m[3]);
+/** Refund escrow (server‑side, e.g., after deadline) */
+const refund = async (agreementId) => {
+    return writeContract('refund', agreementId);
 };
 
-const getAgreementCounter = async () => {
-    return readContract('agreementCounter');
+/** Create agreement (server‑side, if needed) */
+const createAgreement = async (carrier, totalAmount, deadline, descriptions, percentages, shipperAddress) => {
+    return writeContract('createAgreement', carrier, totalAmount, deadline, descriptions, percentages, { from: shipperAddress });
 };
 
 // ✅ ADDED: used by paymentController.calculatePayment()
@@ -106,12 +141,22 @@ const getAgreement = async (agreementId) => {
 };
 
 module.exports = {
-    depositEscrow,
+    // Reads
+    getAgreement,
     getEscrowBalance,
+    getMilestone,
+    getMilestoneCount,
+    getReleasedAmount,
+    getAgreementCounter,
+    isRegistered,
+    getRole,
+    isPaymentReleased,
+
+    // Writes
+    depositEscrow,
     releasePayment,
     verifyMilestone,
     isPaymentReleased,
     getAgreementCounter,
-    getMilestone,
-    getAgreement,
+    getMilestone
 };

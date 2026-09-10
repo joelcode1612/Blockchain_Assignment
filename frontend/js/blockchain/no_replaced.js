@@ -35,47 +35,40 @@ let isWalletConnected = false;
 let isInitializing = false;
 let isConnecting = false;
 
-/* ============================================================
-   RETRY & CACHE HELPERS
-   ============================================================ */
-
-const _cache = {};
-
-async function fetchWithRetry(fn, retries = 3, delay = 500) {
-  let lastError;
-  for (let i = 0; i < retries; i++) {
+async function reconnectWeb3() {
+  if (isConnected()) return true;
+  if (userWalletAddress && !contractInstance) {
     try {
-      return await fn();
+      await initContract();
+      return true;
     } catch (e) {
-      lastError = e;
-      console.warn(`⏳ Attempt ${i+1} failed:`, e.message);
-      if (i < retries - 1) {
-        await new Promise(r => setTimeout(r, delay));
-      }
+      return false;
     }
   }
-  throw lastError;
-}
-
-function cacheKey(prefix, ...args) {
-  return `${prefix}:${args.join('|')}`;
-}
-
-async function withCache(prefix, args, fn) {
-  const key = cacheKey(prefix, ...args);
-  if (_cache[key]) {
-    console.log(`📦 Cache hit for ${key}`);
-    return _cache[key];
-  }
+  if (!window.ethereum) return false;
   try {
-    const result = await fetchWithRetry(fn, 3, 500);
-    _cache[key] = result;
-    return result;
+    const accounts = await window.ethereum.request({ method: "eth_accounts" });
+    if (accounts && accounts.length > 0) {
+      provider = new ethers.BrowserProvider(window.ethereum);
+      signer = await provider.getSigner();
+      userWalletAddress = accounts[0];
+      isWalletConnected = true;
+      syncWalletToStorage(userWalletAddress);
+      updateWalletUI(userWalletAddress);
+      window.dispatchEvent(
+        new CustomEvent("walletConnected", {
+          detail: { address: userWalletAddress },
+        }),
+      );
+      await initContract();
+      return true;
+    }
   } catch (e) {
-    console.warn(`⚠️ Failed to fetch ${key}, returning null.`, e.message);
-    return null;
+    console.error("Reconnect failed:", e);
   }
+  return false;
 }
+window.reconnectWeb3 = reconnectWeb3;
 
 /* ============================================================
    LOAD TRUFFLE ABI
@@ -228,41 +221,6 @@ function isConnected() {
   return userWalletAddress !== null && contractInstance !== null;
 }
 
-async function reconnectWeb3() {
-  if (isConnected()) return true;
-  if (userWalletAddress && !contractInstance) {
-    try {
-      await initContract();
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
-  if (!window.ethereum) return false;
-  try {
-    const accounts = await window.ethereum.request({ method: "eth_accounts" });
-    if (accounts && accounts.length > 0) {
-      provider = new ethers.BrowserProvider(window.ethereum);
-      signer = await provider.getSigner();
-      userWalletAddress = accounts[0];
-      isWalletConnected = true;
-      syncWalletToStorage(userWalletAddress);
-      updateWalletUI(userWalletAddress);
-      window.dispatchEvent(
-        new CustomEvent("walletConnected", {
-          detail: { address: userWalletAddress },
-        }),
-      );
-      await initContract();
-      return true;
-    }
-  } catch (e) {
-    console.error("Reconnect failed:", e);
-  }
-  return false;
-}
-window.reconnectWeb3 = reconnectWeb3;
-
 /* ============================================================
    USER MODULE
    ============================================================ */
@@ -316,6 +274,10 @@ async function registerBlockchainUser(role) {
     throw error;
   }
 }
+
+/* ============================================================
+   LOGIN
+   ============================================================ */
 
 async function blockchainLogin() {
   try {
@@ -421,66 +383,6 @@ function paymentStatusToName(status) {
   return statuses[Number(status)] || "Unknown";
 }
 
-/* ============================================================
-   READ FUNCTIONS (with retry + cache)
-   ============================================================ */
-
-/** Get full agreement details (all fields) */
-async function getAgreement(agreementId) {
-  return withCache('agreement', [agreementId], async () => {
-    if (!isConnected()) await connectWallet();
-    const contract = getContract();
-    const result = await contract.getAgreement(agreementId);
-    return {
-      agreementId: Number(result[0]),
-      shipper: result[1],
-      carrier: result[2],
-      escrowAmountWei: result[3].toString(),
-      escrowAmountETH: ethers.formatEther(result[3]),
-      releasedAmountWei: result[4].toString(),
-      releasedAmountETH: ethers.formatEther(result[4]),
-      deadline: Number(result[5]),
-      status: Number(result[6]),
-      statusName: agreementStatusToName(Number(result[6])),
-      createdAt: Number(result[7]),
-      carrierAccepted: result[8],
-      refundExecuted: result[9],
-      milestoneCount: Number(result[10]),
-    };
-  });
-}
-
-/** Get escrow balance (remaining) */
-async function getEscrowBalance(agreementId) {
-  return withCache('balance', [agreementId], async () => {
-    if (!isConnected()) await connectWallet();
-    const contract = getContract();
-    const balance = await contract.getEscrowBalance(agreementId);
-    return { wei: balance.toString(), eth: ethers.formatEther(balance) };
-  });
-}
-
-/** Get milestone details */
-async function getMilestone(agreementId, milestoneId) {
-  return withCache('milestone', [agreementId, milestoneId], async () => {
-    if (!isConnected()) await connectWallet();
-    const contract = getContract();
-    const result = await contract.getMilestone(agreementId, milestoneId);
-    return {
-      milestoneId: Number(result[0]),
-      paymentPercentage: Number(result[1]),
-      status: Number(result[2]),
-      submittedAt: Number(result[3]),
-      verifiedAt: Number(result[4]),
-      paymentReleasedAt: Number(result[5]),
-    };
-  });
-}
-
-/* ============================================================
-   WRITE FUNCTIONS (no cache, no retry – user signs)
-   ============================================================ */
-
 async function createAgreement(
   carrierAddress,
   escrowAmount,
@@ -516,6 +418,34 @@ async function createAgreement(
   } catch (error) {
     console.error("❌ Create agreement failed:", error);
     handleBlockchainError(error, "Failed to create agreement.");
+    throw error;
+  }
+}
+
+async function getAgreement(agreementId) {
+  try {
+    if (!isConnected()) await connectWallet();
+    const contract = getContract();
+    const result = await contract.getAgreement(agreementId);
+
+    return {
+      agreementId: Number(result[0]),
+      shipper: result[1],
+      carrier: result[2],
+      escrowAmountWei: result[3].toString(),
+      escrowAmountETH: ethers.formatEther(result[3]),
+      releasedAmountWei: result[4].toString(),
+      releasedAmountETH: ethers.formatEther(result[4]),
+      deadline: Number(result[5]),
+      status: Number(result[6]),
+      statusName: agreementStatusToName(Number(result[6])),
+      createdAt: Number(result[7]),
+      carrierAccepted: result[8],
+      refundExecuted: result[9],
+      milestoneCount: Number(result[10]),
+    };
+  } catch (error) {
+    console.error("❌ Failed to get agreement:", error);
     throw error;
   }
 }
@@ -583,82 +513,18 @@ async function cancelAgreement(agreementId) {
   }
 }
 
-async function submitMilestone(agreementId, milestoneId) {
-  try {
-    if (!isConnected()) await connectWallet();
-    const contract = getContract();
-    const transaction = await contract.submitMilestone(agreementId, milestoneId);
-
-    console.log("Submit milestone transaction:", transaction.hash);
-    const receipt = await transaction.wait();
-
-    console.log("Milestone submitted.");
-
-    return {
-      success: true,
-      transactionHash: transaction.hash,
-      receipt: receipt,
-    };
-  } catch (error) {
-    console.error("Submit milestone failed:", error);
-    handleBlockchainError(error, "Failed to submit milestone.");
-    throw error;
-  }
-}
-
-async function verifyMilestone(agreementId, milestoneId) {
-  try {
-    if (!isConnected()) await connectWallet();
-    const contract = getContract();
-    const transaction = await contract.verifyMilestone(agreementId, milestoneId);
-
-    console.log("Verify milestone transaction:", transaction.hash);
-    const receipt = await transaction.wait();
-
-    console.log("Milestone verified.");
-
-    return {
-      success: true,
-      transactionHash: transaction.hash,
-      receipt: receipt,
-    };
-  } catch (error) {
-    console.error("Verify milestone failed:", error);
-    handleBlockchainError(error, "Failed to verify milestone.");
-    throw error;
-  }
-}
-
-async function releasePayment(agreementId, milestoneId) {
-  try {
-    if (!isConnected()) await connectWallet();
-    const contract = getContract();
-    const transaction = await contract.releasePayment(agreementId, milestoneId);
-
-    console.log("Release payment transaction:", transaction.hash);
-    const receipt = await transaction.wait();
-
-    console.log("Payment released.");
-
-    return {
-      success: true,
-      transactionHash: transaction.hash,
-      receipt: receipt,
-    };
-  } catch (error) {
-    console.error("Release payment failed:", error);
-    handleBlockchainError(error, "Failed to release payment.");
-    throw error;
-  }
-}
+/* ============================================================
+   EXPIRY & REFUND
+   ============================================================ */
 
 async function markExpired(agreementId) {
   try {
     if (!isConnected()) await connectWallet();
     const contract = getContract();
-    const transaction = await contract.markExpired(agreementId);
 
+    const transaction = await contract.markExpired(agreementId);
     console.log("⏳ Mark expired transaction:", transaction.hash);
+
     const receipt = await transaction.wait();
     console.log("✅ Agreement marked as expired.");
 
@@ -678,9 +544,10 @@ async function refund(agreementId) {
   try {
     if (!isConnected()) await connectWallet();
     const contract = getContract();
-    const transaction = await contract.refund(agreementId);
 
+    const transaction = await contract.refund(agreementId);
     console.log("⏳ Refund transaction:", transaction.hash);
+
     const receipt = await transaction.wait();
     console.log("✅ Refund executed successfully.");
 
@@ -696,185 +563,38 @@ async function refund(agreementId) {
   }
 }
 
-/* ============================================================
-   ADDITIONAL QUERY FUNCTIONS (with retry, no cache)
-   ============================================================ */
-
-async function getAgreementsByShipper(shipperAddress) {
+async function getMilestone(agreementId, milestoneId) {
   try {
     if (!isConnected()) await connectWallet();
     const contract = getContract();
+    const result = await contract.getMilestone(agreementId, milestoneId);
 
-    const count = Number(await contract.getAgreementCount());
-    const agreements = [];
-    const shipperLower = shipperAddress.toLowerCase();
-
-    for (let i = 1; i <= count; i++) {
-      try {
-        const ag = await fetchWithRetry(() => contract.getAgreement(i), 2, 300);
-        if (ag.shipper.toLowerCase() === shipperLower) {
-          agreements.push({
-            id: i,
-            shipper: ag.shipper,
-            carrier: ag.carrier,
-            escrowAmountWei: ag.escrowAmount.toString(),
-            escrowAmountETH: ethers.formatEther(ag.escrowAmount),
-            releasedAmountWei: ag.releasedAmount.toString(),
-            releasedAmountETH: ethers.formatEther(ag.releasedAmount),
-            deadline: Number(ag.deadline),
-            status: Number(ag.status),
-            statusName: agreementStatusToName(Number(ag.status)),
-            createdAt: Number(ag.createdAt),
-            carrierAccepted: ag.carrierAccepted,
-            refundExecuted: ag.refundExecuted,
-            milestoneCount: Number(ag.milestoneCount),
-          });
-        }
-      } catch (innerErr) {
-        console.warn(`Skipping agreement ${i}:`, innerErr.message);
-      }
-    }
-    return agreements;
+    return {
+      milestoneId: Number(result[0]),
+      paymentPercentage: Number(result[1]),
+      status: Number(result[2]),
+      submittedAt: Number(result[3]),
+      verifiedAt: Number(result[4]),
+      paymentReleasedAt: Number(result[5]),
+    };
   } catch (error) {
-    console.error("❌ Failed to get agreements by shipper:", error);
-    return [];
+    console.error("❌ Failed to get milestone:", error);
+    throw error;
   }
 }
-window.getAgreementsByShipper = getAgreementsByShipper;
 
-async function getCarriersFromAgreements() {
+async function getEscrowBalance(agreementId) {
   try {
     if (!isConnected()) await connectWallet();
     const contract = getContract();
+    const balance = await contract.getEscrowBalance(agreementId);
 
-    const count = Number(await contract.getAgreementCount());
-    const carrierSet = new Set();
-
-    for (let i = 1; i <= count; i++) {
-      try {
-        const ag = await fetchWithRetry(() => contract.getAgreement(i), 2, 300);
-        carrierSet.add(ag.carrier.toLowerCase());
-      } catch (innerErr) {
-        console.warn(`Skipping agreement ${i}:`, innerErr.message);
-      }
-    }
-    return Array.from(carrierSet);
+    return { wei: balance.toString(), eth: ethers.formatEther(balance) };
   } catch (error) {
-    console.error("❌ Failed to get carriers from agreements:", error);
-    return [];
+    console.error("❌ Failed to get escrow balance:", error);
+    throw error;
   }
 }
-window.getCarriersFromAgreements = getCarriersFromAgreements;
-
-async function getAgreementsByWallet(walletAddress) {
-  try {
-    if (!isConnected()) await connectWallet();
-    const contract = getContract();
-
-    const count = Number(await contract.getAgreementCount());
-    const agreements = [];
-    const targetLower = walletAddress.toLowerCase();
-
-    for (let i = 1; i <= count; i++) {
-      try {
-        const ag = await fetchWithRetry(() => contract.getAgreement(i), 2, 300);
-        const shipper = ag.shipper.toLowerCase();
-        const carrier = ag.carrier.toLowerCase();
-        if (shipper === targetLower || carrier === targetLower) {
-          agreements.push({
-            id: i,
-            shipper: ag.shipper,
-            carrier: ag.carrier,
-            escrowAmountWei: ag.escrowAmount.toString(),
-            escrowAmountETH: ethers.formatEther(ag.escrowAmount),
-            releasedAmountWei: ag.releasedAmount.toString(),
-            releasedAmountETH: ethers.formatEther(ag.releasedAmount),
-            deadline: Number(ag.deadline),
-            status: Number(ag.status),
-            statusName: agreementStatusToName(Number(ag.status)),
-            createdAt: Number(ag.createdAt),
-            carrierAccepted: ag.carrierAccepted,
-            refundExecuted: ag.refundExecuted,
-            milestoneCount: Number(ag.milestoneCount),
-          });
-        }
-      } catch (innerErr) {
-        console.warn(`Skipping agreement ${i}:`, innerErr.message);
-      }
-    }
-    return agreements;
-  } catch (error) {
-    console.error("❌ Failed to get agreements by wallet:", error);
-    return [];
-  }
-}
-window.getAgreementsByWallet = getAgreementsByWallet;
-
-async function getPendingAgreementsForCarrier(carrierAddress) {
-  try {
-    if (!isConnected()) await connectWallet();
-    const contract = getContract();
-
-    const count = Number(await contract.getAgreementCount());
-    const pending = [];
-    const carrierLower = carrierAddress.toLowerCase();
-
-    for (let i = 1; i <= count; i++) {
-      try {
-        const ag = await fetchWithRetry(() => contract.getAgreement(i), 2, 300);
-        const carrier = ag.carrier.toLowerCase();
-        const status = Number(ag.status);
-        if (carrier === carrierLower && status === 0) {
-          pending.push({
-            id: i,
-            shipper: ag.shipper,
-            carrier: ag.carrier,
-            escrowAmountWei: ag.escrowAmount.toString(),
-            escrowAmountETH: ethers.formatEther(ag.escrowAmount),
-            deadline: Number(ag.deadline),
-            status: status,
-            statusName: agreementStatusToName(status),
-            milestoneCount: Number(ag.milestoneCount),
-          });
-        }
-      } catch (innerErr) {
-        console.warn(`Skipping agreement ${i}:`, innerErr.message);
-      }
-    }
-    return pending;
-  } catch (error) {
-    console.error("❌ Failed to get pending agreements for carrier:", error);
-    return [];
-  }
-}
-window.getPendingAgreementsForCarrier = getPendingAgreementsForCarrier;
-
-async function getAllCarriers() {
-  try {
-    if (!isConnected()) await connectWallet();
-    const contract = getContract();
-
-    const totalUsers = Number(await contract.getTotalRegisteredUsers());
-    const carriers = [];
-
-    for (let i = 0; i < totalUsers; i++) {
-      try {
-        const address = await contract.getRegisteredUser(i);
-        const role = Number(await contract.getRole(address));
-        if (role === 2) {
-          carriers.push(address);
-        }
-      } catch (innerErr) {
-        console.warn(`Skipping user ${i}:`, innerErr.message);
-      }
-    }
-    return carriers;
-  } catch (error) {
-    console.error("Failed to get all carriers:", error);
-    return [];
-  }
-}
-window.getAllCarriers = getAllCarriers;
 
 /* ============================================================
    WALLET UI & LISTENERS
@@ -914,6 +634,7 @@ function setupListeners() {
   window.ethereum.on("accountsChanged", async (accounts) => {
     console.log("🔄 Account changed:", accounts);
 
+    // If no accounts -> disconnected
     if (accounts.length === 0) {
       if (typeof window.Auth?.clearAuthData === "function") {
         window.Auth.clearAuthData();
@@ -932,6 +653,7 @@ function setupListeners() {
     }
 
     const newAddress = accounts[0];
+    // ✅ Ignore if it's the same account we already have
     if (
       userWalletAddress &&
       newAddress.toLowerCase() === userWalletAddress.toLowerCase()
@@ -940,6 +662,7 @@ function setupListeners() {
       return;
     }
 
+    // New account – clear session and redirect
     console.log("New account detected – clearing session.");
     if (typeof window.Auth?.clearAuthData === "function") {
       window.Auth.clearAuthData();
@@ -982,6 +705,7 @@ async function initializeWeb3() {
     return;
   }
 
+  // Protected page – try silent restore
   const accounts = await window.ethereum.request({ method: "eth_accounts" });
   if (accounts && accounts.length > 0) {
     try {
@@ -995,6 +719,7 @@ async function initializeWeb3() {
       console.log("✅ Session restored.");
     } catch (err) {
       console.error("Session restoration failed:", err);
+      // Clear auth and redirect
       if (typeof window.Auth?.clearAuthData === "function") {
         window.Auth.clearAuthData();
       }
@@ -1028,9 +753,289 @@ function handleBlockchainError(error, defaultMessage) {
 }
 
 function showToast(msg, type = "info") {
-  console.log(`[${type}] ${msg}`);
+  if (typeof window.showToast === "function") {
+    window.showToast(msg, type);
+  } else {
+    console.log(`[${type}] ${msg}`);
+  }
 }
 
+/* ============================================================
+   MILESTONE OPERATIONS
+   ============================================================ */
+
+async function submitMilestone(agreementId, milestoneId) {
+  try {
+    if (!isConnected()) await connectWallet();
+
+    const contract = getContract();
+
+    const transaction = await contract.submitMilestone(
+      agreementId,
+      milestoneId,
+    );
+
+    console.log("Submit milestone transaction:", transaction.hash);
+
+    const receipt = await transaction.wait();
+
+    console.log("Milestone submitted.");
+
+    return {
+      success: true,
+      transactionHash: transaction.hash,
+      receipt: receipt,
+    };
+  } catch (error) {
+    console.error("Submit milestone failed:", error);
+    handleBlockchainError(error, "Failed to submit milestone.");
+    throw error;
+  }
+}
+
+async function verifyMilestone(agreementId, milestoneId) {
+  try {
+    if (!isConnected()) await connectWallet();
+
+    const contract = getContract();
+
+    const transaction = await contract.verifyMilestone(
+      agreementId,
+      milestoneId,
+    );
+
+    console.log("Verify milestone transaction:", transaction.hash);
+
+    const receipt = await transaction.wait();
+
+    console.log("Milestone verified.");
+
+    return {
+      success: true,
+      transactionHash: transaction.hash,
+      receipt: receipt,
+    };
+  } catch (error) {
+    console.error("Verify milestone failed:", error);
+    handleBlockchainError(error, "Failed to verify milestone.");
+    throw error;
+  }
+}
+
+async function releasePayment(agreementId, milestoneId) {
+  try {
+    if (!isConnected()) await connectWallet();
+
+    const contract = getContract();
+
+    const transaction = await contract.releasePayment(agreementId, milestoneId);
+
+    console.log("Release payment transaction:", transaction.hash);
+
+    const receipt = await transaction.wait();
+
+    console.log("Payment released.");
+
+    return {
+      success: true,
+      transactionHash: transaction.hash,
+      receipt: receipt,
+    };
+  } catch (error) {
+    console.error("Release payment failed:", error);
+    handleBlockchainError(error, "Failed to release payment.");
+    throw error;
+  }
+}
+
+/* ============================================================
+   ADDITIONAL QUERY FUNCTIONS (public network ready)
+   ============================================================ */
+
+// ─── GET ALL AGREEMENTS FOR A SHIPPER ──────────────────────
+async function getAgreementsByShipper(shipperAddress) {
+  try {
+    if (!isConnected()) await connectWallet();
+    const contract = getContract();
+
+    const count = Number(await contract.getAgreementCount());
+    const agreements = [];
+    const shipperLower = shipperAddress.toLowerCase();
+
+    for (let i = 1; i <= count; i++) {
+      try {
+        const ag = await contract.getAgreement(i);
+        if (ag.shipper.toLowerCase() === shipperLower) {
+          agreements.push({
+            id: i,
+            shipper: ag.shipper,
+            carrier: ag.carrier,
+            escrowAmountWei: ag.escrowAmount.toString(),
+            escrowAmountETH: ethers.formatEther(ag.escrowAmount),
+            releasedAmountWei: ag.releasedAmount.toString(),
+            releasedAmountETH: ethers.formatEther(ag.releasedAmount),
+            deadline: Number(ag.deadline),
+            status: Number(ag.status),
+            statusName: agreementStatusToName(Number(ag.status)),
+            createdAt: Number(ag.createdAt),
+            carrierAccepted: ag.carrierAccepted,
+            refundExecuted: ag.refundExecuted,
+            milestoneCount: Number(ag.milestoneCount),
+          });
+        }
+      } catch (innerErr) {
+        // Some agreements might be invalid or not exist; skip them.
+        console.warn(`Skipping agreement ${i}:`, innerErr.message);
+      }
+    }
+    return agreements;
+  } catch (error) {
+    console.error("❌ Failed to get agreements by shipper:", error);
+    throw error;
+  }
+}
+
+window.getAgreementsByShipper = getAgreementsByShipper;
+
+// ─── GET ALL CARRIERS FROM AGREEMENTS ──────────────────────
+async function getCarriersFromAgreements() {
+  try {
+    if (!isConnected()) await connectWallet();
+    const contract = getContract();
+
+    const count = Number(await contract.getAgreementCount());
+    const carrierSet = new Set();
+
+    for (let i = 1; i <= count; i++) {
+      try {
+        const ag = await contract.getAgreement(i);
+        carrierSet.add(ag.carrier.toLowerCase());
+      } catch (innerErr) {
+        console.warn(`Skipping agreement ${i}:`, innerErr.message);
+      }
+    }
+    return Array.from(carrierSet);
+  } catch (error) {
+    console.error("❌ Failed to get carriers from agreements:", error);
+    throw error;
+  }
+}
+
+window.getCarriersFromAgreements = getCarriersFromAgreements;
+
+// ─── GET AGREEMENTS FOR A WALLET (shipper OR carrier) ──────
+async function getAgreementsByWallet(walletAddress) {
+  try {
+    if (!isConnected()) await connectWallet();
+    const contract = getContract();
+
+    const count = Number(await contract.getAgreementCount());
+    const agreements = [];
+    const targetLower = walletAddress.toLowerCase();
+
+    for (let i = 1; i <= count; i++) {
+      try {
+        const ag = await contract.getAgreement(i);
+        const shipper = ag.shipper.toLowerCase();
+        const carrier = ag.carrier.toLowerCase();
+        if (shipper === targetLower || carrier === targetLower) {
+          agreements.push({
+            id: i,
+            shipper: ag.shipper,
+            carrier: ag.carrier,
+            escrowAmountWei: ag.escrowAmount.toString(),
+            escrowAmountETH: ethers.formatEther(ag.escrowAmount),
+            releasedAmountWei: ag.releasedAmount.toString(),
+            releasedAmountETH: ethers.formatEther(ag.releasedAmount),
+            deadline: Number(ag.deadline),
+            status: Number(ag.status),
+            statusName: agreementStatusToName(Number(ag.status)),
+            createdAt: Number(ag.createdAt),
+            carrierAccepted: ag.carrierAccepted,
+            refundExecuted: ag.refundExecuted,
+            milestoneCount: Number(ag.milestoneCount),
+          });
+        }
+      } catch (innerErr) {
+        console.warn(`Skipping agreement ${i}:`, innerErr.message);
+      }
+    }
+    return agreements;
+  } catch (error) {
+    console.error("❌ Failed to get agreements by wallet:", error);
+    throw error;
+  }
+}
+
+window.getAgreementsByWallet = getAgreementsByWallet;
+
+// ─── GET PENDING AGREEMENTS FOR A CARRIER ──────────────────
+async function getPendingAgreementsForCarrier(carrierAddress) {
+  try {
+    if (!isConnected()) await connectWallet();
+    const contract = getContract();
+
+    const count = Number(await contract.getAgreementCount());
+    const pending = [];
+    const carrierLower = carrierAddress.toLowerCase();
+
+    for (let i = 1; i <= count; i++) {
+      try {
+        const ag = await contract.getAgreement(i);
+        const carrier = ag.carrier.toLowerCase();
+        const status = Number(ag.status);
+        // status 0 = PendingAcceptance (check your contract's enum)
+        if (carrier === carrierLower && status === 0) {
+          pending.push({
+            id: i,
+            shipper: ag.shipper,
+            carrier: ag.carrier,
+            escrowAmountWei: ag.escrowAmount.toString(),
+            escrowAmountETH: ethers.formatEther(ag.escrowAmount),
+            deadline: Number(ag.deadline),
+            status: status,
+            statusName: agreementStatusToName(status),
+            milestoneCount: Number(ag.milestoneCount),
+          });
+        }
+      } catch (innerErr) {
+        console.warn(`Skipping agreement ${i}:`, innerErr.message);
+      }
+    }
+    return pending;
+  } catch (error) {
+    console.error("❌ Failed to get pending agreements for carrier:", error);
+    throw error;
+  }
+}
+
+window.getPendingAgreementsForCarrier = getPendingAgreementsForCarrier;
+
+async function getAllCarriers() {
+  try {
+    if (!isConnected()) await connectWallet();
+    const contract = getContract();
+
+    // Assuming your contract has a function to get total users
+    // and a function to get user address by index, e.g., getRegisteredUser(index)
+    const totalUsers = Number(await contract.getTotalRegisteredUsers());
+    const carriers = [];
+
+    for (let i = 0; i < totalUsers; i++) {
+      const address = await contract.getRegisteredUser(i);
+      const role = Number(await contract.getRole(address));
+      if (role === 2) {
+        // 2 = Carrier
+        carriers.push(address);
+      }
+    }
+    return carriers;
+  } catch (error) {
+    console.error("Failed to get all carriers:", error);
+    throw error;
+  }
+}
+window.getAllCarriers = getAllCarriers;
 /* ============================================================
    GLOBAL FUNCTIONS
    ============================================================ */
@@ -1056,32 +1061,26 @@ window.checkUserRegistered = checkUserRegistered;
 window.getUserRole = getUserRole;
 window.createAgreement = createAgreement;
 window.getAgreement = getAgreement;
-window.acceptAgreementOnChain = acceptAgreement;
-window.rejectAgreementOnChain = rejectAgreement;
+window.acceptAgreement = acceptAgreement;
+window.rejectAgreement = rejectAgreement;
 window.cancelAgreement = cancelAgreement;
 window.getMilestone = getMilestone;
 window.submitMilestone = submitMilestone;
 window.verifyMilestone = verifyMilestone;
 window.releasePayment = releasePayment;
 window.getEscrowBalance = getEscrowBalance;
+window.truncateAddress = truncateAddress;
 window.roleNumberToName = roleNumberToName;
 window.agreementStatusToName = agreementStatusToName;
 window.milestoneStatusToName = milestoneStatusToName;
 window.paymentStatusToName = paymentStatusToName;
 window.markExpired = markExpired;
 window.refund = refund;
-window.getAgreementsByShipper = getAgreementsByShipper;
-window.getCarriersFromAgreements = getCarriersFromAgreements;
-window.getAgreementsByWallet = getAgreementsByWallet;
-window.getPendingAgreementsForCarrier = getPendingAgreementsForCarrier;
-window.getAllCarriers = getAllCarriers;
-
-window.isInitializing = isInitializing;
 
 /* ============================================================
    START WEB3
    ============================================================ */
-
+window.isInitializing = isInitializing;
 document.addEventListener("DOMContentLoaded", initializeWeb3);
 window.__CONFIG = CONFIG;
 window.__loadContractABI = loadContractABI;
