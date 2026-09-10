@@ -8,6 +8,11 @@ const PORT = process.env.PORT || 5100;
 app.use(cors());
 app.use(express.json());
 
+// ═══ YON — SECURITY ═══
+const { apiRateLimiter } = require("./middleware/rateLimiter");
+app.use("/api", apiRateLimiter);
+// ═══ YON End ═══
+
 // ─── Paths ──────────────────────────────────────────────
 const FRONTEND_PAGES_DIR = path.join(__dirname, "../frontend", "pages");
 const PUBLIC_DIR = path.join(FRONTEND_PAGES_DIR, "public");

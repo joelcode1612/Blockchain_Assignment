@@ -91,6 +91,10 @@ contract LogisticsEscrow {
     event RefundExecuted(uint256 indexed agreementId, address indexed shipper, uint256 amount);
     event ReputationRewarded(uint256 indexed agreementId, address indexed carrier, uint256 amount);
 
+    // ═══ YON — SECURITY ═══
+    event AgreementExpired(uint256 indexed agreementId);
+    // ═══ YON End ═══
+
     // =====================================================
     // MODIFIERS
     // =====================================================
@@ -139,6 +143,12 @@ contract LogisticsEscrow {
 
         userRoles[msg.sender] = _role;
         registeredUsers.push(msg.sender);   // NEW: store address in array
+
+        // ═══ YON — REPUTATION ═══
+        if (_role == Role.Carrier) {
+            _mintReputation(msg.sender, INITIAL_REPUTATION);
+        }
+        // ═══ YON End ═══
 
         emit UserRegistered(msg.sender, _role);
     }
@@ -296,6 +306,10 @@ contract LogisticsEscrow {
 
         require(agreement.status == AgreementStatus.Active, "Agreement not active");
 
+        // ═══ YON — SECURITY ═══
+        require(block.timestamp <= agreement.deadline, "Deadline passed");
+        // ═══ YON End ═══
+
         require(_milestoneId < agreement.milestoneCount, "Invalid milestone");
 
         // Milestones must be completed sequentially.
@@ -336,6 +350,11 @@ contract LogisticsEscrow {
         Agreement storage agreement = agreements[_agreementId];
         require(msg.sender == agreement.shipper, "Only shipper can release");
         require(agreement.status == AgreementStatus.Active, "Agreement not active");
+
+        // ═══ YON — SECURITY ═══
+        require(block.timestamp <= agreement.deadline, "Deadline passed");
+        // ═══ YON End ═══
+
         require(_milestoneId < agreement.milestoneCount, "Invalid milestone");
         require(agreement.milestones[_milestoneId].status == MilestoneStatus.Verified, "Milestone not verified");
         require(!agreement.milestonePaid[_milestoneId], "Already paid");
@@ -367,6 +386,10 @@ contract LogisticsEscrow {
         }
         if (allComplete) {
             agreement.status = AgreementStatus.Completed;
+
+            // ═══ YON — REPUTATION TOKEN (ERC-20) ═══
+            _awardReputationTokens(_agreementId, agreement.carrier);
+            // ═══ YON End ═══
         }
     }
 
@@ -385,6 +408,10 @@ contract LogisticsEscrow {
 
         agreement.refundExecuted = true;
         agreement.status = AgreementStatus.Refunded;
+
+        // ═══ YON — REPUTATION ═══
+        _penalizeReputation(_agreementId, agreement.carrier);
+        // ═══ YON End ═══
 
         (bool success, ) = payable(agreement.shipper).call{value: remainingBalance}("");
         require(success, "Refund transfer failed");
@@ -433,6 +460,14 @@ contract LogisticsEscrow {
         require(agreement.status == AgreementStatus.Active, "Agreement not active");
         
         agreement.status = AgreementStatus.Expired;
+
+        // ═══ YON — SECURITY ═══
+        emit AgreementExpired(_agreementId);
+        // ═══ YON End ═══
+
+        // ═══ YON — REPUTATION ═══
+        _penalizeReputation(_agreementId, agreement.carrier);
+        // ═══ YON End ═══
     }
 
     function getMilestone(uint256 _agreementId, uint256 _milestoneId) external view agreementExists(_agreementId) returns (
@@ -488,6 +523,108 @@ contract LogisticsEscrow {
     function getReputation(address _wallet) external view returns (uint256) {
         return reputation[_wallet];
     }
+
+    // ═════════════════════════════════════════════════════════
+    // YON — MODULE: CARRIER REPUTATION TOKEN (ERC-20 STYLE)
+    // Non-transferable reputation token (REP).
+    // Model:
+    //   - every Carrier starts with 100 REP (minted at registration)
+    //   - +1 REP per fully completed agreement
+    //   - -5 REP per failed agreement (Expired / Refunded)
+    //   - REP is capped at 120 (failures still deduct at the cap)
+    // Settlement is guarded per agreement id: a reward or penalty is
+    // applied at most once for each agreement.
+    // ═════════════════════════════════════════════════════════
+
+    string public reputationTokenName = "Reputation Token";
+    string public reputationTokenSymbol = "REP";
+    uint8 public reputationTokenDecimals = 18;
+    uint256 public reputationTokenTotalSupply;
+
+    mapping(address => uint256) private reputationTokenBalances;
+    mapping(uint256 => bool) private reputationSettled; // one settlement per agreement
+
+    uint256 private constant INITIAL_REPUTATION = 100 * 1e18;
+    uint256 private constant REPUTATION_REWARD = 1 * 1e18;
+    uint256 private constant REPUTATION_PENALTY = 5 * 1e18;
+    uint256 private constant REPUTATION_CAP = 120 * 1e18;
+
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event ReputationTokensMinted(uint256 indexed agreementId, address indexed carrier, uint256 amount);
+    event ReputationPenalized(uint256 indexed agreementId, address indexed carrier, uint256 amount);
+
+    function balanceOf(address _account) external view returns (uint256) {
+        return reputationTokenBalances[_account];
+    }
+
+    function totalSupply() external view returns (uint256) {
+        return reputationTokenTotalSupply;
+    }
+
+    // Reputation tokens are earned-only: transfers are disabled.
+    function transfer(address, uint256) external pure returns (bool) {
+        revert("REP: reputation tokens are non-transferable");
+    }
+
+    function allowance(address, address) external pure returns (uint256) {
+        return 0;
+    }
+
+    function approve(address, uint256) external pure returns (bool) {
+        revert("REP: reputation tokens are non-transferable");
+    }
+
+    function transferFrom(address, address, uint256) external pure returns (bool) {
+        revert("REP: reputation tokens are non-transferable");
+    }
+
+    function _mintReputation(address _to, uint256 _amount) internal {
+        reputationTokenBalances[_to] += _amount;
+        reputationTokenTotalSupply += _amount;
+        emit Transfer(address(0), _to, _amount);
+    }
+
+    function _burnReputation(address _from, uint256 _amount) internal {
+        reputationTokenBalances[_from] -= _amount;
+        reputationTokenTotalSupply -= _amount;
+        emit Transfer(_from, address(0), _amount);
+    }
+
+    // Reward for a fully completed agreement. Called from releasePayment()
+    // exactly once when all milestones are paid. Guarded by agreement id.
+    function _awardReputationTokens(uint256 _agreementId, address _carrier) internal {
+        if (reputationSettled[_agreementId]) return; // already settled
+        reputationSettled[_agreementId] = true;
+
+        uint256 current = reputationTokenBalances[_carrier];
+        uint256 reward = REPUTATION_REWARD;
+        if (current >= REPUTATION_CAP) {
+            reward = 0; // at cap: no further increase (penalties still apply)
+        } else if (current + reward > REPUTATION_CAP) {
+            reward = REPUTATION_CAP - current;
+        }
+
+        if (reward > 0) {
+            _mintReputation(_carrier, reward);
+        }
+        emit ReputationTokensMinted(_agreementId, _carrier, reward);
+    }
+
+    // Penalty for a failed agreement (Expired / Refunded).
+    // Guarded by agreement id so it never applies twice.
+    function _penalizeReputation(uint256 _agreementId, address _carrier) internal {
+        if (reputationSettled[_agreementId]) return; // already settled
+        reputationSettled[_agreementId] = true;
+
+        uint256 current = reputationTokenBalances[_carrier];
+        uint256 penalty = current >= REPUTATION_PENALTY ? REPUTATION_PENALTY : current;
+        if (penalty > 0) {
+            _burnReputation(_carrier, penalty);
+        }
+        emit ReputationPenalized(_agreementId, _carrier, penalty);
+    }
+
+    // ═══ YON End — REPUTATION TOKEN ═══
 
     // =====================================================
     // RECEIVE ETH

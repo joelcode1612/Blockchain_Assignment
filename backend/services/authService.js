@@ -73,7 +73,9 @@ class AuthService {
         display_name: displayName,
         role: role,
         email: email,
-        reputation_balance: 0,
+        // ═══ YON — REPUTATION: carriers start with 100 REP ═══
+        reputation_balance: role === 'Carrier' ? 100 : 0,
+        // ═══ YON End ═══
       })
       .select()
       .single();

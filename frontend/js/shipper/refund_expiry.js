@@ -360,8 +360,27 @@ window.handleRefund = async function () {
     await tx.wait();
     log(`✅ Refund successful!`);
 
-    // Record refund in database (optional – you can add an endpoint)
-    // await API.postRefund(currentAgreementId);
+    // ═══ YON — HISTORY MODULE ═══
+    // Record the refund in the backend so it appears in transaction history.
+    try {
+      const refundResponse = await fetch(`/api/escrow/shipper/${currentAgreementId}/refund`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-wallet-address': window.userWalletAddress || localStorage.getItem('traxenWallet') || ''
+        },
+        body: JSON.stringify({ txHash: tx.hash })
+      });
+      if (!refundResponse.ok) {
+        const errData = await refundResponse.json().catch(() => ({}));
+        log('⚠️ Refund recorded on-chain but history record failed: ' + (errData.error || refundResponse.status));
+      } else {
+        log('📦 Refund recorded in history.');
+      }
+    } catch (recordError) {
+      log('⚠️ Refund history record failed: ' + recordError.message);
+    }
+    // ═══ YON End ═══
 
     showToast(`✅ Refund successful! ${remainingAmount} ETH returned.`, 'success');
 

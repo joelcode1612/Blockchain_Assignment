@@ -62,6 +62,11 @@ router.use("/api/milestones", milestoneRoutes);
 router.use("/api/history", historyRoutes);
 router.use("/api/escrow", depositRoutes);
 
+// ═══ YON — REPUTATION MODULE ═══
+const reputationRoutes = require("./reputationRoutes");
+router.use("/api/reputation", reputationRoutes);
+// ═══ YON End ═══
+
 // =====================================================
 // FRONTEND PAGE ROUTES (public – they will call protected APIs)
 // =====================================================

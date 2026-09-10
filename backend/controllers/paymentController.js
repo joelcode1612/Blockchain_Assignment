@@ -91,6 +91,56 @@ exports.recordPaymentRelease = async (req, res) => {
         .from('agreements')
         .update({ status: 'Completed', updated_at: new Date().toISOString() })
         .eq('onchain_id', agreement.onchain_id);
+
+      // ═══ YON — REPUTATION MODULE ═══
+      // When the agreement is completed, record the reputation reward
+      // history and update the carrier's reputation balance.
+      // Guarded by agreement id so the reward is recorded only once.
+      const REWARD_TOKENS = 1; // +1 REP per completed agreement
+      const REPUTATION_CAP = 120; // REP cannot exceed 120
+      const { data: existingReward } = await supabase
+        .from('reputation_history')
+        .select('id')
+        .eq('agreement_onchain_id', agreement.onchain_id)
+        .maybeSingle();
+
+      if (existingReward) {
+        console.warn('⚠️ [Yon] Reputation already recorded for agreement', agreement.onchain_id, '- skipping.');
+      } else {
+        const { error: repInsertError } = await supabase
+          .from('reputation_history')
+          .insert({
+            agreement_onchain_id: agreement.onchain_id,
+            carrier_wallet: agreement.carrier_wallet,
+            amount: REWARD_TOKENS,
+            transaction_hash: txHash,
+            rewarded_at: new Date().toISOString(),
+          });
+        if (repInsertError) {
+          console.warn('⚠️ [Yon] reputation_history insert failed:', repInsertError.message);
+        }
+
+        try {
+          const carrierWallet = (agreement.carrier_wallet || '').toLowerCase();
+          const { data: carrierUser } = await supabase
+            .from('users')
+            .select('reputation_balance')
+            .eq('wallet_address', carrierWallet)
+            .maybeSingle();
+          const currentBalance = Number(carrierUser?.reputation_balance ?? 100);
+          const newBalance = Math.min(currentBalance + REWARD_TOKENS, REPUTATION_CAP);
+          const { error: balError } = await supabase
+            .from('users')
+            .update({ reputation_balance: newBalance })
+            .eq('wallet_address', carrierWallet);
+          if (balError) {
+            console.warn('⚠️ [Yon] reputation_balance update failed:', balError.message);
+          }
+        } catch (e) {
+          console.warn('⚠️ [Yon] reputation balance update skipped:', e.message);
+        }
+      }
+      // ═══ YON End ═══
     }
 
     res.status(200).json({

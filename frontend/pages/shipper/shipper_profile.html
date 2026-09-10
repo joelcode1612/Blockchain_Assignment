@@ -38,16 +38,19 @@
               <button class="btn btn-ghost btn-sm" onclick="copyWallet()">Copy Address</button>
               <button class="btn btn-primary btn-sm" onclick="handleWalletConnection()">Wallet</button>
             </div>
+            <!-- /// Fix - 2026-09-10 : reputation is the capped REP token balance
+                 (100 minted on registration, hard cap 120), not a 0–5 star score. -->
             <div class="reputation">
               <div class="reputation-head">
                 <div class="reputation-title">Reputation</div>
-                <div class="reputation-score" id="reputationScore">0.0 / 5.0</div>
+                <div class="reputation-score" id="reputationScore">—</div>
               </div>
               <div class="reputation-bar">
                 <div class="reputation-fill" id="reputationFill" style="width:0%;"></div>
               </div>
-              <div class="reputation-note" id="reputationNote">Based on completed agreements and carrier feedback</div>
+              <div class="reputation-note" id="reputationNote">Reputation tokens (REP) earned from completed agreements</div>
             </div>
+            <!-- /// Fix end -->
           </aside>
 
           <section class="profile-main">

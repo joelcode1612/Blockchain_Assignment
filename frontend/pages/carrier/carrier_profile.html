@@ -18,27 +18,33 @@
       <div class="content">
         <div class="profile-layout">
           <aside class="profile-card">
-            <div class="profile-avatar">MJ</div>
-            <div class="profile-name" id="profileName">Mike Johnson</div>
-            <div class="profile-role">Verified Carrier</div>
-            <span class="status-pill"><span class="status-dot"></span>Account Active</span>
+            <!-- /// Fix - 2026-09-10 : removed hardcoded demo identity (Mike Johnson /
+                 0x18cD72a9...9E41B8c0 / alert() wallet button). Values are now rendered
+                 from /api/users/me by carrier_profile.js. -->
+            <div class="profile-avatar" id="profileAvatar">—</div>
+            <div class="profile-name" id="profileName">Loading…</div>
+            <div class="profile-role" id="profileRole">Carrier</div>
+            <span class="status-pill"><span class="status-dot"></span><span id="accountStatus">Active</span></span>
             <div class="profile-divider"></div>
             <div class="wallet-label">Connected Wallet</div>
-            <div class="wallet-address" id="profileWallet">0x18cD72a9...9E41B8c0</div>
+            <div class="wallet-address" id="profileWallet">—</div>
             <div class="profile-actions">
-              <button class="btn btn-ghost btn-sm" onclick="copyWallet('0x18cD72a9...9E41B8c0')">Copy Address</button>
-              <button class="btn btn-primary btn-sm" onclick="alert('Wallet connection screen')">Wallet</button>
+              <button class="btn btn-ghost btn-sm" onclick="copyWallet()">Copy Address</button>
+              <button class="btn btn-primary btn-sm" onclick="handleWalletConnection()">Wallet</button>
             </div>
+            <!-- /// Fix end -->
+            <!-- ═══ YON — REPUTATION MODULE ═══ -->
             <div class="reputation">
               <div class="reputation-head">
                 <div class="reputation-title">Reputation</div>
-                <div class="reputation-score">4.9 / 5.0</div>
+                <div class="reputation-score" id="reputationScore">—</div>
               </div>
               <div class="reputation-bar">
-                <div class="reputation-fill"></div>
+                <div class="reputation-fill" id="reputationFill" style="width:0%;"></div>
               </div>
-              <div class="reputation-note">Based on completed deliveries and shipper feedback</div>
+              <div class="reputation-note" id="reputationNote">Reputation tokens (REP) earned from completed agreements</div>
             </div>
+            <!-- ═══ YON End ═══ -->
           </aside>
 
           <section class="profile-main">
@@ -46,37 +52,40 @@
               <div class="section-head">
                 <h2 class="section-title">Account Information</h2><span class="section-caption">Personal details</span>
               </div>
+              <!-- /// Fix - 2026-09-10 : hardcoded Frank Rivera / April 2025 / fake wallet
+                   replaced with ids populated from /api/users/me. -->
               <div class="detail-grid">
                 <div class="detail-item">
                   <div class="detail-label">Full Name</div>
-                  <div class="detail-value" id="nameValue">Frank Rivera</div>
+                  <div class="detail-value" id="nameValue">—</div>
                 </div>
                 <div class="detail-item">
                   <div class="detail-label">Email</div>
-                  <div class="detail-value" id="emailValue">frank.rivera@example.com</div>
+                  <div class="detail-value" id="emailValue">—</div>
                 </div>
                 <div class="detail-item">
                   <div class="detail-label">Role</div>
-                  <div class="detail-value">Carrier</div>
+                  <div class="detail-value" id="roleValue">Carrier</div>
                 </div>
                 <div class="detail-item">
                   <div class="detail-label">Member Since</div>
-                  <div class="detail-value">April 2025</div>
+                  <div class="detail-value" id="memberSinceValue">—</div>
                 </div>
                 <div class="detail-item">
                   <div class="detail-label">Wallet</div>
-                  <div class="detail-value mono">0x18cD…9E41</div>
+                  <div class="detail-value mono" id="walletShortValue">—</div>
                 </div>
                 <div class="detail-item">
                   <div class="detail-label">Account Status</div>
-                  <div class="detail-value"><span class="badge badge-lime">Verified</span></div>
+                  <div class="detail-value"><span class="badge badge-lime" id="statusBadgeCarrier">—</span></div>
                 </div>
               </div>
               <div class="edit-form" id="editForm">
                 <div class="form-grid">
-                  <div class="field"><label>Full Name</label><input id="nameInput" value="Frank Rivera"></div>
-                  <div class="field"><label>Email</label><input id="emailInput" value="frank.rivera@example.com"></div>
+                  <div class="field"><label>Full Name</label><input id="nameInput" value=""></div>
+                  <div class="field"><label>Email</label><input id="emailInput" value=""></div>
                 </div>
+                <!-- /// Fix end -->
                 <div class="btn-row"><button class="btn btn-primary btn-sm" onclick="saveProfile()">Save
                     Changes</button><button class="btn btn-ghost btn-sm" onclick="toggleEdit()">Cancel</button></div>
               </div>
@@ -86,83 +95,70 @@
               <div class="section-head">
                 <h2 class="section-title">Carrier Statistics</h2><span class="section-caption">Delivery activity</span>
               </div>
+              <!-- /// Fix - 2026-09-10 : fake figures (27 / 3 / 22 / 31.4) replaced with
+                   values computed from /api/agreements. -->
               <div class="stats-grid">
                 <div class="stat">
                   <div class="stat-label">Jobs</div>
-                  <div class="stat-value">27</div>
+                  <div class="stat-value" id="statJobs">—</div>
                   <div class="stat-meta">Accepted</div>
                 </div>
                 <div class="stat">
                   <div class="stat-label">Active</div>
-                  <div class="stat-value lime">3</div>
+                  <div class="stat-value lime" id="statActiveCarrier">—</div>
                   <div class="stat-meta">Currently running</div>
                 </div>
                 <div class="stat">
                   <div class="stat-label">Completed</div>
-                  <div class="stat-value">22</div>
+                  <div class="stat-value" id="statCompletedCarrier">—</div>
                   <div class="stat-meta">Successfully delivered</div>
                 </div>
                 <div class="stat">
                   <div class="stat-label">Earned</div>
-                  <div class="stat-value">31.4</div>
+                  <div class="stat-value" id="statEarnedCarrier">—</div>
                   <div class="stat-meta">ETH received</div>
                 </div>
               </div>
+              <!-- /// Fix end -->
             </div>
 
             <div class="section-card">
               <div class="section-head">
                 <h2 class="section-title">Account Performance</h2><span class="section-caption">Current overview</span>
               </div>
+              <!-- /// Fix - 2026-09-10 : fake performance figures (96% / 97% / 1 / 2)
+                   replaced with computed values; metrics with no data source show "—". -->
               <div class="metric-grid">
                 <div class="metric">
-                  <div class="metric-row"><span class="label">Job completion rate</span><span
-                      class="value good">96%</span></div>
+                  <div class="metric-row"><span class="label">Job completion rate</span><span class="value good"
+                      id="metricCompletion">—</span></div>
                 </div>
                 <div class="metric">
-                  <div class="metric-row"><span class="label">On-time delivery rate</span><span
-                      class="value good">97%</span></div>
+                  <div class="metric-row"><span class="label">On-time delivery rate</span><span class="value good"
+                      id="metricOnTime" title="No deadline-compliance source exists in the system yet">—</span></div>
                 </div>
                 <div class="metric">
-                  <div class="metric-row"><span class="label">Disputes received</span><span class="value">1</span></div>
+                  <div class="metric-row"><span class="label">Disputes received</span><span class="value"
+                      id="metricDisputes" title="No dispute module exists in the system yet">—</span></div>
                 </div>
                 <div class="metric">
-                  <div class="metric-row"><span class="label">Pending verification</span><span
-                      class="value warn">2</span></div>
+                  <div class="metric-row"><span class="label">Pending verification</span><span class="value warn"
+                      id="metricPending">—</span></div>
                 </div>
               </div>
+              <!-- /// Fix end -->
             </div>
 
             <div class="section-card">
               <div class="section-head">
                 <h2 class="section-title">Recent Activity</h2><span class="section-caption">Latest account events</span>
               </div>
-              <div class="activity">
-                <div class="activity-row">
-                  <div class="activity-icon">✓</div>
-                  <div>
-                    <div class="activity-title">Proof submitted</div>
-                    <div class="activity-sub">Agreement #AG8901 · In Transit · Awaiting verification</div>
-                  </div>
-                  <div class="activity-time">Today</div>
-                </div>
-                <div class="activity-row">
-                  <div class="activity-icon">₿</div>
-                  <div>
-                    <div class="activity-title">Payment received</div>
-                    <div class="activity-sub">Agreement #AG8804 · 1.50 ETH released</div>
-                  </div>
-                  <div class="activity-time">2 days ago</div>
-                </div>
-                <div class="activity-row">
-                  <div class="activity-icon">+</div>
-                  <div>
-                    <div class="activity-title">Job accepted</div>
-                    <div class="activity-sub">Furniture Batch to Seattle</div>
-                  </div>
-                  <div class="activity-time">May 20</div>
-                </div>
+              <!-- /// Fix - 2026-09-10 : hardcoded fake activity rows (#AG8901/#AG8804)
+                   replaced with real events rendered from /api/history. -->
+              <div class="activity" id="carrierActivityList">
+                <div style="padding:20px;text-align:center;color:var(--text-faint);">Loading activity…</div>
               </div>
+              <!-- /// Fix end -->
             </div>
           </section>
         </div>

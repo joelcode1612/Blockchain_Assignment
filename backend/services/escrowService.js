@@ -140,6 +140,8 @@ const getAgreement = async (agreementId) => {
     };
 };
 
+/// Fix - 2026-09-10 : removed duplicate export keys. isPaymentReleased,
+/// getAgreementCounter and getMilestone were each listed twice.
 module.exports = {
     // Reads
     getAgreement,
@@ -152,11 +154,11 @@ module.exports = {
     getRole,
     isPaymentReleased,
 
-    // Writes
+    // Writes (server-signed helpers — currently unused, backend does not sign)
     depositEscrow,
     releasePayment,
     verifyMilestone,
-    isPaymentReleased,
-    getAgreementCounter,
-    getMilestone
+    refund,
+    createAgreement,
 };
+/// Fix end

@@ -37,14 +37,11 @@
     document.getElementById("walletShort").textContent =
       wallet.slice(0, 6) + "…" + wallet.slice(-4);
 
-    // Reputation
-    const rep = data.reputation_balance || 0;
-    document.getElementById("reputationScore").textContent =
-      rep.toFixed(1) + " / 5.0"; // assuming 5 max
-    const fillPercent = Math.min((rep / 5) * 100, 100);
-    document.getElementById("reputationFill").style.width = fillPercent + "%";
-    document.getElementById("reputationNote").textContent =
-      "Based on completed agreements and carrier feedback";
+    /// Fix - 2026-09-10 : reputation is a capped REP token balance (100 minted
+    /// on carrier registration, hard cap 120), not a 0–5 star rating.
+    /// loadReputation() replaces this database mirror with the on-chain value.
+    applyReputation(Number(data.reputation_balance || 0));
+    /// Fix end
 
     // Account details
     document.getElementById("nameValue").textContent = name;
@@ -111,10 +108,141 @@
     document.getElementById("editForm").style.display = "none";
   }
 
+  /// Fix - 2026-09-10 : the profile page used to render "0.0 / 5.0" reputation
+  /// and all-zero statistics, because /api/users/me does not return a
+  /// statistics object. Reputation now follows the REP token model and the
+  /// numbers are computed from the real agreements endpoint.
+  const REPUTATION_CAP = 120;
+  const ACTIVE_STATUSES = ["AwaitingFunding", "Active"];
+  const CLOSED_STATUSES = [
+    "Completed",
+    "Rejected",
+    "Cancelled",
+    "Expired",
+    "Refunded",
+  ];
+  const UNFUNDED_STATUSES = ["PendingAcceptance", "Rejected", "Cancelled"];
+
+  function applyReputation(balance) {
+    const scoreEl = document.getElementById("reputationScore");
+    if (scoreEl) scoreEl.textContent = balance + " REP";
+
+    const fillEl = document.getElementById("reputationFill");
+    if (fillEl) {
+      fillEl.style.width = Math.min((balance / REPUTATION_CAP) * 100, 100) + "%";
+    }
+
+    const noteEl = document.getElementById("reputationNote");
+    if (noteEl) {
+      noteEl.textContent =
+        "REP tokens earned from completed agreements (max " +
+        REPUTATION_CAP +
+        ")";
+    }
+  }
+
+  async function loadReputation() {
+    const wallet =
+      localStorage.getItem("traxenWallet") || window.userWalletAddress;
+    if (!wallet) return;
+
+    try {
+      const res = await fetch("/api/reputation/me", {
+        headers: { "x-wallet-address": wallet },
+      });
+      if (!res.ok) return;
+
+      const data = await res.json();
+      applyReputation(parseFloat(data.balanceFormatted || "0") || 0);
+    } catch (e) {
+      console.warn("[Yon] Failed to load reputation:", e.message);
+    }
+  }
+
+  function weiToEth(value) {
+    try {
+      if (window.ethers && typeof window.ethers.formatEther === "function") {
+        return parseFloat(window.ethers.formatEther(String(value || 0)));
+      }
+    } catch (e) {
+      /* fall through to the manual conversion below */
+    }
+    const n = Number(value || 0);
+    return isNaN(n) ? 0 : n / 1e18;
+  }
+
+  function setProfileText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  }
+
+  async function loadStats() {
+    const wallet = localStorage.getItem("traxenWallet");
+    if (!wallet) return;
+
+    try {
+      const res = await fetch("/api/agreements", {
+        headers: { "x-wallet-address": wallet },
+      });
+      if (!res.ok) return;
+
+      const agreements = await res.json();
+      if (!Array.isArray(agreements)) return;
+
+      const target = wallet.toLowerCase();
+      const mine = agreements.filter(
+        (a) => (a.shipper_wallet || "").toLowerCase() === target,
+      );
+
+      const active = mine.filter((a) =>
+        ACTIVE_STATUSES.includes(a.status),
+      ).length;
+      const completed = mine.filter((a) => a.status === "Completed").length;
+      const closed = mine.filter((a) =>
+        CLOSED_STATUSES.includes(a.status),
+      ).length;
+
+      // Escrow committed = everything that was actually funded.
+      const escrowEth = mine.reduce((sum, a) => {
+        if (UNFUNDED_STATUSES.includes(a.status)) return sum;
+        return sum + weiToEth(a.escrow_amount);
+      }, 0);
+
+      let pendingVerification = 0;
+      mine.forEach((a) => {
+        if (!Array.isArray(a.milestones)) return;
+        pendingVerification += a.milestones.filter(
+          (m) => m.status === "Submitted",
+        ).length;
+      });
+
+      setProfileText("statTotal", mine.length);
+      setProfileText("statActive", active);
+      setProfileText("statCompleted", completed);
+      setProfileText("statEscrow", escrowEth.toFixed(2));
+      setProfileText(
+        "completionRate",
+        closed > 0 ? Math.round((completed / closed) * 100) + "%" : "0%",
+      );
+      setProfileText("pendingVerification", pendingVerification);
+      // These two have no backing data source in the system yet, so the UI
+      // shows an explicit "—" instead of a fabricated number.
+      setProfileText("onTimeRate", "—");
+      setProfileText("disputesCount", "—");
+    } catch (e) {
+      console.warn("[Yon] Failed to load shipper statistics:", e.message);
+    }
+  }
+  /// Fix end
+
   async function initProfile() {
     try {
       const data = await fetchProfile();
       renderProfile(data);
+
+      /// Fix - 2026-09-10 : hydrate reputation + statistics from real sources.
+      await Promise.all([loadReputation(), loadStats()]);
+      /// Fix end
     } catch (error) {
       console.error("Profile load error:", error);
       const container = document.querySelector(".profile-layout");

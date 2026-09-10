@@ -4,6 +4,10 @@ const milestoneController = require('../controllers/milestoneController');
 const { authenticate, authorize } = require('../middleware/auth');
 const multer = require('multer');
 
+// ═══ YON — SECURITY ═══
+const { verifyTransaction } = require('../middleware/verifyTx');
+// ═══ YON End ═══
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -19,7 +23,9 @@ const upload = multer({
 });
 
 // POST /api/milestones/verify  (body: { agreementId, milestoneId, txHash })
-router.post('/verify', authenticate, authorize('Shipper'), milestoneController.verifyMilestone);
+// ═══ YON — SECURITY: added verifyTransaction ═══
+router.post('/verify', authenticate, verifyTransaction, authorize('Shipper'), milestoneController.verifyMilestone);
+// ═══ YON End ═══
 router.post(
   '/upload-proof',
   authenticate,
