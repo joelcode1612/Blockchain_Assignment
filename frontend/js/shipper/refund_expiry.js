@@ -4,35 +4,105 @@ let currentAgreementData = null;
 let refundLog = [];
 
 function log(msg) {
+  console.log(`[Refund Centre] ${msg}`);
+
   const el = document.getElementById('output');
-  el.innerHTML += `\n${new Date().toLocaleTimeString()}: ${msg}`;
-  el.scrollTop = el.scrollHeight;
+
+  if (el) {
+    el.innerHTML += `\n${new Date().toLocaleTimeString()}: ${msg}`;
+    el.scrollTop = el.scrollHeight;
+  }
 }
 
 // ─── Load Agreements for dropdown ──────────────────────────
 async function loadAgreements() {
+  console.log("========== REFUND DEBUG ==========");
+  console.log("🚀 loadAgreements() CALLED");
+  console.log("window.userWalletAddress:", window.userWalletAddress);
+  console.log("window.contract:", window.contract);
+  console.log("agreementSelect:", document.getElementById('agreementSelect'));
+
   try {
+    console.log("📡 Calling /api/agreements...");
+    console.log("📡 Wallet header:", window.userWalletAddress || '');
+
     const res = await fetch('/api/agreements', {
-      headers: { 'x-wallet-address': window.userWalletAddress || '' }
+      headers: {
+        'x-wallet-address': window.userWalletAddress || ''
+      }
     });
-    if (!res.ok) throw new Error('Failed to fetch agreements');
-    const data = await res.json();
-    const sel = document.getElementById('agreementSelect');
-    sel.innerHTML = '<option value="">— Select —</option>';
-    data.forEach(ag => {
-      const opt = document.createElement('option');
-      opt.value = ag.onchain_id;
-      opt.textContent = `AGR-${String(ag.onchain_id).padStart(4, '0')} (${ag.status})`;
-      sel.appendChild(opt);
-    });
-    // Auto-select first if any
-    if (data.length > 0) {
-      sel.value = data[0].onchain_id;
-      loadRefundData();
+
+    console.log("📡 API response status:", res.status);
+    console.log("📡 API response OK:", res.ok);
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error("❌ API ERROR:", errorText);
+      throw new Error('Failed to fetch agreements');
     }
-    // Also update expiry grid
-    renderExpiryGrid(data);
-    return data;
+
+    const data = await res.json();
+
+    console.log("📦 API returned:", data);
+    console.log("📦 Number of agreements:", data.length);
+
+    const expiredAgreements = [];
+
+    // Check every agreement belonging to this shipper
+    console.log("🔍 Starting expiry check...");
+
+    for (const ag of data) {
+      try {
+        console.log("────────────────────────");
+        console.log("📋 Checking agreement:", ag.onchain_id);
+        console.log("📋 Status:", ag.status);
+        console.log("📋 Deadline:", ag.deadline);
+        const deadline = new Date(ag.deadline);
+        const now = new Date();
+
+        const isPastDeadline = now > deadline;
+        const isActive =
+          ag.status === 'Active' ||
+          ag.status === 'AwaitingFunding';
+        console.log("⏰ Deadline date:", deadline);
+        console.log("⏰ Current time:", now);
+        console.log("⏰ Is past deadline:", isPastDeadline);
+        console.log("📌 Is active:", isActive);
+        // Deadline passed → expired for refund purposes
+        if (isPastDeadline && isActive) {
+          console.log("🚨 EXPIRED AGREEMENT FOUND:", ag.onchain_id);
+
+          log(`⚠️ Agreement ${ag.onchain_id} has passed its deadline.`);
+
+          // The deployed contract does not contain markExpired().
+          // refund() checks the deadline directly on-chain.
+          ag.status = 'Expired';
+
+          console.log("📌 Local status changed to:", ag.status);
+          log(`✅ Agreement ${ag.onchain_id} is eligible for refund.`);
+        }
+
+        // Only display agreements that are actually Expired
+        if (ag.status === 'Expired') {
+          expiredAgreements.push(ag);
+        }
+
+      } catch (error) {
+        console.error(
+          `Error checking agreement ${ag.onchain_id}:`,
+          error
+        );
+      }
+    }
+
+    // Render only expired agreements
+    renderExpiryGrid(expiredAgreements);
+
+    // No agreement selected initially
+    currentAgreementId = null;
+
+    return expiredAgreements;
+
   } catch (e) {
     log('❌ Failed to load agreements: ' + e.message);
     return [];
@@ -42,45 +112,62 @@ async function loadAgreements() {
 // ─── Render Expiry Grid ────────────────────────────────────
 function renderExpiryGrid(agreements) {
   const container = document.getElementById('expiryGrid');
+
   if (!agreements || agreements.length === 0) {
-    container.innerHTML = '<div style="color:var(--text-faint);padding:12px 0;">No agreements found.</div>';
+    container.innerHTML = `
+      <div style="color:var(--text-faint);padding:20px 0;">
+        No expired agreements.
+      </div>
+    `;
     return;
   }
+
   container.innerHTML = agreements.map(ag => {
-    const status = ag.status || 'pending';
-    let statusClass = 'lime';
-    let statusLabel = 'On Track';
-    if (status === 'refunded') { statusClass = 'red'; statusLabel = 'Refunded'; }
-    else if (status === 'completed') { statusClass = 'lime'; statusLabel = 'Completed'; }
-    else if (status === 'active') { statusClass = 'lime'; statusLabel = 'Active'; }
-    else if (status === 'pending') { statusClass = 'gray'; statusLabel = 'Pending'; }
+    const deadline = ag.deadline
+      ? new Date(ag.deadline).toLocaleString()
+      : '—';
+
+    const amount = ag.escrow_amount != null
+      ? ethers.formatEther(String(ag.escrow_amount))
+      : ag.total_amount || '0';
+
     return `
-        <div class="expiry-card ${status === 'refunded' ? 'expired' : status === 'active' ? '' : 'risk'}">
-          <div class="pill ${statusClass}" style="margin-bottom:8px;"><span class="dot"></span>${statusLabel}</div>
-          <div style="font-weight:700;">AGR-${String(ag.onchain_id).padStart(4, '0')}</div>
-          <div style="font-size:11px;color:var(--text-faint);">${ag.total_amount || '0'} ETH</div>
+      <div
+        class="expiry-card expired"
+        onclick="selectAgreement(${ag.onchain_id})"        
+        style="cursor:pointer;"
+      >
+        <div class="pill red" style="margin-bottom:8px;">
+          <span class="dot"></span>
+          Expired
         </div>
-      `;
+
+        <div style="font-weight:700;">
+          AGR-${String(ag.onchain_id).padStart(4, '0')}
+        </div>
+
+        <div style="font-size:12px;color:var(--text-faint);margin-top:6px;">
+          Deadline: ${deadline}
+        </div>
+
+        <div style="font-size:12px;color:var(--text-faint);margin-top:4px;">
+          Remaining: ${amount} ETH
+        </div>
+      </div>
+    `;
   }).join('');
+}
+
+async function selectAgreement(id) {
+  currentAgreementId = id;
+  await loadRefundData();
 }
 
 // ─── Load Refund Data ──────────────────────────────────────
 async function loadRefundData() {
-  const sel = document.getElementById('agreementSelect');
-  const id = parseInt(sel.value);
-  currentAgreementId = isNaN(id) ? null : id;
-
   if (currentAgreementId === null) {
-    document.getElementById('agreementDesc').textContent = 'Select an agreement to view refund status.';
-    document.getElementById('deadlineDisplay').textContent = '—';
-    document.getElementById('timeRemainingDisplay').textContent = '—';
-    document.getElementById('expiryStatusDisplay').textContent = '—';
-    document.getElementById('remainingLockedDisplay').textContent = '—';
-    document.getElementById('timeLeftPercent').textContent = '—';
-    document.getElementById('countdownCircle').style.strokeDasharray = '327';
-    document.getElementById('countdownCircle').style.strokeDashoffset = '0';
-    document.getElementById('refundBtn').disabled = true;
-    document.getElementById('refundBanner').innerHTML = '';
+    document.getElementById('agreementDesc').textContent =
+      'Select an expired agreement below to review the refund.';
     return;
   }
 
@@ -91,15 +178,23 @@ async function loadRefundData() {
 
   try {
     // Get agreement details from contract
-    const details = await window.contract.getAgreementDetails(currentAgreementId);
-    const shipper = details[0];
-    const carrier = details[1];
-    const totalAmount = ethers.formatEther(details[2]);
-    const remainingAmount = ethers.formatEther(details[3]);
-    const funded = details[4];
-    const completed = details[5];
-    const deadline = new Date(Number(details[6]) * 1000);
-    const status = Number(details[7]);
+    const details = await window.contract.getAgreement(currentAgreementId);
+
+    const shipper = details[1];
+    const carrier = details[2];
+
+    const totalAmount = ethers.formatEther(details[3]);
+    const releasedAmount = ethers.formatEther(details[4]);
+
+    const remainingAmount = ethers.formatEther(
+      details[3] - details[4]
+    );
+
+    const deadline = new Date(Number(details[5]) * 1000);
+    const status = Number(details[6]);
+
+    const funded = details[3] > 0n;
+    const completed = status === 3;
 
     currentAgreementData = {
       shipper,
@@ -112,15 +207,26 @@ async function loadRefundData() {
       status
     };
 
+
     // Get milestone data
-    const agreementData = await window.contract.agreements(currentAgreementId);
-    const milestoneCount = Number(agreementData.milestoneCount);
+    const milestoneCount = Number(
+      await window.contract.getMilestoneCount(currentAgreementId)
+    );
+
     const milestones = [];
+
     for (let i = 0; i < milestoneCount; i++) {
       const m = await window.contract.getMilestone(currentAgreementId, i);
-      milestones.push({ verified: m[2], paid: m[3] });
+
+      milestones.push({
+        verified: m[2],
+        paid: m[3]
+      });
     }
-    const allPaid = milestones.length > 0 && milestones.every(m => m.paid);
+
+    const allPaid =
+      milestones.length > 0 &&
+      milestones.every(m => m.paid);
 
     // Update UI
     updateRefundUI(currentAgreementId, totalAmount, remainingAmount, funded, completed, deadline, status, allPaid);
@@ -143,37 +249,34 @@ function updateRefundUI(agreementId, total, remaining, funded, completed, deadli
 
   // Deadline
   document.getElementById('deadlineDisplay').textContent = deadline.toLocaleString();
+  document.getElementById('agreementIdDisplay').textContent =
+    `AGR-${String(agreementId).padStart(4, '0')}`;
 
-  // Time remaining
-  const diff = deadline - now;
-  if (diff > 0) {
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    document.getElementById('timeRemainingDisplay').textContent = `${days}d ${hours}h ${mins}m`;
-    document.getElementById('timeRemainingDisplay').style.color = 'var(--lime)';
-  } else {
-    document.getElementById('timeRemainingDisplay').textContent = 'Expired ⏳';
-    document.getElementById('timeRemainingDisplay').style.color = 'var(--red)';
-  }
+  document.getElementById('totalAmountDisplay').textContent =
+    total + ' ETH';
 
+  document.getElementById('releasedAmountDisplay').textContent =
+    (parseFloat(total) - parseFloat(remaining)) + ' ETH';
+
+  document.getElementById('refundAmountDisplay').textContent =
+    remaining + ' ETH';
   // Expiry status
-  const statusLabel = isExpired ? (hasBalance ? 'Expired ⚠️' : 'Expired ✅') : 'On Track';
-  const statusClass = isExpired ? (hasBalance ? 'amber' : 'lime') : 'lime';
-  document.getElementById('expiryStatusDisplay').innerHTML = `<span class="pill ${statusClass}"><span class="dot"></span>${statusLabel}</span>`;
+  const statusLabel = isExpired
+    ? (hasBalance ? 'Expired ⚠️' : 'Expired ✅')
+    : 'On Track';
+
+  const statusClass = isExpired
+    ? (hasBalance ? 'amber' : 'lime')
+    : 'lime';
+
+  document.getElementById('expiryStatusDisplay').innerHTML =
+    `<span class="pill ${statusClass}">
+    <span class="dot"></span>${statusLabel}
+  </span>`;
 
   // Remaining locked
-  document.getElementById('remainingLockedDisplay').textContent = remaining + ' ETH';
-
-  // Countdown ring
-  const circumference = 327;
-  const totalSeconds = 30 * 24 * 60 * 60; // assume 30 days max for percentage
-  const elapsedSeconds = Math.max(0, (deadline - now) / 1000);
-  const percent = Math.min(100, Math.max(0, (elapsedSeconds / totalSeconds) * 100));
-  const offset = circumference - (percent / 100) * circumference;
-  document.getElementById('countdownCircle').style.strokeDasharray = circumference;
-  document.getElementById('countdownCircle').style.strokeDashoffset = offset;
-  document.getElementById('timeLeftPercent').textContent = Math.round(percent) + '%';
+  document.getElementById('remainingLockedDisplay').textContent =
+    remaining + ' ETH';
 
   // Refund button
   const btn = document.getElementById('refundBtn');
@@ -305,23 +408,27 @@ function truncateHash(hash) {
 
 // ─── Wallet Events ────────────────────────────────────────
 window.addEventListener('walletConnected', () => {
-  loadAgreements().then(() => loadRefundData());
+  window.initRefundExpiry();
 });
 
-// ─── Init ─────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', async () => {
-  if (window.userWalletAddress) {
-    await loadAgreements();
-    await loadRefundData();
-  } else {
-    log('👛 Connect wallet to start.');
-    window.addEventListener('walletConnected', async () => {
-      await loadAgreements();
-      await loadRefundData();
-    });
-  }
-});
+
 
 // Expose for inline onclick
 window.loadRefundData = loadRefundData;
 window.loadAgreements = loadAgreements;
+
+window.initRefundExpiry = async function () {
+  console.log("🚀 initRefundExpiry() called");
+
+  const expiryGrid = document.getElementById("expiryGrid");
+
+  if (!expiryGrid) {
+    console.warn("⚠️ expiryGrid is missing from current Refund Centre DOM.");
+    return;
+  }
+
+  console.log("✅ Refund Centre DOM ready.");
+
+  await loadAgreements();
+  await loadRefundData();
+};

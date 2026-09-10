@@ -39,9 +39,9 @@
           sub: "Track and update your active logistics contracts.",
         },
         carrier_milestone_release: {
-          file: "/fragments/carrier/milestone_release.html",
+          file: "/fragments/carrier/milestone_tracking.html",
           title: "Milestone Tracking",
-          sub: "Submit and verify delivery milestones.",
+          sub: "Monitor your accepted deliveries and milestone progress.",
         },
         carrier_history: {
           file: "/fragments/shared/history.html",
@@ -163,9 +163,11 @@
             completed.length;
           document.getElementById("stat-pending").textContent = pending.length;
 
-          const earned = agreements
-            .filter((ag) => ag.status === "Active" || ag.status === "Completed")
-            .reduce((sum, ag) => sum + (Number(ag.total_amount_eth) || 0), 0);
+          const earned = agreements.reduce(
+            (sum, ag) =>
+              sum + Number(ethers.formatEther(String(ag.released_amount || 0))),
+            0
+          );
           document.getElementById("stat-earned").textContent =
             `${earned.toFixed(2)} ETH`;
 
@@ -184,7 +186,7 @@
                           <div class="job-title">#${ag.onchain_id} — ${ag.agreement_name || "Agreement"}</div>
                           <div class="job-sub">Shipper: ${ag.shipper?.display_name || ag.shipper_wallet || "Unknown"}</div>
                         </div>
-                        <div class="job-value">${ag.total_amount_eth || "0"} ETH</div>
+                        <div class="job-value">${ethers.formatEther(String(ag.escrow_amount))} ETH</div>
                       </div>
                       <div class="job-meta">
                         <span>Next: <b>${ag.status}</b></span>
@@ -326,7 +328,7 @@
             carrier_available_jobs: "initAvailableJobs",
             carrier_agreements: "initCarrierAgreements",
             carrier_my_deliveries: "initMyDeliveries",
-            carrier_milestone_release: "initMilestoneRelease",
+            carrier_milestone_release: "initMilestoneTracking",
             carrier_history: "initHistory",
             carrier_profile: "initCarrierProfile",
             agreement_details: "initAgreementDetails",

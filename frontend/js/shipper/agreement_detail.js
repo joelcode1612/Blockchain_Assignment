@@ -1,4 +1,7 @@
 (function () {
+  let currentAgreement = null;
+  let milestoneActionInProgress = false;
+
   // ─── Init function called by the SPA router ──────────────
   window.initAgreementDetails = async function () {
     try {
@@ -24,6 +27,7 @@
         throw new Error(err.error || "Failed to fetch agreement");
       }
       const agreement = await response.json();
+      currentAgreement = agreement;
 
       // 3. Populate UI
       document.getElementById("agreement-id").textContent =
@@ -40,7 +44,9 @@
 
       const status = agreement.status || "PendingAcceptance";
       const escrowAmount = agreement.escrow_amount
-        ? parseFloat(ethers.formatEther(agreement.escrow_amount)).toFixed(4)
+        ? parseFloat(
+          ethers.formatEther(String(agreement.escrow_amount))
+        ).toFixed(4)
         : "0.00";
       document.getElementById("escrow-amount").textContent =
         `${escrowAmount} ETH`;
@@ -56,26 +62,35 @@
         ? new Date(agreement.created_at).toLocaleString()
         : "—";
       document.getElementById("contract-address").textContent =
-        agreement.contract_address || "0x7a83…4F2E"; // placeholder
+        agreement.contract_address || window.__CONFIG?.contractAddress || "—";
 
       // 4. Render milestones
-      const milestones = agreement.milestones || [];
+      const milestones = [...(agreement.milestones || [])].sort(
+        (a, b) => Number(a.milestone_index) - Number(b.milestone_index)
+      );
+
+      agreement.milestones = milestones;
+      currentAgreement.milestones = milestones;
+
       renderMilestones(milestones, escrowAmount);
 
       // 5. Enable/disable fund button
       const fundBtn = document.getElementById("fund-escrow-btn");
-      if (status === "AwaitingFunding") {
-        fundBtn.disabled = false;
-        fundBtn.textContent = "Fund Escrow";
-      } else if (status === "PendingAcceptance") {
-        fundBtn.disabled = true;
-        fundBtn.textContent = "Awaiting Carrier Acceptance";
-      } else if (status === "Active") {
-        fundBtn.disabled = true;
-        fundBtn.textContent = "Escrow Funded";
-      } else {
-        fundBtn.disabled = true;
-        fundBtn.textContent = "Not Fundable";
+
+      if (fundBtn) {
+        if (status === "AwaitingFunding") {
+          fundBtn.disabled = false;
+          fundBtn.textContent = "Fund Escrow";
+        } else if (status === "PendingAcceptance") {
+          fundBtn.disabled = true;
+          fundBtn.textContent = "Awaiting Carrier Acceptance";
+        } else if (status === "Active") {
+          fundBtn.disabled = true;
+          fundBtn.textContent = "Escrow Funded";
+        } else {
+          fundBtn.disabled = true;
+          fundBtn.textContent = "Not Fundable";
+        }
       }
     } catch (error) {
       console.error("Agreement details error:", error);
@@ -147,33 +162,304 @@
 
     // ── Milestone List ──
     let listHtml = "";
+
     milestones.forEach((m, i) => {
       const amt =
         totalEth && m.payment_percentage
           ? ((totalEth * m.payment_percentage) / 100).toFixed(4)
           : "—";
+
       const status = m.status || "Pending";
-      let statusColor = "var(--text-faint)";
-      if (status === "Paid") statusColor = "var(--lime)";
-      else if (status === "Verified") statusColor = "var(--blue)";
-      else if (status === "Submitted") statusColor = "var(--amber)";
-      listHtml += `
-          <div class="milestone-row">
-            <div>
-              <div class="name">${i + 1}. ${m.description || `Milestone ${i + 1}`}</div>
-              <div class="sub">${status === "Pending" ? "Not yet reached" : status === "Submitted" ? "Awaiting verification" : status === "Verified" ? "Verified – release payment" : "Paid"}</div>
-            </div>
-            <div class="right">
-              <div class="amt">${amt} ETH</div>
-              <div class="sub" style="color:${statusColor}">${status}</div>
-            </div>
-          </div>
+
+      let rowClass = "milestone-pending";
+      let icon = "•";
+      let statusText = "Pending";
+      let subText = "Not yet reached";
+
+      if (status === "Paid") {
+        rowClass = "milestone-paid";
+        icon = "✓";
+        statusText = "Paid";
+        subText = "Received";
+      } else if (status === "Submitted") {
+        rowClass = "milestone-submitted";
+        icon = "!";
+        statusText = "Submitted";
+        subText = "Proof submitted";
+      } else if (status === "Verified") {
+        rowClass = "milestone-verified";
+        icon = "✓";
+        statusText = "Verified";
+        subText = "Verified — release payment";
+      }
+
+      let actionHtml = "";
+
+      if (status === "Submitted") {
+        actionHtml = `
+    ${m.proof_url
+            ? `
+          <button
+            class="btn btn-ghost btn-sm milestone-action-btn"
+            onclick="window.open('${m.proof_url}', '_blank')"
+          >
+            View Proof
+          </button>
+        `
+            : ""
+          }
+
+        <button
+          class="btn btn-primary btn-sm milestone-action-btn"
+          onclick="verifyMilestoneAction(${i})"
+          ${milestoneActionInProgress ? "disabled" : ""}
+        >
+          Verify Milestone
+        </button>
+      `;
+      } else if (status === "Verified") {
+        actionHtml = `
+          <button
+            class="btn btn-primary btn-sm milestone-action-btn"
+            onclick="releaseMilestonePayment(${i})"
+            ${milestoneActionInProgress ? "disabled" : ""}
+          >
+            Release Payment
+          </button>
         `;
+      }
+
+      listHtml += `
+    <div class="milestone-row ${rowClass}">
+
+      <div class="milestone-left">
+
+        <div class="milestone-icon">
+          ${icon}
+        </div>
+
+        <div class="milestone-info">
+
+          <div class="name">
+            ${m.description || `Milestone ${i + 1}`}
+          </div>
+
+          <div class="sub">
+            ${subText}
+          </div>
+
+        </div>
+
+      </div>
+
+      <div class="right">
+
+        <div class="amt">
+          ${amt} ETH
+        </div>
+
+        <div class="percentage">
+          ${m.payment_percentage || 0}% of escrow
+        </div>
+
+        <div class="status-label">
+          ${statusText}
+        </div>
+
+        ${actionHtml}
+
+      </div>
+
+    </div>
+  `;
     });
+
     list.innerHTML = listHtml;
   }
 
-  // ─── Actions ──────────────────────────────────────────────
+  // ─── Milestone actions ────────────────────────────────────
+  window.verifyMilestoneAction = async function (milestoneIndex) {
+    if (milestoneActionInProgress) return;
+
+    try {
+      if (!currentAgreement?.onchain_id) {
+        throw new Error("No agreement ID");
+      }
+
+      const sessionOk = await window.Auth?.ensureFullSession?.();
+      if (!sessionOk) return;
+
+      if (typeof window.verifyMilestone !== "function") {
+        throw new Error("verifyMilestone function not available");
+      }
+
+      milestoneActionInProgress = true;
+      renderMilestones(currentAgreement.milestones || [],
+        currentAgreement.escrow_amount
+          ? parseFloat(ethers.formatEther(String(currentAgreement.escrow_amount))).toFixed(4)
+          : "0.00"
+      );
+
+      showToast("Verifying milestone...", "info");
+      const result = await window.verifyMilestone(
+        currentAgreement.onchain_id,
+        milestoneIndex,
+      );
+
+      console.log("🔥 VERIFY RESULT:", result);
+      console.log("🔥 VERIFY FUNCTION:", window.verifyMilestone.toString());
+
+      // Sync the verified status to Supabase
+      const wallet = localStorage.getItem("traxenWallet");
+
+      const syncResponse = await fetch("/api/milestones/verify", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-wallet-address": wallet,
+        },
+        body: JSON.stringify({
+          agreementId: currentAgreement.onchain_id,
+          milestoneId: milestoneIndex,
+          txHash: result?.hash || result?.transactionHash || null,
+        }),
+      });
+
+      if (!syncResponse.ok) {
+        const errorData = await syncResponse.json();
+        throw new Error(errorData.error || "Failed to sync milestone status");
+      }
+
+      console.log("✅ Milestone status synced to database");
+
+      // Update the current milestone locally.
+      // The backend has already been synced successfully.
+      const verifiedMilestone = (currentAgreement.milestones || []).find(
+        (m) => Number(m.milestone_index) === Number(milestoneIndex)
+      );
+
+      if (verifiedMilestone) {
+        verifiedMilestone.status = "Verified";
+      }
+
+      // Re-render only the milestone section.
+      // This will immediately show the "Release Payment" button.
+      renderMilestones(
+        currentAgreement.milestones || [],
+        currentAgreement.escrow_amount
+          ? parseFloat(
+            ethers.formatEther(String(currentAgreement.escrow_amount))
+          ).toFixed(4)
+          : "0.00"
+      );
+
+      showToast(
+        "Milestone verified. You can now release the payment.",
+        "success"
+      );
+
+    } catch (error) {
+      console.error("Verify milestone error:", error);
+      showToast(error.message || "Failed to verify milestone", "error");
+    } finally {
+      milestoneActionInProgress = false;
+    }
+  };
+
+  window.releaseMilestonePayment = async function (milestoneIndex) {
+    if (milestoneActionInProgress) return;
+
+    try {
+      if (!currentAgreement?.onchain_id) {
+        throw new Error("No agreement ID");
+      }
+
+      const sessionOk = await window.Auth?.ensureFullSession?.();
+      if (!sessionOk) return;
+
+      if (typeof window.releasePayment !== "function") {
+        throw new Error("releasePayment function not available");
+      }
+
+      const milestone = (currentAgreement.milestones || []).find(
+        (m) => Number(m.milestone_index) === Number(milestoneIndex),
+      );
+
+      if (!milestone || milestone.status !== "Verified") {
+        throw new Error("Milestone must be verified before payment can be released");
+      }
+
+      const amountEth = currentAgreement.escrow_amount && milestone.payment_percentage
+        ? (parseFloat(ethers.formatEther(String(currentAgreement.escrow_amount))) * Number(milestone.payment_percentage) / 100).toFixed(4)
+        : "the milestone amount";
+
+      if (!confirm(`Release ${amountEth} ETH to the carrier?`)) return;
+
+      const result = await window.releasePayment(
+        currentAgreement.onchain_id,
+        milestoneIndex
+      );
+
+      console.log("Payment release result:", result);
+
+      // Sync released amount and milestone status to Supabase
+      const wallet = localStorage.getItem("traxenWallet");
+
+      const syncResponse = await fetch(
+        `/api/agreements/${currentAgreement.onchain_id}`,
+        {
+          headers: {
+            "x-wallet-address": wallet,
+          },
+        }
+      );
+
+      if (!syncResponse.ok) {
+        const errorData = await syncResponse.json();
+        throw new Error(
+          errorData.error ||
+          "Payment released, but database sync failed"
+        );
+      }
+
+      const syncedAgreement = await syncResponse.json();
+
+      currentAgreement = syncedAgreement;
+
+      console.log(
+        "✅ Payment and released amount synced to database"
+      );
+
+      if (milestone) {
+        milestone.status = "Paid";
+      }
+
+      console.log("Payment release result:", result);
+
+      if (milestone) {
+        milestone.status = "Paid";
+      }
+
+      renderMilestones(
+        currentAgreement.milestones || [],
+        currentAgreement.escrow_amount
+          ? parseFloat(
+            ethers.formatEther(String(currentAgreement.escrow_amount))
+          ).toFixed(4)
+          : "0.00"
+      );
+
+      showToast("Payment released successfully.", "success");
+
+    } catch (error) {
+      console.error("Release payment error:", error);
+      showToast(error.message || "Failed to release payment", "error");
+    } finally {
+      milestoneActionInProgress = false;
+    }
+  };
+
+  // ─── Existing actions ────────────────────────────────────
   window.fundEscrow = function () {
     alert("Fund escrow functionality will be implemented in the next step.");
   };

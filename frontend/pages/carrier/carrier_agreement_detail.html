@@ -64,11 +64,26 @@
 
         <!-- Submit Proof Section -->
         <div class="info-card" style="margin-bottom:18px" id="proof-section">
-          <h3 id="proof-title">Submit Proof — Milestone <span id="proof-milestone-index">—</span></h3>
-          <div class="upload-box" onclick="alert('Opens file picker / GPS checkpoint capture.')">📎 Click to upload
-            proof (photo, GPS checkpoint, or signed receipt)</div>
-          <button class="btn btn-primary btn-block" id="submit-proof-btn" onclick="submitMilestoneProof()">Submit
-            Milestone Proof</button>
+          <h3 id="proof-title">
+            Submit Proof — Milestone <span id="proof-milestone-index">—</span>
+          </h3>
+
+          <div class="upload-box">
+            📷 Click to upload delivery proof photo
+          </div>
+
+          <button class="btn btn-primary btn-block" id="submit-proof-btn" disabled>
+            Loading...
+          </button>
+
+          <div id="completion-message" style="display:none;">
+            <div class="completion-icon">✓</div>
+            <div class="completion-title">Delivery Completed</div>
+            <div class="completion-text">
+              All milestones for this agreement have been completed.
+              No further action is required.
+            </div>
+          </div>
         </div>
 
         <!-- Milestone List -->

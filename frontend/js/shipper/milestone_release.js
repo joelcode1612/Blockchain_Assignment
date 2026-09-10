@@ -361,7 +361,8 @@ console.log('🚀 milestone_release.js loaded');
   // ─── Expose public functions ────────────────────────────
   window.loadMilestones = loadMilestones;
   window.loadAgreements = loadAgreements;
-  window.verifyMilestone = verifyMilestone;
+  window.verifyMilestoneFromRelease =
+    verifyMilestone;
   window.releaseMilestone = releaseMilestone;
   window.initMilestoneRelease = initMilestoneRelease;
   window.debugInit = initMilestoneRelease;

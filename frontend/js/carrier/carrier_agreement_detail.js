@@ -8,6 +8,9 @@
   let currentMilestones = [];
   let contract = null;
 
+  let selectedProofFile = null;
+  let proofPreviewUrl = null;
+
   // ─── Init function called by the SPA router ──────────────
   window.initAgreementDetails = async function () {
     try {
@@ -46,7 +49,10 @@
       }
       const agreement = await response.json();
       currentAgreement = agreement;
-      currentMilestones = agreement.milestones || [];
+
+      currentMilestones = [...(agreement.milestones || [])].sort(
+        (a, b) => Number(a.milestone_index) - Number(b.milestone_index)
+      );
 
       // 5. Populate UI
       populateUI(agreement);
@@ -81,7 +87,7 @@
       titleEl.innerHTML = `Agreement #${id} <span class="pill ${getStatusClass(agreement.status)}" style="margin-left:8px"><span class="dot"></span>${agreement.status || "PendingAcceptance"}</span>`;
     }
 
-    const subEl = document.querySelector(".detail-header .sub");
+    const subEl = document.getElementById("agreement-sub");
     if (subEl) {
       const shipperName =
         agreement.shipper?.display_name ||
@@ -95,8 +101,12 @@
     const escrowAmt = document.querySelector(".escrow-box .amt");
     if (escrowAmt) {
       const amount = agreement.escrow_amount
-        ? parseFloat(ethers.formatEther(agreement.escrow_amount)).toFixed(4)
-        : "0.00";
+        ? parseFloat(
+          ethers.formatEther(
+            BigInt(agreement.escrow_amount).toString()
+          )
+        ).toFixed(4)
+        : "0.0000";
       escrowAmt.textContent = `${amount} ETH`;
     }
 
@@ -149,6 +159,10 @@
 
   // ─── Render milestone progress track ──────────────────────
   function renderMilestoneTrack(milestones) {
+    milestones = [...milestones].sort(
+      (a, b) => Number(a.milestone_index) - Number(b.milestone_index)
+    );
+
     const trackContainer = document.querySelector(".track");
     if (!trackContainer) return;
 
@@ -160,14 +174,28 @@
 
     // Calculate progress
     const paidCount = milestones.filter((m) => m.status === "Paid").length;
-    const progress = (paidCount / milestones.length) * 100;
+
+    const progress =
+      milestones.length > 1
+        ? Math.max(0, (paidCount - 1) / (milestones.length - 1)) * 75
+        : 0;
 
     let html = `<div class="track-fill" style="width:${progress}%"></div>`;
+    const firstUnfinishedIndex = milestones.findIndex(
+      m => m.status !== "Paid"
+    );
+
     milestones.forEach((m, i) => {
       const status = m.status || "Pending";
       let cls = "tnode";
-      if (status === "Paid" || status === "Verified") cls += " complete";
-      else if (status === "Submitted") cls += " current";
+
+      if (status === "Paid" || status === "Verified") {
+        cls += " complete";
+      }
+
+      if (i === firstUnfinishedIndex) {
+        cls += " current";
+      }
       const dotContent =
         status === "Paid" || status === "Verified" ? "✓" : i + 1;
       const pct = m.payment_percentage || 0;
@@ -184,9 +212,12 @@
 
   // ─── Render milestone list with payouts ──────────────────
   function renderMilestoneList(milestones, totalWei) {
-    const container = document.querySelector(
-      ".info-card:last-child .milestone-row",
-    )?.parentElement;
+    milestones = [...milestones].sort(
+      (a, b) => Number(a.milestone_index) - Number(b.milestone_index)
+    );
+
+    const container = document.getElementById("milestone-list");
+
     if (!container) return;
 
     if (!milestones || milestones.length === 0) {
@@ -195,7 +226,11 @@
       return;
     }
 
-    const totalEth = totalWei ? parseFloat(ethers.formatEther(totalWei)) : 0;
+    const totalEth = totalWei
+      ? ethers.formatEther(
+        BigInt(totalWei).toString()
+      )
+      : 0;
 
     let html = "";
     milestones.forEach((m, i) => {
@@ -216,18 +251,59 @@
       } else {
         statusText = "Locked";
       }
+      const isPaid = status === "Paid";
+      const isSubmitted = status === "Submitted";
+      const isVerified = status === "Verified";
+
+      let cardClass = "milestone-card";
+
+      if (isPaid) {
+        cardClass += " milestone-paid";
+      } else if (isSubmitted) {
+        cardClass += " milestone-submitted";
+      } else if (isVerified) {
+        cardClass += " milestone-verified";
+      } else {
+        cardClass += " milestone-pending";
+      }
+
+      const icon = isPaid
+        ? "✓"
+        : isSubmitted
+          ? "!"
+          : isVerified
+            ? "✓"
+            : i + 1;
+
       html += `
-        <div class="milestone-row">
-          <div>
-            <div class="name">${i + 1}. ${m.description || `Milestone ${i + 1}`}</div>
-            <div class="sub">${statusText}</div>
-          </div>
-          <div class="right">
-            <div class="amt">${amt} ETH</div>
-            <div class="sub" style="color:${statusColor}">${status}</div>
-          </div>
-        </div>
-      `;
+  <div class="${cardClass}">
+    <div class="milestone-icon">${icon}</div>
+
+    <div class="milestone-info">
+      <div class="milestone-title">
+        ${m.description || `Milestone ${i + 1}`}
+      </div>
+
+      <div class="milestone-status">
+        ${statusText}
+      </div>
+    </div>
+
+    <div class="milestone-payout">
+      <div class="milestone-amount">
+        ${amt} ETH
+      </div>
+
+      <div class="milestone-percent">
+        ${pct}% of escrow
+      </div>
+
+      <div class="milestone-status-label" style="color:${statusColor}">
+        ${status}
+      </div>
+    </div>
+  </div>
+`;
     });
     container.innerHTML = html;
   }
@@ -235,17 +311,58 @@
   // ─── Setup action buttons (submit proof, accept, reject) ──
   function setupActions(agreement) {
     const status = agreement.status || "PendingAcceptance";
-    const submitBtn = document.querySelector(
-      '.btn-primary[onclick*="submitProof"]',
-    );
-    const uploadBox = document.querySelector(".upload-box");
-    const proofSection = document.querySelector(".info-card:has(.upload-box)");
+
+    // Clear previously selected proof when refreshing agreement state
+    selectedProofFile = null;
+
+    if (proofPreviewUrl) {
+      URL.revokeObjectURL(proofPreviewUrl);
+      proofPreviewUrl = null;
+    }
+
+    const proofSection = document.getElementById("proof-section");
 
     if (!proofSection) return;
 
+    // Always make sure the action section is visible
+    proofSection.style.display = "block";
+
+    // Restore the default proof UI before applying the current status
+    proofSection.innerHTML = `
+  <h3 id="proof-title">
+    Submit Proof — Milestone <span id="proof-milestone-index">—</span>
+  </h3>
+
+  <input
+    type="file"
+    id="proof-file-input"
+    accept="image/jpeg,image/png,image/webp"
+    style="display:none;"
+  >
+
+  <div class="upload-box" id="proof-upload-box">
+    📷 Click to upload delivery proof photo
+  </div>
+
+  <div id="proof-preview" style="display:none;"></div>
+
+  <button class="btn btn-primary btn-block" id="submit-proof-btn" disabled>
+    Submit Milestone Proof
+  </button>
+
+  <div id="completion-message" style="display:none;">
+    <div class="completion-icon">✓</div>
+    <div class="completion-title">Delivery Completed</div>
+    <div class="completion-text">
+      All milestones for this agreement have been completed.
+      No further action is required.
+    </div>
+  </div>
+`;
+
     // Hide proof section if not applicable (e.g., completed or pending acceptance)
+    // Hide proof section only for terminated agreements
     if (
-      status === "Completed" ||
       status === "Rejected" ||
       status === "Cancelled" ||
       status === "Refunded" ||
@@ -270,45 +387,243 @@
       return;
     }
 
-    // For active/awaiting funding, enable proof submission
-    if (status === "Active" || status === "AwaitingFunding") {
-      // Find the next pending milestone that the carrier can submit
-      const nextMilestone = currentMilestones.find(
-        (m) => m.status === "Pending",
+    // ─── Agreement fully completed ───
+    if (status === "Completed") {
+      if (proofSection) {
+        proofSection.innerHTML = `
+        <h3>Delivery Completed</h3>
+
+        <div id="completion-message">
+          <div class="completion-icon">✓</div>
+          <div class="completion-title">All milestones completed</div>
+          <div class="completion-text">
+            All milestones for this agreement have been completed.
+            No further action is required.
+          </div>
+        </div>
+      `;
+      }
+
+      return;
+    }
+
+    // Waiting for shipper to fund escrow
+    if (status === "AwaitingFunding") {
+      proofSection.innerHTML = `
+    <h3>Awaiting Shipper Funding</h3>
+    <p style="color:var(--text-faint); margin-top:8px;">
+      Your job has been accepted. Please wait for the shipper
+      to fund the escrow before submitting milestone proof.
+    </p>
+  `;
+
+      return;
+    }
+
+    // Active agreement — handle milestone proof
+    if (status === "Active") {
+      const nextMilestoneIndex = currentMilestones.findIndex(
+        (m) => m.status !== "Paid"
       );
-      if (nextMilestone) {
-        const milestoneIndex =
-          nextMilestone.milestone_index !== undefined
-            ? nextMilestone.milestone_index
-            : currentMilestones.indexOf(nextMilestone);
-        const label = document.querySelector(".info-card:has(.upload-box) h3");
+
+      const nextMilestone =
+        nextMilestoneIndex >= 0
+          ? currentMilestones[nextMilestoneIndex]
+          : null;
+
+      const label = proofSection.querySelector("h3");
+      const upload = proofSection.querySelector("#proof-upload-box");
+      const fileInput = proofSection.querySelector("#proof-file-input");
+      const btn = proofSection.querySelector(".btn-primary");
+
+      // All milestones completed
+      if (!nextMilestone) {
         if (label) {
-          label.textContent = `Submit Proof — ${nextMilestone.description || `Milestone ${milestoneIndex + 1}`}`;
+          label.textContent = "Delivery Completed";
         }
-        // Update button onclick to call submitMilestone with correct index
-        const btn = proofSection.querySelector(".btn-primary");
+
+        if (upload) {
+          upload.style.display = "none";
+        }
+
         if (btn) {
+          btn.style.display = "none";
+        }
+
+        const completionMessage =
+          proofSection.querySelector("#completion-message");
+
+        if (completionMessage) {
+          completionMessage.style.display = "block";
+        }
+
+        return;
+      }
+
+      const milestoneIndex =
+        nextMilestone.milestone_index !== undefined
+          ? nextMilestone.milestone_index
+          : nextMilestoneIndex;
+
+      // ─── Waiting for shipper verification ───
+      if (nextMilestone.status === "Submitted") {
+
+        if (label) {
+          label.textContent = "Awaiting Shipper Verification";
+        }
+
+        if (upload) {
+          upload.style.opacity = "0.45";
+          upload.style.cursor = "not-allowed";
+          upload.style.pointerEvents = "none";
+          upload.textContent =
+            "📎 Proof submitted — waiting for shipper verification";
+        }
+
+        if (btn) {
+          btn.disabled = true;
+          btn.style.opacity = "0.45";
+          btn.style.cursor = "not-allowed";
+          btn.textContent = "Waiting for Verification";
+          btn.onclick = null;
+        }
+
+        return;
+      }
+
+      // ─── Next milestone can be submitted ───
+      if (nextMilestone.status === "Pending") {
+
+        if (label) {
+          label.textContent =
+            `Submit Proof — ${nextMilestone.description ||
+            `Milestone ${milestoneIndex + 1}`
+            }`;
+        }
+
+        if (upload && fileInput) {
+          upload.onclick = function () {
+            fileInput.click();
+          };
+
+          fileInput.onchange = function (event) {
+            const file = event.target.files?.[0];
+
+            if (!file) return;
+
+            // Photo only
+            if (!file.type.startsWith("image/")) {
+              showToast("Please select an image file only.", "error");
+              fileInput.value = "";
+              return;
+            }
+
+            // Allow JPG, PNG and WebP only
+            const allowedTypes = [
+              "image/jpeg",
+              "image/png",
+              "image/webp",
+            ];
+
+            if (!allowedTypes.includes(file.type)) {
+              showToast("Only JPG, PNG or WebP images are allowed.", "error");
+              fileInput.value = "";
+              return;
+            }
+
+            // Maximum 10 MB
+            if (file.size > 10 * 1024 * 1024) {
+              showToast("Photo must be smaller than 10 MB.", "error");
+              fileInput.value = "";
+              return;
+            }
+
+            selectedProofFile = file;
+
+            // Remove old preview URL
+            if (proofPreviewUrl) {
+              URL.revokeObjectURL(proofPreviewUrl);
+            }
+
+            proofPreviewUrl = URL.createObjectURL(file);
+
+            const preview = proofSection.querySelector("#proof-preview");
+            const submitBtn = proofSection.querySelector("#submit-proof-btn");
+
+            if (preview) {
+              preview.style.display = "block";
+              preview.innerHTML = `
+        <div class="proof-preview-card">
+          <img
+            src="${proofPreviewUrl}"
+            alt="Delivery proof preview"
+            class="proof-preview-image"
+          >
+
+          <div class="proof-preview-info">
+            <div class="proof-file-name">
+              📷 ${file.name}
+            </div>
+
+            <button
+              type="button"
+              class="btn btn-ghost btn-sm"
+              id="remove-proof-btn"
+            >
+              Remove / Replace
+            </button>
+          </div>
+        </div>
+      `;
+
+              const removeBtn =
+                preview.querySelector("#remove-proof-btn");
+
+              if (removeBtn) {
+                removeBtn.onclick = function () {
+                  selectedProofFile = null;
+
+                  if (proofPreviewUrl) {
+                    URL.revokeObjectURL(proofPreviewUrl);
+                    proofPreviewUrl = null;
+                  }
+
+                  fileInput.value = "";
+                  preview.style.display = "none";
+                  preview.innerHTML = "";
+
+                  if (submitBtn) {
+                    submitBtn.disabled = true;
+                  }
+
+                  upload.innerHTML =
+                    "📷 Click to upload delivery proof photo";
+                };
+              }
+            }
+
+            if (submitBtn) {
+              submitBtn.disabled = false;
+            }
+
+            upload.innerHTML = "📷 Photo selected — click to replace";
+          };
+        }
+
+        if (btn) {
+          btn.disabled = !selectedProofFile;
+          btn.style.opacity = selectedProofFile ? "1" : "0.45";
+          btn.style.cursor = selectedProofFile ? "pointer" : "not-allowed";
+          btn.textContent = "Submit Milestone Proof";
+
           btn.onclick = function () {
+            if (!selectedProofFile) {
+              showToast("Please upload a proof photo first.", "error");
+              return;
+            }
+
             submitMilestoneProof(milestoneIndex);
           };
-        }
-        // Enable upload box if needed
-        const upload = proofSection.querySelector(".upload-box");
-        if (upload) {
-          upload.onclick = function () {
-            // You can implement file upload logic here
-            alert("📎 Upload proof (photo, GPS checkpoint, or signed receipt)");
-          };
-        }
-      } else {
-        // All milestones are either submitted or paid/verified – no pending
-        if (proofSection) {
-          const allPaid = currentMilestones.every((m) => m.status === "Paid");
-          if (allPaid) {
-            proofSection.innerHTML = `<h3>All milestones completed and paid</h3>`;
-          } else {
-            proofSection.innerHTML = `<h3>Awaiting shipper verification for submitted milestones</h3>`;
-          }
         }
       }
     }
@@ -320,26 +635,96 @@
       const agreementId = currentAgreement.onchain_id;
       if (!agreementId) throw new Error("No agreement ID");
 
+      if (!selectedProofFile) {
+        showToast("Please upload a proof photo first.", "error");
+        return;
+      }
+
       // Check wallet connection
       const sessionOk = await window.Auth.ensureFullSession();
       if (!sessionOk) return;
 
-      // Call contract method
+      const wallet = localStorage.getItem("traxenWallet");
+      if (!wallet) {
+        throw new Error("Wallet not connected.");
+      }
+
+      // ─── 1. Upload proof photo to Supabase ─────────────────────
+      showToast("Uploading proof photo...", "info");
+
+      const formData = new FormData();
+      formData.append("proof", selectedProofFile);
+      formData.append("agreementId", agreementId);
+      formData.append("milestoneId", milestoneIndex);
+
+      const uploadResponse = await fetch("/api/milestones/upload-proof", {
+        method: "POST",
+        headers: {
+          "x-wallet-address": wallet,
+        },
+        body: formData,
+      });
+
+      const uploadData = await uploadResponse.json();
+
+      if (!uploadResponse.ok) {
+        throw new Error(
+          uploadData.error || "Failed to upload proof photo"
+        );
+      }
+
+      console.log("✅ Proof uploaded:", uploadData);
+      console.log("📷 Proof URL:", uploadData.proofUrl);
+
+      // ─── 2. Submit milestone on blockchain ────────────────────
       if (typeof window.submitMilestone !== "function") {
         throw new Error("submitMilestone function not available");
       }
 
-      showToast("Submitting proof...", "info");
-      const result = await window.submitMilestone(agreementId, milestoneIndex);
-      console.log("Proof submitted:", result);
+      showToast("Proof uploaded. Submitting milestone...", "info");
+
+      const result = await window.submitMilestone(
+        agreementId,
+        milestoneIndex
+      );
+
+      console.log("✅ Milestone submitted on blockchain:", result);
+
+      // ─── 3. Sync blockchain status to Supabase ────────────────
+      const syncResponse = await fetch(`/api/agreements/${agreementId}`, {
+        headers: {
+          "x-wallet-address": wallet,
+        },
+      });
+
+      if (!syncResponse.ok) {
+        const errorData = await syncResponse.json();
+        throw new Error(
+          errorData.error ||
+          "Milestone submitted, but database sync failed"
+        );
+      }
+
+      console.log("✅ Submitted milestone status synced to database");
 
       showToast("✅ Proof submitted successfully!", "success");
 
-      // Refresh the page data
+      // ─── 4. Refresh UI ────────────────────────────────────────
+      selectedProofFile = null;
+
+      if (proofPreviewUrl) {
+        URL.revokeObjectURL(proofPreviewUrl);
+        proofPreviewUrl = null;
+      }
+
       await window.initAgreementDetails();
+
     } catch (error) {
       console.error("Submit proof error:", error);
-      showToast(error.message || "Failed to submit proof", "error");
+      showToast(
+        error.message || "Failed to submit proof",
+        "error"
+      );
     }
   };
 
@@ -352,12 +737,19 @@
       const sessionOk = await window.Auth.ensureFullSession();
       if (!sessionOk) return;
 
-      if (typeof window.acceptAgreement !== "function") {
-        throw new Error("acceptAgreement function not available");
+      if (typeof window.acceptAgreementOnChain !== "function") {
+        throw new Error("acceptAgreementOnChain function not available");
       }
 
+      const buttons = document.querySelectorAll("#proof-section button");
+      buttons.forEach((button) => {
+        button.disabled = true;
+        button.textContent = "Processing...";
+      });
+
       showToast("Accepting agreement...", "info");
-      const result = await window.acceptAgreement(agreementId);
+
+      const result = await window.acceptAgreementOnChain(agreementId);
       console.log("Accept result:", result);
 
       showToast("✅ Agreement accepted! Awaiting shipper funding.", "success");
@@ -377,14 +769,14 @@
       const sessionOk = await window.Auth.ensureFullSession();
       if (!sessionOk) return;
 
-      if (typeof window.rejectAgreement !== "function") {
-        throw new Error("rejectAgreement function not available");
+      if (typeof window.rejectAgreementOnChain !== "function") {
+        throw new Error("rejectAgreementOnChain function not available");
       }
 
       if (!confirm("Are you sure you want to reject this agreement?")) return;
 
       showToast("Rejecting agreement...", "info");
-      const result = await window.rejectAgreement(agreementId);
+      const result = await window.rejectAgreementOnChain(agreementId);
       console.log("Reject result:", result);
 
       showToast("Agreement rejected.", "warning");
@@ -423,11 +815,7 @@
   }
 
   function showToast(message, type = "info") {
-    if (typeof window.showToast === "function") {
-      window.showToast(message, type);
-    } else {
-      console.log(`[${type}] ${message}`);
-    }
+    console.log(`[${type}] ${message}`);
   }
 
   // ─── Auto‑init if the page is loaded directly ──────────

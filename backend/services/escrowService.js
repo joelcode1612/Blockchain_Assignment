@@ -54,19 +54,9 @@ async function writeContract(method, ...args) {
 
 // ─── READ FUNCTIONS ─────────────────────────────────────────
 
-/** Get full agreement details (all fields) */
-const getAgreement = async (agreementId) => {
-    return readContract('getAgreement', agreementId);
-};
-
 /** Get escrow balance (remaining) */
 const getEscrowBalance = async (agreementId) => {
     return readContract('getEscrowBalance', agreementId);
-};
-
-/** Get milestone details */
-const getMilestone = async (agreementId, milestoneId) => {
-    return readContract('getMilestone', agreementId, milestoneId);
 };
 
 /** Get number of milestones in an agreement */
@@ -127,7 +117,28 @@ const createAgreement = async (carrier, totalAmount, deadline, descriptions, per
     return writeContract('createAgreement', carrier, totalAmount, deadline, descriptions, percentages, { from: shipperAddress });
 };
 
-// ─── EXPORTS ─────────────────────────────────────────────────
+// ✅ ADDED: used by paymentController.calculatePayment()
+const getMilestone = async (agreementId, milestoneId) => {
+    return readContract('getMilestone', agreementId, milestoneId);
+};
+
+const getAgreement = async (agreementId) => {
+    const result = await readContract('getAgreement', agreementId);
+
+    return {
+        agreementId: Number(result[0]),
+        shipper: result[1],
+        carrier: result[2],
+        escrowAmountWei: result[3].toString(),
+        releasedAmountWei: result[4].toString(),
+        deadline: Number(result[5]),
+        status: Number(result[6]),
+        createdAt: Number(result[7]),
+        carrierAccepted: result[8],
+        refundExecuted: result[9],
+        milestoneCount: Number(result[10]),
+    };
+};
 
 module.exports = {
     // Reads
@@ -145,6 +156,7 @@ module.exports = {
     depositEscrow,
     releasePayment,
     verifyMilestone,
-    refund,
-    createAgreement,
+    isPaymentReleased,
+    getAgreementCounter,
+    getMilestone
 };
