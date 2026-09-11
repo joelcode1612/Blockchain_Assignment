@@ -707,8 +707,18 @@ async function finishRegister() {
     // ======================================================
 
     setTimeout(() => {
-      window.location.href =
-        "/" + selectedRole.toLowerCase() + "_dashboard.html";
+      if (selectedRole === "Carrier") {
+        window.location.href = "/carrier/carrier_dashboard.html";
+        return;
+      }
+
+      if (selectedRole === "Shipper") {
+        window.location.href = "/shipper/shipper_dashboard.html";
+        return;
+      }
+
+      console.error("Unknown registration role:", selectedRole);
+      window.location.href = "/connect.html";
     }, 1500);
   } catch (error) {
     console.error("❌ Registration error:", error);
@@ -1113,8 +1123,18 @@ async function handleLogin() {
     // ======================================================
 
     setTimeout(() => {
-      window.location.href =
-        "/" + loginData.user.role.toLowerCase() + "_dashboard.html";
+      if (loginData.user.role === "Carrier") {
+        window.location.href = "/carrier/carrier_dashboard.html";
+        return;
+      }
+
+      if (loginData.user.role === "Shipper") {
+        window.location.href = "/shipper/shipper_dashboard.html";
+        return;
+      }
+
+      console.error("Unknown user role:", loginData.user.role);
+      window.location.href = "/connect.html";
     }, 1200);
   } catch (error) {
     console.error("❌ Login Error:", error);

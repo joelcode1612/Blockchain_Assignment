@@ -188,6 +188,7 @@
     if (!wallet) return;
 
     try {
+      const token = localStorage.getItem("traxenAuthToken");
       const res = await fetch("/api/history", {
         headers: { Authorization: `Bearer ${token}` },
       });

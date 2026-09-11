@@ -11,6 +11,7 @@ async function fetchAgreements() {
   }
 
   try {
+    const token = localStorage.getItem("traxenAuthToken");
     const response = await fetch("/api/agreements", {
       headers: { Authorization: `Bearer ${token}` },
     });

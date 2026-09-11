@@ -412,9 +412,12 @@
 
       // ─── Load a page ──────────────────────────────────────────
       async function loadPage(pageKey, params = {}) {
-        // Guard
         const sessionOk = await window.Auth.ensureFullSession();
-        if (!sessionOk) return;
+
+        if (!sessionOk) {
+          console.warn("⚠️ Carrier navigation blocked: invalid session.");
+          return;
+        }
 
         // Map "dashboard" from nav to "carrier_dashboard"
         if (pageKey === "dashboard") pageKey = "carrier_dashboard";
@@ -537,25 +540,50 @@
       // ─── INITIAL PAGE LOAD ──────────────────────────────────
       const path = window.location.pathname;
       const segments = path.split("/").filter((s) => s.length > 0);
+
       let pageKey = "carrier_dashboard";
+
+      // Support both the new carrier SPA URLs
+      // and the old carrier_dashboard.html URL.
       if (segments.length >= 2 && segments[0] === "carrier") {
         const raw = segments[1].replace(".html", "");
-        if (raw === "carrier_agreement_detail") pageKey = "agreement_details";
-        else if (pageMap[raw]) pageKey = raw;
-        else pageKey = "carrier_dashboard";
+
+        if (raw === "carrier_agreement_detail") {
+          pageKey = "agreement_details";
+        } else if (raw === "carrier_dashboard") {
+          pageKey = "carrier_dashboard";
+        } else if (pageMap[raw]) {
+          pageKey = raw;
+        } else {
+          pageKey = "carrier_dashboard";
+        }
+      } else if (
+        path === "/carrier_dashboard.html" ||
+        path === "/carrier_dashboard"
+      ) {
+        // Legacy URL — stay inside SPA instead of forcing a browser redirect.
+        pageKey = "carrier_dashboard";
+
+        window.history.replaceState(
+          { page: "carrier_dashboard" },
+          "",
+          `${ROLE_PATH}/carrier_dashboard.html`,
+        );
       } else {
-        window.location.href = `${ROLE_PATH}/carrier_dashboard.html`;
-        return;
+        pageKey = "carrier_dashboard";
+
+        window.history.replaceState(
+          { page: "carrier_dashboard" },
+          "",
+          `${ROLE_PATH}/carrier_dashboard.html`,
+        );
       }
-      if (!pageKey) pageKey = "carrier_dashboard";
+
       const initialPage = availablePages.includes(pageKey)
         ? pageKey
         : "carrier_dashboard";
-      loadPage(initialPage);
 
-      // ─── Expose loadPage globally ──────────────────────────
-      window.loadPage = loadPage;
-      window.carrierNavigate = loadPage;
+      await loadPage(initialPage);
     })();
   });
 })();
