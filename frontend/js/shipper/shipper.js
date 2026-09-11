@@ -783,14 +783,14 @@ document.addEventListener("DOMContentLoaded", function () {
             </button>
 
             <button
-              class="btn btn-ghost btn-block dashboard-action"
+              class="btn btn-primary btn-block dashboard-action"
               onclick="window.loadPage('deposit_balance')"
             >
               💰 View Escrow Balances
             </button>
 
             <button
-              class="btn btn-ghost btn-block dashboard-action"
+              class="dashboard-action-button"
               onclick="window.loadPage('milestone_release')"
             >
               📍 Track Milestones

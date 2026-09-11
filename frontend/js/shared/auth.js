@@ -10,6 +10,56 @@ const STORAGE_EMAIL = "traxenUserEmail";
 const STORAGE_TOKEN = "traxenAuthToken";
 
 // ============================================================
+// BLOCKCHAIN VERIFICATION HELPERS
+// ============================================================
+
+/**
+ * Ask the blockchain: "Is this wallet registered?"
+ * Returns true / false.
+ */
+async function isRegisteredOnChain(wallet) {
+  if (!wallet) return false;
+
+  try {
+    // Uses your existing web3 helper.
+    const result = await checkUserRegistered(wallet);
+    return !!result;
+  } catch (error) {
+    console.error("❌ Blockchain registration check failed:", error);
+    return false;
+  }
+}
+
+/**
+ * Ask the blockchain: "What role does this wallet have?"
+ * Returns "Carrier" | "Shipper" | null
+ *
+ * Adjust the enum values to match your smart contract.
+ */
+async function getOnChainRole(wallet) {
+  if (!wallet) return null;
+
+  try {
+    const web3 = await window.ensureWeb3Ready();
+    if (!web3 || !web3.contract) return null;
+
+    // ⚠️ Change "getUserRole" to your actual contract method.
+    const roleCode = await web3.contract.getUserRole(wallet);
+
+    // ⚠️ Change these numbers to match your Solidity enum.
+    //     Common pattern:
+    //     0 = None, 1 = Shipper, 2 = Carrier
+    const code = Number(roleCode);
+    if (code === 1) return "Shipper";
+    if (code === 2) return "Carrier";
+    return null;
+  } catch (error) {
+    console.error("❌ Failed to read role from blockchain:", error);
+    return null;
+  }
+}
+
+// ============================================================
 // PRIVATE HELPERS
 // ============================================================
 
@@ -330,6 +380,46 @@ window.Auth = {
       console.log("✅ MetaMask account matches authenticated wallet.");
 
       // ======================================================
+      // 🔷 4b. VERIFY WALLET STILL EXISTS ON THE BLOCKCHAIN
+      // ======================================================
+      //
+      // This is the NEW step.
+      //
+      // If the blockchain was reset (or the user was de-registered),
+      // the on-chain record is gone. We must NOT trust the old JWT
+      // in localStorage — we must force the user back to register.
+      //
+      // ======================================================
+
+      const registeredOnChain = await isRegisteredOnChain(authenticatedWallet);
+
+      if (!registeredOnChain) {
+        console.warn("❌ Wallet is no longer registered on-chain.");
+
+        return redirectToConnect();
+      }
+
+      console.log("✅ Wallet still exists on-chain.");
+
+      // ======================================================
+      // 🔷 4c. VERIFY ON-CHAIN ROLE MATCHES STORED ROLE
+      // ======================================================
+
+      const chainRole = await getOnChainRole(authenticatedWallet);
+
+      if (chainRole && chainRole !== role) {
+        console.warn(
+          "❌ Stored role does not match blockchain role.",
+          "Stored:",
+          role,
+          "Chain:",
+          chainRole,
+        );
+
+        return redirectToConnect();
+      }
+
+      // ======================================================
       // 5. VERIFY JWT WITH BACKEND
       // ======================================================
 
@@ -590,10 +680,15 @@ async function finishRegister() {
     // 6. CREATE HUMAN-READABLE SIGNATURE MESSAGE
     // ======================================================
 
+    // NEW — binds wallet, role, name, email into the signature
     const messageToSign =
       `Traxen Account Registration\n\n` +
-      `Please sign this message to verify that you control this wallet.\n\n` +
+      `Please sign this message to verify that you control this wallet.\n` +
       `This signature does not send a transaction and does not cost gas.\n\n` +
+      `Wallet: ${walletAddress.toLowerCase()}\n` +
+      `Role: ${selectedRole}\n` +
+      `Name: ${name}\n` +
+      `Email: ${email || ""}\n` +
       `Nonce: ${nonce}`;
 
     // ======================================================
@@ -1001,21 +1096,54 @@ async function handleLogin() {
     // ======================================================
 
     const provider = new ethers.BrowserProvider(window.ethereum);
-
     const signer = await provider.getSigner();
-
     const walletAddress = await signer.getAddress();
 
     console.log("🔐 Login wallet:", walletAddress);
 
+    // ======================================================
+    // 🔷 3. CHECK THE BLOCKCHAIN FIRST
+    // ======================================================
+    //
+    // This is the new step. Before we ask the backend anything,
+    // we ask the blockchain: "is this wallet registered?"
+    //
+    // Why? Because after a network reset, the blockchain is the
+    // source of truth. If the wallet is gone from the chain, we
+    // must NOT let them log in — we must send them to register.
+    //
+    // ======================================================
+
+    showToast("Checking your wallet on-chain...", "info");
+
+    const registeredOnChain = await isRegisteredOnChain(walletAddress);
+
+    if (!registeredOnChain) {
+      console.warn("❌ Wallet is not registered on the blockchain.");
+
+      clearAuthData();
+
+      showToast(
+        "This wallet is not registered. Please register first.",
+        "warning",
+      );
+
+      setTimeout(() => {
+        window.location.href = "/connect.html";
+      }, 1800);
+
+      return;
+    }
+
+    console.log("✅ Wallet exists on-chain. Proceeding to sign-in.");
+
+    // ======================================================
+    // 4. REQUEST FRESH SERVER NONCE
+    // ======================================================
+
     showToast("Verifying your wallet...", "info");
 
-    // ======================================================
-    // 3. REQUEST FRESH SERVER NONCE
-    // ======================================================
-
     const nonceResponse = await fetch(`/api/auth/nonce/${walletAddress}`);
-
     const nonceData = await nonceResponse.json();
 
     if (!nonceResponse.ok || !nonceData.success || !nonceData.nonce) {
@@ -1026,113 +1154,105 @@ async function handleLogin() {
 
     const nonce = nonceData.nonce;
 
-    console.log("🔐 Login nonce received:", nonce);
-
     // ======================================================
-    // 4. CREATE HUMAN-READABLE LOGIN MESSAGE
+    // 5. CREATE HUMAN-READABLE LOGIN MESSAGE
     // ======================================================
 
     const messageToSign =
       `Traxen Login Verification\n\n` +
-      `Please sign this message to verify that you control this wallet.\n\n` +
+      `Please sign this message to verify that you control this wallet.\n` +
       `This signature does not send a transaction and does not cost gas.\n\n` +
+      `Wallet: ${walletAddress.toLowerCase()}\n` +
       `Nonce: ${nonce}`;
 
     // ======================================================
-    // 5. REQUEST METAMASK SIGNATURE
+    // 6. REQUEST METAMASK SIGNATURE
     // ======================================================
-
-    console.log("✍️ Requesting MetaMask signature...");
 
     const signature = await signer.signMessage(messageToSign);
 
-    console.log("✍️ Login signature created");
-
     // ======================================================
-    // 6. SEND LOGIN REQUEST TO BACKEND
+    // 7. SEND LOGIN REQUEST TO BACKEND
     // ======================================================
 
     const loginResponse = await fetch("/api/auth/login", {
       method: "POST",
-
-      headers: {
-        "Content-Type": "application/json",
-      },
-
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        walletAddress: walletAddress,
-
-        signature: signature,
-
+        walletAddress,
+        signature,
         message: messageToSign,
       }),
     });
 
     const loginData = await loginResponse.json();
 
-    // ======================================================
-    // 7. BACKEND AUTHENTICATION RESULT
-    // ======================================================
-
     if (!loginResponse.ok || !loginData.success) {
       throw new Error(loginData.message || "Login authentication failed.");
     }
 
-    // ======================================================
-    // 8. JWT MUST BE RETURNED
-    // ======================================================
-
-    if (!loginData.token) {
-      throw new Error("Authentication succeeded but no JWT was returned.");
+    if (!loginData.token || !loginData.user) {
+      throw new Error("Login response is missing token or user data.");
     }
 
     // ======================================================
-    // 9. STORE JWT
+    // 🔷 8. VERIFY ROLE MATCHES THE BLOCKCHAIN
+    // ======================================================
+    //
+    // The backend says "you are X". The blockchain says "you are Y".
+    // If X ≠ Y, something is wrong. Reject.
+    //
+    // This catches the exact scenario you hit: DB still thinks
+    // the user is a Carrier, but the chain was wiped.
+    //
+    // ======================================================
+
+    const chainRole = await getOnChainRole(walletAddress);
+
+    if (chainRole && chainRole !== loginData.user.role) {
+      console.error(
+        "❌ Role mismatch — backend:",
+        loginData.user.role,
+        "chain:",
+        chainRole,
+      );
+
+      clearAuthData();
+
+      showToast(
+        "Your account data is out of sync. Please re-register.",
+        "error",
+      );
+
+      setTimeout(() => {
+        window.location.href = "/connect.html";
+      }, 1800);
+
+      return;
+    }
+
+    // ======================================================
+    // 9. STORE JWT + USER INFO
     // ======================================================
 
     localStorage.setItem(STORAGE_TOKEN, loginData.token);
 
-    console.log("✅ JWT stored");
-
-    // ======================================================
-    // 10. STORE USER INFORMATION
-    // ======================================================
-
-    if (!loginData.user) {
-      throw new Error(
-        "Authentication succeeded but user information was not returned.",
-      );
-    }
-
     setAuthData(
       loginData.user.wallet_address,
-
       loginData.user.role,
-
       loginData.user.display_name,
-
       loginData.user.email || "",
     );
 
-    // ======================================================
-    // 11. FINAL AUTHENTICATION LOGS
-    // ======================================================
-
     console.log("✅ Login authenticated");
-
-    console.log("✅ Authenticated wallet:", loginData.user.wallet_address);
-
-    console.log("✅ Authenticated role:", loginData.user.role);
+    console.log("✅ Wallet:", loginData.user.wallet_address);
+    console.log("✅ Role:", loginData.user.role);
 
     // ======================================================
-    // 12. SUCCESS MESSAGE
+    // 10. REDIRECT BASED ON ROLE
     // ======================================================
 
     showToast("Welcome back! Loading your dashboard...", "success");
-
-    // ======================================================
-    // 13. REDIRECT BASED ON BACKEND ROLE
-    // ======================================================
 
     setTimeout(() => {
       if (loginData.user.role === "Carrier") {
@@ -1150,7 +1270,6 @@ async function handleLogin() {
     }, 1200);
   } catch (error) {
     console.error("❌ Login Error:", error);
-
     showToast(error.message || "Unable to complete login.", "error");
   }
 }

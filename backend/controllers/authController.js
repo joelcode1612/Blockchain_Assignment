@@ -1,18 +1,44 @@
 const { ethers } = require("ethers");
 const jwt = require("jsonwebtoken");
-
 const AuthService = require("../services/authService");
 
 // =====================================================
+// MESSAGE BUILDERS
+// =====================================================
+// ⚠️ These MUST match the frontend exactly.
+// If you change one, change the other.
+
+function buildRegisterMessage({ wallet, role, name, email, nonce }) {
+  return (
+    `Traxen Account Registration\n\n` +
+    `Please sign this message to verify that you control this wallet.\n` +
+    `This signature does not send a transaction and does not cost gas.\n\n` +
+    `Wallet: ${wallet}\n` +
+    `Role: ${role}\n` +
+    `Name: ${name}\n` +
+    `Email: ${email}\n` +
+    `Nonce: ${nonce}`
+  );
+}
+
+function buildLoginMessage({ wallet, nonce }) {
+  return (
+    `Traxen Login Verification\n\n` +
+    `Please sign this message to verify that you control this wallet.\n` +
+    `This signature does not send a transaction and does not cost gas.\n\n` +
+    `Wallet: ${wallet}\n` +
+    `Nonce: ${nonce}`
+  );
+}
+
+// =====================================================
 // GET NONCE
-// GET /api/auth/nonce/:address
 // =====================================================
 
 exports.getNonce = async (req, res) => {
   try {
     const { address } = req.params;
 
-    // Validate wallet address
     if (!ethers.isAddress(address)) {
       return res.status(400).json({
         success: false,
@@ -20,16 +46,11 @@ exports.getNonce = async (req, res) => {
       });
     }
 
-    // Generate a new nonce
     const nonce = AuthService.generateNonce(address);
 
-    return res.status(200).json({
-      success: true,
-      nonce,
-    });
+    return res.status(200).json({ success: true, nonce });
   } catch (error) {
     console.error("❌ Get nonce error:", error);
-
     return res.status(500).json({
       success: false,
       message: "Failed to create nonce",
@@ -39,12 +60,15 @@ exports.getNonce = async (req, res) => {
 
 // =====================================================
 // REGISTER
-// POST /api/auth/register
 // =====================================================
 
 exports.register = async (req, res) => {
   try {
-    console.log("📥 Registration request:", req.body);
+    console.log("📥 Registration request:", {
+      wallet: req.body.wallet_address || req.body.walletAddress,
+      role: req.body.role,
+      hasSignature: !!req.body.signature,
+    });
 
     const wallet = req.body.wallet_address || req.body.walletAddress;
     const name = req.body.display_name || req.body.displayName;
@@ -52,10 +76,6 @@ exports.register = async (req, res) => {
     const email = req.body.email || null;
     const signature = req.body.signature;
     const message = req.body.message;
-
-    // --------------------------------------------------
-    // 1. Validate required fields
-    // --------------------------------------------------
 
     if (!wallet || !name || !role || !signature || !message) {
       return res.status(400).json({
@@ -65,10 +85,6 @@ exports.register = async (req, res) => {
       });
     }
 
-    // --------------------------------------------------
-    // 2. Validate wallet
-    // --------------------------------------------------
-
     if (!ethers.isAddress(wallet)) {
       return res.status(400).json({
         success: false,
@@ -76,9 +92,7 @@ exports.register = async (req, res) => {
       });
     }
 
-    // --------------------------------------------------
-    // 3. Validate role
-    // --------------------------------------------------
+    const walletKey = wallet.toLowerCase();
 
     if (!["Shipper", "Carrier"].includes(role)) {
       return res.status(400).json({
@@ -86,12 +100,6 @@ exports.register = async (req, res) => {
         message: "Invalid role",
       });
     }
-
-    const walletKey = wallet.toLowerCase();
-
-    // --------------------------------------------------
-    // 4. Get nonce generated for this wallet
-    // --------------------------------------------------
 
     const storedNonce = AuthService.getNonce(walletKey);
 
@@ -102,20 +110,23 @@ exports.register = async (req, res) => {
       });
     }
 
-    // --------------------------------------------------
-    // 5. Make sure the nonce is actually in message
-    // --------------------------------------------------
+    // Rebuild expected message → compare
+    const expectedMessage = buildRegisterMessage({
+      wallet: walletKey,
+      role,
+      name,
+      email: email || "",
+      nonce: storedNonce,
+    });
 
-    if (!message.includes(storedNonce)) {
+    if (message !== expectedMessage) {
+      AuthService.deleteNonce(walletKey);
+      console.warn("❌ Message mismatch during registration");
       return res.status(401).json({
         success: false,
-        message: "Invalid authentication message",
+        message: "Authentication message does not match expected format",
       });
     }
-
-    // --------------------------------------------------
-    // 6. Verify MetaMask signature
-    // --------------------------------------------------
 
     let signatureValid = false;
 
@@ -125,9 +136,9 @@ exports.register = async (req, res) => {
         signature,
         walletKey,
       );
-    } catch (signatureError) {
-      console.error("❌ Signature verification error:", signatureError);
-
+    } catch (sigErr) {
+      console.error("❌ Signature verification error:", sigErr);
+      AuthService.deleteNonce(walletKey);
       return res.status(401).json({
         success: false,
         message: "Invalid wallet signature",
@@ -135,6 +146,7 @@ exports.register = async (req, res) => {
     }
 
     if (!signatureValid) {
+      AuthService.deleteNonce(walletKey);
       return res.status(401).json({
         success: false,
         message: "Wallet signature verification failed",
@@ -143,37 +155,50 @@ exports.register = async (req, res) => {
 
     console.log("✅ Wallet signature verified:", walletKey);
 
-    // --------------------------------------------------
-    // 7. Prevent duplicate registration
-    // --------------------------------------------------
+    // Verify on-chain role
+    const chainRole = await AuthService.getOnChainRole(walletKey);
 
-    const existingUser = await AuthService.getUserByWallet(walletKey);
-
-    if (existingUser) {
+    if (!chainRole) {
       AuthService.deleteNonce(walletKey);
-
-      return res.status(409).json({
+      console.warn("❌ Wallet not on-chain:", walletKey);
+      return res.status(403).json({
         success: false,
-        message: "This wallet is already registered",
-        role: existingUser.role,
+        message:
+          "This wallet is not registered on the blockchain. " +
+          "Please complete on-chain registration first.",
       });
     }
 
-    // --------------------------------------------------
-    // 8. Create user
-    // --------------------------------------------------
+    if (chainRole !== role) {
+      AuthService.deleteNonce(walletKey);
+      console.warn("❌ Role mismatch:", {
+        requested: role,
+        onChain: chainRole,
+      });
+      return res.status(403).json({
+        success: false,
+        message:
+          `Role mismatch. The blockchain says this wallet is a ` +
+          `${chainRole}, but you requested ${role}.`,
+      });
+    }
 
-    const user = await AuthService.createUser(walletKey, name, role, email);
+    console.log("✅ On-chain role verified:", chainRole);
 
-    // --------------------------------------------------
-    // 9. Delete nonce so it cannot be reused
-    // --------------------------------------------------
+    // Upsert
+    const existingUser = await AuthService.getUserByWallet(walletKey);
+    let user;
+
+    if (existingUser) {
+      console.log("♻️  Existing user — refreshing profile:", walletKey);
+      user = await AuthService.updateUserProfile(walletKey, name, email);
+      if (!user) user = existingUser;
+    } else {
+      console.log("🆕 Creating new user:", walletKey);
+      user = await AuthService.createUser(walletKey, name, role, email);
+    }
 
     AuthService.deleteNonce(walletKey);
-
-    // --------------------------------------------------
-    // 10. Create JWT
-    // --------------------------------------------------
 
     const token = jwt.sign(
       {
@@ -182,26 +207,21 @@ exports.register = async (req, res) => {
         role: user.role,
       },
       process.env.JWT_SECRET,
-      {
-        expiresIn: "2h",
-      },
+      { expiresIn: "2h" },
     );
 
     console.log("✅ JWT created for:", walletKey);
 
-    // --------------------------------------------------
-    // 11. Return authentication result
-    // --------------------------------------------------
-
-    return res.status(201).json({
+    return res.status(200).json({
       success: true,
-      message: "Registration and authentication successful",
+      message: existingUser
+        ? "Profile refreshed and authentication successful"
+        : "Registration and authentication successful",
       token,
       user,
     });
   } catch (error) {
     console.error("❌ Registration error:", error);
-
     return res.status(500).json({
       success: false,
       message: "Registration failed",
@@ -210,15 +230,13 @@ exports.register = async (req, res) => {
 };
 
 // =====================================================
-// LOGIN
-// POST /api/auth/login
+// LOGIN  🔷 FULLY REWRITTEN
 // =====================================================
 
 exports.login = async (req, res) => {
   try {
     const { walletAddress, signature, message } = req.body;
 
-    // 1. Validate required fields
     if (!walletAddress || !signature || !message) {
       return res.status(400).json({
         success: false,
@@ -226,7 +244,6 @@ exports.login = async (req, res) => {
       });
     }
 
-    // 2. Validate wallet address
     if (!ethers.isAddress(walletAddress)) {
       return res.status(400).json({
         success: false,
@@ -236,7 +253,6 @@ exports.login = async (req, res) => {
 
     const walletKey = walletAddress.toLowerCase();
 
-    // 3. Get nonce
     const storedNonce = AuthService.getNonce(walletKey);
 
     if (!storedNonce) {
@@ -246,15 +262,21 @@ exports.login = async (req, res) => {
       });
     }
 
-    // 4. Make sure nonce is part of signed message
-    if (!message.includes(storedNonce)) {
+    // Rebuild the expected login message
+    const expectedMessage = buildLoginMessage({
+      wallet: walletKey,
+      nonce: storedNonce,
+    });
+
+    if (message !== expectedMessage) {
+      AuthService.deleteNonce(walletKey);
+      console.warn("❌ Login message mismatch");
       return res.status(401).json({
         success: false,
-        message: "Invalid authentication message",
+        message: "Authentication message does not match expected format",
       });
     }
 
-    // 5. Verify MetaMask signature
     let signatureValid = false;
 
     try {
@@ -265,7 +287,7 @@ exports.login = async (req, res) => {
       );
     } catch (error) {
       console.error("❌ Login signature verification error:", error);
-
+      AuthService.deleteNonce(walletKey);
       return res.status(401).json({
         success: false,
         message: "Invalid wallet signature",
@@ -273,6 +295,7 @@ exports.login = async (req, res) => {
     }
 
     if (!signatureValid) {
+      AuthService.deleteNonce(walletKey);
       return res.status(401).json({
         success: false,
         message: "Wallet signature verification failed",
@@ -281,22 +304,52 @@ exports.login = async (req, res) => {
 
     console.log("✅ Login wallet signature verified:", walletKey);
 
-    // 6. Find registered user
+    // 🔷 Check blockchain: wallet must still exist on-chain
+    const chainRole = await AuthService.getOnChainRole(walletKey);
+
+    if (!chainRole) {
+      AuthService.deleteNonce(walletKey);
+      console.warn("❌ Login: wallet not on-chain:", walletKey);
+      return res.status(403).json({
+        success: false,
+        message:
+          "This wallet is no longer registered on the blockchain. " +
+          "Please re-register.",
+      });
+    }
+
+    console.log("✅ Login: on-chain role:", chainRole);
+
+    // Find user in DB
     const user = await AuthService.getUserByWallet(walletKey);
 
     if (!user) {
       AuthService.deleteNonce(walletKey);
-
       return res.status(404).json({
         success: false,
-        message: "Wallet is not registered",
+        message:
+          "This wallet is not registered in our system. " +
+          "Please complete registration.",
       });
     }
 
-    // 7. Delete nonce so it cannot be reused
+    // 🔷 DB role must match chain role
+    if (user.role !== chainRole) {
+      AuthService.deleteNonce(walletKey);
+      console.error("❌ Login role mismatch:", {
+        db: user.role,
+        chain: chainRole,
+      });
+      return res.status(403).json({
+        success: false,
+        message:
+          "Your account is out of sync with the blockchain. " +
+          "Please re-register.",
+      });
+    }
+
     AuthService.deleteNonce(walletKey);
 
-    // 8. Create JWT
     const token = jwt.sign(
       {
         userId: user.id,
@@ -304,14 +357,11 @@ exports.login = async (req, res) => {
         role: user.role,
       },
       process.env.JWT_SECRET,
-      {
-        expiresIn: "2h",
-      },
+      { expiresIn: "2h" },
     );
 
     console.log("✅ Login JWT created for:", walletKey);
 
-    // 9. Return authenticated user + JWT
     return res.status(200).json({
       success: true,
       authenticated: true,
@@ -321,7 +371,6 @@ exports.login = async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Login error:", error);
-
     return res.status(500).json({
       success: false,
       message: "Login failed",

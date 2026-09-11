@@ -1,6 +1,16 @@
 /**
  * ============================================================
- * Create Agreement Frontend Logic (Blockchain Carriers)
+ * CREATE AGREEMENT FRONTEND LOGIC
+ * Shipper SPA
+ *
+ * Flow:
+ * 1. Load carriers from DATABASE
+ * 2. Verify every carrier on CURRENT Sepolia blockchain
+ * 3. Display ONLY verified carriers
+ * 4. Validate every Step 1 input
+ * 5. Validate every milestone
+ * 6. Validate everything again before blockchain transaction
+ * 7. Save blockchain result to database with JWT
  * ============================================================
  */
 
@@ -8,73 +18,189 @@ let currentEthBalance = 0;
 let currentWalletAddress = null;
 
 const MIN_DEADLINE_MINUTES = 60;
+const EXPECTED_CHAIN_ID = 11155111;
+
+const MAX_AGREEMENT_NAME_LENGTH = 100;
+const MAX_CARGO_TYPE_LENGTH = 100;
+const MAX_WEIGHT_KG = 1000000000;
+const MAX_MILESTONE_NAME_LENGTH = 80;
+const MAX_MILESTONE_DESC_LENGTH = 250;
 
 let milestones = [
-  { name: "Pickup", desc: "Goods picked up from origin", pct: 30 },
-  { name: "In Transit", desc: "Goods in transit", pct: 20 },
-  { name: "Out for Delivery", desc: "Goods out for final delivery", pct: 20 },
-  { name: "Delivered", desc: "Successfully delivered", pct: 30 },
+  {
+    name: "Pickup",
+    desc: "Goods picked up from origin",
+    pct: 30,
+  },
+  {
+    name: "In Transit",
+    desc: "Goods in transit",
+    pct: 20,
+  },
+  {
+    name: "Out for Delivery",
+    desc: "Goods out for final delivery",
+    pct: 20,
+  },
+  {
+    name: "Delivered",
+    desc: "Successfully delivered",
+    pct: 30,
+  },
 ];
 
-// ─── Load Carriers from Blockchain ──────────────────────────
-// ─── Load Carriers from Database + Verify Blockchain ─────────
-async function loadCarriersFromBlockchain() {
-  const carrierSelect = document.getElementById("f-carrier");
-  const carrierStatus = document.getElementById("carrier-status");
+/* ============================================================
+   HELPERS
+   ============================================================ */
 
-  if (!carrierSelect) return;
+function getAuthToken() {
+  return typeof window.getAuthToken === "function"
+    ? window.getAuthToken()
+    : localStorage.getItem("traxenAuthToken");
+}
+
+function getAuthenticatedWallet() {
+  return typeof window.Auth?.getWallet === "function"
+    ? window.Auth.getWallet()
+    : localStorage.getItem("traxenWallet");
+}
+
+function setElementText(id, value) {
+  const el = document.getElementById(id);
+
+  if (el) {
+    el.textContent = value;
+  }
+}
+
+function getElementValue(id) {
+  const el = document.getElementById(id);
+
+  if (!el) {
+    return null;
+  }
+
+  return typeof el.value === "string"
+    ? el.value.trim()
+    : el.value;
+}
+
+function getCurrentProvider() {
+  if (!window.ethereum) {
+    throw new Error("MetaMask is not available.");
+  }
+
+  return new ethers.BrowserProvider(window.ethereum);
+}
+
+async function getCurrentNetwork() {
+  const provider = getCurrentProvider();
+  return provider.getNetwork();
+}
+
+async function ensureSepoliaNetwork() {
+  const network = await getCurrentNetwork();
+
+  const chainId = Number(network.chainId);
+
+  console.log("🌐 Current chain ID:", chainId);
+
+  if (chainId !== EXPECTED_CHAIN_ID) {
+    throw new Error(
+      `Wrong network. Please switch MetaMask to Sepolia (Chain ID ${EXPECTED_CHAIN_ID}).`,
+    );
+  }
+
+  return {
+    provider: getCurrentProvider(),
+    chainId,
+  };
+}
+
+/* ============================================================
+   LOAD CARRIERS
+   DATABASE FIRST -> BLOCKCHAIN VERIFICATION -> DISPLAY
+   ============================================================ */
+
+async function loadCarriersFromBlockchain() {
+  const carrierSelect =
+    document.getElementById("f-carrier");
+
+  const carrierStatus =
+    document.getElementById("carrier-status");
+
+  if (!carrierSelect) {
+    console.warn(
+      "⏭️ f-carrier not found. Skipping carrier initialization.",
+    );
+    return;
+  }
 
   try {
-    // ==========================================================
-    // 1. CHECK AUTHENTICATED WALLET
-    // ==========================================================
+    /* --------------------------------------------------------
+       1. CHECK AUTHENTICATED WALLET
+       -------------------------------------------------------- */
 
-    const walletAddress =
-      typeof window.Auth?.getWallet === "function"
-        ? window.Auth.getWallet()
-        : localStorage.getItem("traxenWallet");
+    const walletAddress = getAuthenticatedWallet();
 
-    if (!walletAddress) {
-      carrierSelect.innerHTML = `<option value="">Please connect your wallet first</option>`;
+    if (!walletAddress || !ethers.isAddress(walletAddress)) {
+      carrierSelect.innerHTML =
+        `<option value="">Please connect your wallet first</option>`;
 
       if (carrierStatus) {
-        carrierStatus.textContent = "Wallet connection required.";
+        carrierStatus.textContent =
+          "Authenticated wallet required.";
       }
 
       return;
     }
 
-    // ==========================================================
-    // 2. SHOW LOADING STATE
-    // ==========================================================
+    /* --------------------------------------------------------
+       2. LOADING
+       -------------------------------------------------------- */
 
-    carrierSelect.innerHTML = `<option value="">Loading verified carriers...</option>`;
+    carrierSelect.innerHTML =
+      `<option value="">Loading verified carriers...</option>`;
 
     if (carrierStatus) {
-      carrierStatus.textContent = "Loading carriers from database...";
+      carrierStatus.textContent =
+        "Loading carriers from database...";
     }
 
-    // ==========================================================
-    // 3. LOAD CARRIERS FROM DATABASE FIRST
-    // ==========================================================
+    /* --------------------------------------------------------
+       3. DATABASE
+       -------------------------------------------------------- */
 
-    const response = await fetch("/api/users/carriers", {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
+    const response = await fetch(
+      "/api/users/carriers",
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+        },
       },
-    });
+    );
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch carriers: HTTP ${response.status}`);
+      throw new Error(
+        `Failed to fetch carriers: HTTP ${response.status}`,
+      );
     }
 
-    const databaseCarriers = await response.json();
+    const databaseCarriers =
+      await response.json();
 
-    console.log("📦 Carriers loaded from database:", databaseCarriers);
+    console.log(
+      "📦 Carriers loaded from database:",
+      databaseCarriers,
+    );
 
-    if (!Array.isArray(databaseCarriers) || databaseCarriers.length === 0) {
-      carrierSelect.innerHTML = `<option value="">No carriers available</option>`;
+    if (
+      !Array.isArray(databaseCarriers) ||
+      databaseCarriers.length === 0
+    ) {
+      carrierSelect.innerHTML =
+        `<option value="">No carriers available</option>`;
 
       if (carrierStatus) {
         carrierStatus.textContent =
@@ -84,832 +210,2120 @@ async function loadCarriersFromBlockchain() {
       return;
     }
 
-    // ==========================================================
-    // 4. CHECK METAMASK
-    // ==========================================================
+    /* --------------------------------------------------------
+       4. CURRENT BLOCKCHAIN
+       -------------------------------------------------------- */
 
     if (!window.ethereum) {
-      throw new Error("MetaMask is not available.");
+      throw new Error(
+        "MetaMask is not available.",
+      );
     }
 
-    const provider = new ethers.BrowserProvider(window.ethereum);
+    const {
+      provider,
+      chainId,
+    } = await ensureSepoliaNetwork();
 
-    // ==========================================================
-    // 5. CHECK CURRENT NETWORK
-    // ==========================================================
-
-    const network = await provider.getNetwork();
-
-    const currentChainId = Number(network.chainId);
-
-    const EXPECTED_CHAIN_ID = 11155111; // Sepolia
-
-    console.log("🌐 Current blockchain chain ID:", currentChainId);
-
-    if (currentChainId !== EXPECTED_CHAIN_ID) {
-      carrierSelect.innerHTML = `<option value="">Wrong blockchain network</option>`;
-
-      if (carrierStatus) {
-        carrierStatus.textContent = `Please switch MetaMask to Sepolia (Chain ID ${EXPECTED_CHAIN_ID}) to verify carriers.`;
-      }
-
-      return;
-    }
-
-    // ==========================================================
-    // 6. ENSURE CURRENT CONTRACT EXISTS
-    // ==========================================================
+    /* --------------------------------------------------------
+       5. CURRENT CONTRACT
+       -------------------------------------------------------- */
 
     if (!window.contract) {
-      if (typeof window.initContract === "function") {
+      if (
+        typeof window.initContract === "function"
+      ) {
         await window.initContract();
       }
     }
 
     const contract =
       window.contract ||
-      (typeof window.getContract === "function" ? window.getContract() : null);
+      (
+        typeof window.getContract === "function"
+          ? window.getContract()
+          : null
+      );
 
     if (!contract) {
-      throw new Error("Smart contract is not initialized.");
+      throw new Error(
+        "Smart contract is not initialized.",
+      );
     }
 
-    const contractAddress = await contract.getAddress();
+    const contractAddress =
+      await contract.getAddress();
 
-    console.log("📄 Current contract:", contractAddress);
-
-    // ==========================================================
-    // 7. VERIFY DATABASE CARRIERS IN PARALLEL
-    // ==========================================================
+    console.log(
+      "📄 Current contract:",
+      contractAddress,
+    );
 
     if (carrierStatus) {
       carrierStatus.textContent =
         "Verifying carriers on the current Sepolia blockchain...";
     }
 
-    const verificationResults = await Promise.all(
-      databaseCarriers.map(async (carrier) => {
-        try {
-          // ----------------------------------------------------
-          // Validate DB wallet
-          // ----------------------------------------------------
+    /* --------------------------------------------------------
+       6. VERIFY ALL DB CARRIERS IN PARALLEL
+       -------------------------------------------------------- */
 
-          const dbWallet = carrier?.wallet_address;
+    const results = await Promise.all(
+      databaseCarriers.map(
+        async (carrier) => {
+          try {
+            const dbWallet =
+              carrier?.wallet_address;
 
-          if (!dbWallet || !ethers.isAddress(dbWallet)) {
-            console.warn("⚠️ Invalid carrier wallet in database:", dbWallet);
+            /* Invalid DB wallet */
 
-            return null;
-          }
+            if (
+              !dbWallet ||
+              !ethers.isAddress(dbWallet)
+            ) {
+              console.warn(
+                "⚠️ Invalid carrier wallet in database:",
+                dbWallet,
+              );
 
-          const normalizedWallet = dbWallet.toLowerCase();
+              return null;
+            }
 
-          // ----------------------------------------------------
-          // Check blockchain registration
-          // ----------------------------------------------------
+            const normalizedWallet =
+              dbWallet.toLowerCase();
 
-          const isRegistered =
-            await window.checkUserRegistered(normalizedWallet);
+            /* Blockchain registration */
 
-          if (!isRegistered) {
+            if (
+              typeof window.checkUserRegistered !==
+              "function"
+            ) {
+              throw new Error(
+                "checkUserRegistered() is unavailable.",
+              );
+            }
+
+            const isRegistered =
+              await window.checkUserRegistered(
+                normalizedWallet,
+              );
+
+            if (!isRegistered) {
+              console.warn(
+                `⚠️ Carrier ${normalizedWallet} exists in DB but is not registered on the current blockchain.`,
+              );
+
+              return null;
+            }
+
+            /* Blockchain role */
+
+            if (
+              typeof window.getUserRole !==
+              "function"
+            ) {
+              throw new Error(
+                "getUserRole() is unavailable.",
+              );
+            }
+
+            const roleInfo =
+              await window.getUserRole(
+                normalizedWallet,
+              );
+
+            if (
+              !roleInfo ||
+              roleInfo.role !== "Carrier"
+            ) {
+              console.warn(
+                `⚠️ ${normalizedWallet} is not a Carrier on the current blockchain.`,
+              );
+
+              return null;
+            }
+
+            console.log(
+              `✅ Carrier verified: ${normalizedWallet}`,
+            );
+
+            return {
+              ...carrier,
+              wallet_address:
+                normalizedWallet,
+              blockchainVerified: true,
+              blockchainChainId: chainId,
+              blockchainContractAddress:
+                contractAddress,
+            };
+          } catch (error) {
             console.warn(
-              `⚠️ Carrier ${normalizedWallet} exists in DB but is not registered on the current blockchain.`,
+              `❌ Failed to verify carrier ${
+                carrier?.wallet_address ||
+                "unknown"
+              }:`,
+              error.reason ||
+                error.message,
             );
 
             return null;
           }
-
-          // ----------------------------------------------------
-          // Check blockchain role
-          // ----------------------------------------------------
-
-          const roleInfo = await window.getUserRole(normalizedWallet);
-
-          if (!roleInfo || roleInfo.role !== "Carrier") {
-            console.warn(
-              `⚠️ Wallet ${normalizedWallet} is not a Carrier on the current blockchain.`,
-            );
-
-            return null;
-          }
-
-          // ----------------------------------------------------
-          // Carrier is valid on current network
-          // ----------------------------------------------------
-
-          console.log(`✅ Carrier verified: ${normalizedWallet}`);
-
-          return {
-            ...carrier,
-
-            wallet_address: normalizedWallet,
-
-            blockchainVerified: true,
-
-            blockchainChainId: currentChainId,
-
-            blockchainContractAddress: contractAddress,
-          };
-        } catch (error) {
-          console.warn(
-            `❌ Failed to verify carrier ${
-              carrier?.wallet_address || "unknown"
-            }:`,
-            error.reason || error.message,
-          );
-
-          return null;
-        }
-      }),
+        },
+      ),
     );
 
-    // ==========================================================
-    // 8. KEEP ONLY VERIFIED CARRIERS
-    // ==========================================================
+    /* --------------------------------------------------------
+       7. KEEP ONLY VERIFIED CARRIERS
+       -------------------------------------------------------- */
 
-    const verifiedCarriers = verificationResults.filter(Boolean);
+    const verifiedCarriers =
+      results.filter(Boolean);
 
-    console.log("✅ Verified carriers:", verifiedCarriers);
+    console.log(
+      "✅ Verified carriers:",
+      verifiedCarriers,
+    );
 
-    // ==========================================================
-    // 9. DISPLAY ONLY VERIFIED CARRIERS
-    // ==========================================================
+    /* --------------------------------------------------------
+       8. DISPLAY ONLY VERIFIED CARRIERS
+       -------------------------------------------------------- */
 
-    carrierSelect.innerHTML = `<option value="">-- Select a carrier --</option>`;
+    carrierSelect.innerHTML =
+      `<option value="">-- Select a carrier --</option>`;
 
-    verifiedCarriers.forEach((carrier) => {
-      const option = document.createElement("option");
+    verifiedCarriers.forEach(
+      (carrier) => {
+        const option =
+          document.createElement(
+            "option",
+          );
 
-      option.value = carrier.wallet_address;
+        option.value =
+          carrier.wallet_address;
 
-      const display =
-        carrier.display_name || carrier.wallet_address.substring(0, 8) + "...";
+        const display =
+          carrier.display_name ||
+          `${carrier.wallet_address.substring(
+            0,
+            8,
+          )}...`;
 
-      const email = carrier.email ? ` (${carrier.email})` : "";
+        const email =
+          carrier.email
+            ? ` (${carrier.email})`
+            : "";
 
-      option.textContent = `${display}${email}`;
+        option.textContent =
+          `${display}${email}`;
 
-      carrierSelect.appendChild(option);
-    });
+        carrierSelect.appendChild(
+          option,
+        );
+      },
+    );
 
-    // ==========================================================
-    // 10. STATUS
-    // ==========================================================
+    /* --------------------------------------------------------
+       9. STATUS
+       -------------------------------------------------------- */
 
     if (carrierStatus) {
       if (verifiedCarriers.length === 0) {
         carrierStatus.textContent =
           "No database carriers could be verified on the current Sepolia blockchain.";
       } else {
-        carrierStatus.textContent = `${verifiedCarriers.length} verified carrier${
-          verifiedCarriers.length === 1 ? "" : "s"
-        } available.`;
+        carrierStatus.textContent =
+          `${verifiedCarriers.length} verified carrier${
+            verifiedCarriers.length === 1
+              ? ""
+              : "s"
+          } available.`;
       }
     }
   } catch (error) {
-    console.error("❌ Failed to load and verify carriers:", error);
+    console.error(
+      "❌ Failed to load and verify carriers:",
+      error,
+    );
 
-    carrierSelect.innerHTML = `<option value="">Unable to verify carriers</option>`;
+    carrierSelect.innerHTML =
+      `<option value="">Unable to verify carriers</option>`;
 
     if (carrierStatus) {
       carrierStatus.textContent =
-        error.message || "Failed to load and verify carriers.";
+        error.message ||
+        "Failed to load and verify carriers.";
     }
   }
 }
 
-// ─── UI Navigation ──────────────────────────────────────
-function goStep(n) {
-  [1, 2, 3].forEach((i) => {
-    const stepEl = document.getElementById("ws-" + i);
-    if (stepEl) stepEl.style.display = i === n ? "block" : "none";
-    const indicator = document.getElementById("stp-" + i);
-    if (indicator) {
-      indicator.classList.remove("current", "done");
-      if (i < n) indicator.classList.add("done");
-      if (i === n) indicator.classList.add("current");
-    }
-  });
-  if (n === 2) renderMilestones();
-  if (n === 3) fillReview();
+/* ============================================================
+   STEP NAVIGATION
+   ============================================================ */
+
+function goStep(stepNumber) {
+  [1, 2, 3].forEach(
+    (i) => {
+      const step =
+        document.getElementById(
+          `ws-${i}`,
+        );
+
+      if (step) {
+        step.style.display =
+          i === stepNumber
+            ? "block"
+            : "none";
+      }
+
+      const indicator =
+        document.getElementById(
+          `stp-${i}`,
+        );
+
+      if (indicator) {
+        indicator.classList.remove(
+          "current",
+          "done",
+        );
+
+        if (i < stepNumber) {
+          indicator.classList.add(
+            "done",
+          );
+        }
+
+        if (i === stepNumber) {
+          indicator.classList.add(
+            "current",
+          );
+        }
+      }
+    },
+  );
+
+  if (stepNumber === 2) {
+    renderMilestones();
+  }
+
+  if (stepNumber === 3) {
+    fillReview();
+  }
 }
 
-async function nextFromStep1() {
-  // 1. Validate basic fields
-  const nameInput = document.getElementById("f-name");
-  const carrierSelect = document.getElementById("f-carrier");
-  const carrierOption = carrierSelect && carrierSelect.selectedOptions[0];
+/* ============================================================
+   STEP 1 VALIDATION
+   ============================================================ */
 
-  if (!nameInput.value.trim()) {
-    alert("Please enter an agreement name.");
+async function nextFromStep1() {
+  const nameInput =
+    document.getElementById("f-name");
+
+  const carrierSelect =
+    document.getElementById("f-carrier");
+
+  const cargoTypeInput =
+    document.getElementById("f-cargo-type");
+
+  const weightInput =
+    document.getElementById("f-weight");
+
+  /* ----------------------------------------------------------
+     Required DOM elements
+     ---------------------------------------------------------- */
+
+  if (!nameInput) {
+    alert(
+      "Agreement name field is missing. Please reload the page.",
+    );
+    return;
+  }
+
+  if (!carrierSelect) {
+    alert(
+      "Carrier field is missing. Please reload the page.",
+    );
+    return;
+  }
+
+  if (!cargoTypeInput) {
+    alert(
+      "Cargo type field is missing. Please reload the page.",
+    );
+    return;
+  }
+
+  if (!weightInput) {
+    alert(
+      "Weight field is missing. Please reload the page.",
+    );
+    return;
+  }
+
+  /* ----------------------------------------------------------
+     Agreement Name
+     ---------------------------------------------------------- */
+
+  const agreementName =
+    nameInput.value.trim();
+
+  if (!agreementName) {
+    alert(
+      "Please enter an agreement name.",
+    );
     nameInput.focus();
     return;
   }
 
-  if (!carrierOption || !carrierOption.value) {
-    alert("Please select a carrier.");
+  if (
+    agreementName.length >
+    MAX_AGREEMENT_NAME_LENGTH
+  ) {
+    alert(
+      `Agreement name must be ${MAX_AGREEMENT_NAME_LENGTH} characters or fewer.`,
+    );
+    nameInput.focus();
     return;
   }
 
-  if (!validatePayloadValue()) return;
-  if (!validateDeadline()) return;
+  /* ----------------------------------------------------------
+     Carrier
+     ---------------------------------------------------------- */
 
-  // 2. Blockchain verification of the selected carrier
-  const selectedAddress = carrierOption.value;
+  const carrierOption =
+    carrierSelect.selectedOptions?.[0];
+
+  if (
+    !carrierOption ||
+    !carrierOption.value
+  ) {
+    alert(
+      "Please select a carrier.",
+    );
+    carrierSelect.focus();
+    return;
+  }
+
+  const selectedCarrier =
+    carrierOption.value.trim();
+
+  if (
+    !ethers.isAddress(selectedCarrier)
+  ) {
+    alert(
+      "The selected carrier wallet address is invalid.",
+    );
+    carrierSelect.focus();
+    return;
+  }
+
+  /* ----------------------------------------------------------
+     Cargo Type
+     ---------------------------------------------------------- */
+
+  const cargoType =
+    cargoTypeInput.value.trim();
+
+  if (!cargoType) {
+    alert(
+      "Please enter the cargo type.",
+    );
+    cargoTypeInput.focus();
+    return;
+  }
+
+  if (
+    cargoType.length >
+    MAX_CARGO_TYPE_LENGTH
+  ) {
+    alert(
+      `Cargo type must be ${MAX_CARGO_TYPE_LENGTH} characters or fewer.`,
+    );
+    cargoTypeInput.focus();
+    return;
+  }
+
+  /* ----------------------------------------------------------
+     Weight
+     ---------------------------------------------------------- */
+
+  const weightRaw =
+    weightInput.value.trim();
+
+  if (!weightRaw) {
+    alert(
+      "Please enter the cargo weight.",
+    );
+    weightInput.focus();
+    return;
+  }
+
+  const weightKg =
+    Number(weightRaw);
+
+  if (
+    !Number.isFinite(weightKg) ||
+    weightKg <= 0
+  ) {
+    alert(
+      "Cargo weight must be a valid number greater than 0 kg.",
+    );
+    weightInput.focus();
+    return;
+  }
+
+  if (
+    weightKg > MAX_WEIGHT_KG
+  ) {
+    alert(
+      "Cargo weight is too large.",
+    );
+    weightInput.focus();
+    return;
+  }
+
+  /* ----------------------------------------------------------
+     Escrow Amount
+     ---------------------------------------------------------- */
+
+  if (!validatePayloadValue()) {
+    return;
+  }
+
+  /* ----------------------------------------------------------
+     Deadline
+     ---------------------------------------------------------- */
+
+  if (!validateDeadline()) {
+    return;
+  }
+
+  /* ----------------------------------------------------------
+     Blockchain verification
+     ---------------------------------------------------------- */
+
   try {
-    // Check if the address is registered at all
-    const isRegistered = await window.checkUserRegistered(selectedAddress);
-    if (!isRegistered) {
+    const {
+      chainId,
+    } = await ensureSepoliaNetwork();
+
+    console.log(
+      "✅ Step 1 network verified:",
+      chainId,
+    );
+
+    const accounts =
+      await window.ethereum.request({
+        method: "eth_accounts",
+      });
+
+    const activeWallet =
+      accounts?.[0] || null;
+
+    if (!activeWallet) {
       alert(
-        "The selected carrier is not registered on the blockchain. Please choose another.",
+        "Please connect your MetaMask wallet first.",
       );
       return;
     }
 
-    // Check that the role is actually Carrier
-    const roleInfo = await window.getUserRole(selectedAddress);
-    if (roleInfo.role !== "Carrier") {
+    const authenticatedWallet =
+      getAuthenticatedWallet();
+
+    if (
+      !authenticatedWallet ||
+      !ethers.isAddress(
+        authenticatedWallet,
+      )
+    ) {
       alert(
-        "The selected address is not a Carrier on the blockchain. Please choose another.",
+        "Authenticated Shipper wallet is not available.",
       );
       return;
     }
+
+    if (
+      activeWallet.toLowerCase() !==
+      authenticatedWallet.toLowerCase()
+    ) {
+      alert(
+        "Your MetaMask account does not match the authenticated Shipper account.",
+      );
+      return;
+    }
+
+    if (
+      typeof window.checkUserRegistered !==
+      "function" ||
+      typeof window.getUserRole !==
+      "function"
+    ) {
+      alert(
+        "Blockchain carrier verification functions are unavailable.",
+      );
+      return;
+    }
+
+    const registered =
+      await window.checkUserRegistered(
+        selectedCarrier,
+      );
+
+    if (!registered) {
+      alert(
+        "The selected carrier is not registered on the current blockchain.",
+      );
+      return;
+    }
+
+    const role =
+      await window.getUserRole(
+        selectedCarrier,
+      );
+
+    if (
+      !role ||
+      role.role !== "Carrier"
+    ) {
+      alert(
+        "The selected wallet is not a Carrier on the current blockchain.",
+      );
+      return;
+    }
+
+    console.log(
+      "✅ Selected carrier passed blockchain verification.",
+    );
   } catch (error) {
-    alert("Blockchain verification failed: " + error.message);
+    console.error(
+      "Step 1 blockchain verification failed:",
+      error,
+    );
+
+    alert(
+      "Blockchain verification failed: " +
+        (error.reason ||
+          error.message),
+    );
+
     return;
   }
 
-  // 3. All validations passed – proceed to step 2
   goStep(2);
 }
 
-function nextFromStep2() {
-  // ==========================================
-  // Make sure milestones exist
-  // ==========================================
-  console.table(milestones);
-  if (!Array.isArray(milestones) || milestones.length === 0) {
-    alert("Please add at least one milestone.");
+/* ============================================================
+   STEP 2 VALIDATION
+   ============================================================ */
 
-    goStep(2);
-    return;
+function validateMilestones() {
+  if (
+    !Array.isArray(milestones) ||
+    milestones.length === 0
+  ) {
+    alert(
+      "Please add at least one milestone.",
+    );
+    return false;
   }
 
-  // ==========================================
-  // Validate every milestone
-  // ==========================================
+  for (
+    let i = 0;
+    i < milestones.length;
+    i++
+  ) {
+    const milestone =
+      milestones[i];
 
-  for (let i = 0; i < milestones.length; i++) {
-    const milestone = milestones[i];
+    const number = i + 1;
 
-    const percentage = Number(milestone.pct);
+    const name =
+      String(
+        milestone?.name || "",
+      ).trim();
 
-    console.log(`Milestone ${i + 1}:`, milestone.pct, "=>", percentage);
+    const desc =
+      String(
+        milestone?.desc || "",
+      ).trim();
 
-    // Invalid number
-    if (!Number.isFinite(percentage)) {
-      alert(
-        `Milestone ${i + 1} has an invalid percentage. Please enter a number.`,
+    const pct =
+      Number(
+        milestone?.pct,
       );
 
-      goStep(2);
-      return;
+    milestone.name = name;
+    milestone.desc = desc;
+    milestone.pct = pct;
+
+    /* Name */
+
+    if (!name) {
+      alert(
+        `Milestone ${number}: please enter a milestone name.`,
+      );
+
+      return false;
     }
 
-    // Must be greater than zero
-    if (percentage <= 0) {
-      alert(`Milestone ${i + 1} must have a percentage greater than 0%.`);
+    if (
+      name.length >
+      MAX_MILESTONE_NAME_LENGTH
+    ) {
+      alert(
+        `Milestone ${number}: name must be ${MAX_MILESTONE_NAME_LENGTH} characters or fewer.`,
+      );
 
-      goStep(2);
-      return;
+      return false;
     }
 
-    // Cannot exceed 100
-    if (percentage > 100) {
-      alert(`Milestone ${i + 1} cannot exceed 100%.`);
+    /* Description */
 
-      goStep(2);
-      return;
+    if (!desc) {
+      alert(
+        `Milestone ${number}: please enter a milestone description.`,
+      );
+
+      return false;
+    }
+
+    if (
+      desc.length >
+      MAX_MILESTONE_DESC_LENGTH
+    ) {
+      alert(
+        `Milestone ${number}: description must be ${MAX_MILESTONE_DESC_LENGTH} characters or fewer.`,
+      );
+
+      return false;
+    }
+
+    /* Percentage */
+
+    if (!Number.isFinite(pct)) {
+      alert(
+        `Milestone ${number}: percentage must be a valid number.`,
+      );
+
+      return false;
+    }
+
+    if (pct <= 0) {
+      alert(
+        `Milestone ${number}: percentage must be greater than 0%.`,
+      );
+
+      return false;
+    }
+
+    if (pct > 100) {
+      alert(
+        `Milestone ${number}: percentage cannot exceed 100%.`,
+      );
+
+      return false;
     }
   }
 
-  // ==========================================
-  // Calculate total
-  // ==========================================
+  /* Total */
 
-  const totalPct = milestones.reduce((sum, milestone) => {
-    return sum + Number(milestone.pct);
-  }, 0);
-
-  console.log("Milestone total:", totalPct);
-
-  // ==========================================
-  // Must equal exactly 100
-  // ==========================================
-
-  if (Math.abs(totalPct - 100) > 0.000001) {
-    alert(
-      `Milestone percentages must total exactly 100%. Current total: ${totalPct}%.`,
+  const total =
+    milestones.reduce(
+      (sum, milestone) =>
+        sum +
+        Number(
+          milestone.pct,
+        ),
+      0,
     );
 
+  if (
+    Math.abs(total - 100) >
+    0.000001
+  ) {
+    alert(
+      `Milestone percentages must total exactly 100%. Current total: ${total}%.`,
+    );
+
+    return false;
+  }
+
+  return true;
+}
+
+function nextFromStep2() {
+  if (!validateMilestones()) {
     goStep(2);
     return;
   }
-
-  // ==========================================
-  // Continue to review
-  // ==========================================
 
   goStep(3);
 }
 
-// ─── Milestone UI ───────────────────────────────────────
+/* ============================================================
+   MILESTONE UI
+   ============================================================ */
+
 function renderMilestones() {
-  const body = document.getElementById("milestoneBody");
-  if (!body) return;
+  const body =
+    document.getElementById(
+      "milestoneBody",
+    );
+
+  if (!body) {
+    return;
+  }
 
   body.innerHTML = "";
-  milestones.forEach((m, i) => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-  <td>
-    <div class="m-badge">
-      ${i + 1}
-    </div>
-  </td>
 
-  <td>
-    <input
-      type="text"
-      value="${m.name || ""}"
-      class="m-name-input"
-    >
-  </td>
+  milestones.forEach(
+    (milestone, index) => {
+      const row =
+        document.createElement(
+          "tr",
+        );
 
-  <td>
-    <input
-      type="text"
-      value="${m.desc || ""}"
-      class="m-desc-input"
-    >
-  </td>
+      row.innerHTML = `
+        <td>
+          <div class="m-badge">
+            ${index + 1}
+          </div>
+        </td>
 
-  <td>
-    <input
-      type="number"
-      value="${m.pct ?? 0}"
-      min="0"
-      max="100"
-      step="0.01"
-      class="m-pct-input"
-    >
-  </td>
+        <td>
+          <input
+            type="text"
+            value="${escapeHtmlAttribute(
+              milestone.name || "",
+            )}"
+            class="m-name-input"
+            maxlength="${MAX_MILESTONE_NAME_LENGTH}"
+          >
+        </td>
 
-  <td>
-    <span
-      class="m-remove"
-      style="
-        cursor:pointer;
-        color:var(--error, red);
-      "
-    >
-      ✕
-    </span>
-  </td>
-`;
+        <td>
+          <input
+            type="text"
+            value="${escapeHtmlAttribute(
+              milestone.desc || "",
+            )}"
+            class="m-desc-input"
+            maxlength="${MAX_MILESTONE_DESC_LENGTH}"
+          >
+        </td>
 
-    const inputs = tr.querySelectorAll("input");
-    inputs[0].onchange = (e) => (m.name = e.target.value);
-    inputs[1].onchange = (e) => (m.desc = e.target.value);
-    inputs[2].oninput = (e) => {
-      const rawValue = e.target.value.trim();
+        <td>
+          <input
+            type="number"
+            value="${Number(
+              milestone.pct || 0,
+            )}"
+            class="m-pct-input"
+            min="0.01"
+            max="100"
+            step="0.01"
+          >
+        </td>
 
-      // ==========================================
-      // Empty input
-      // ==========================================
+        <td>
+          <button
+            type="button"
+            class="m-remove"
+          >
+            ✕
+          </button>
+        </td>
+      `;
 
-      if (rawValue === "") {
-        m.pct = 0;
+      const inputs =
+        row.querySelectorAll(
+          "input",
+        );
 
-        updatePct();
+      const nameInput =
+        inputs[0];
 
-        return;
+      const descInput =
+        inputs[1];
+
+      const pctInput =
+        inputs[2];
+
+      if (nameInput) {
+        nameInput.addEventListener(
+          "input",
+          (event) => {
+            milestone.name =
+              event.target.value;
+          },
+        );
       }
 
-      // ==========================================
-      // Convert to number
-      // ==========================================
-
-      const value = Number(rawValue);
-
-      // ==========================================
-      // Invalid number
-      // ==========================================
-
-      if (!Number.isFinite(value)) {
-        m.pct = NaN;
-
-        updatePct();
-
-        return;
+      if (descInput) {
+        descInput.addEventListener(
+          "input",
+          (event) => {
+            milestone.desc =
+              event.target.value;
+          },
+        );
       }
 
-      // ==========================================
-      // Valid number
-      // ==========================================
+      if (pctInput) {
+        pctInput.addEventListener(
+          "input",
+          (event) => {
+            const raw =
+              event.target.value.trim();
 
-      m.pct = value;
+            milestone.pct =
+              raw === ""
+                ? 0
+                : Number(raw);
 
-      updatePct();
-    };
+            updatePct();
+          },
+        );
+      }
 
-    tr.querySelector(".m-remove").onclick = () => {
-      milestones.splice(i, 1);
-      renderMilestones();
-    };
-    body.appendChild(tr);
-  });
+      const removeButton =
+        row.querySelector(
+          ".m-remove",
+        );
+
+      if (removeButton) {
+        removeButton.addEventListener(
+          "click",
+          () => {
+            milestones.splice(
+              index,
+              1,
+            );
+
+            renderMilestones();
+          },
+        );
+      }
+
+      body.appendChild(row);
+    },
+  );
+
   updatePct();
 }
 
+function escapeHtmlAttribute(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 function addMilestone() {
-  milestones.push({ name: "New Milestone", desc: "", pct: 0 });
+  milestones.push({
+    name: "",
+    desc: "",
+    pct: 0,
+  });
+
   renderMilestones();
 }
 
 function updatePct() {
-  const total = milestones.reduce((sum, milestone) => {
-    const value = Number(milestone.pct);
+  const total =
+    milestones.reduce(
+      (sum, milestone) => {
+        const value =
+          Number(
+            milestone?.pct,
+          );
 
-    if (!Number.isFinite(value)) {
-      return sum;
-    }
+        return Number.isFinite(
+          value,
+        )
+          ? sum + value
+          : sum;
+      },
+      0,
+    );
 
-    return sum + value;
-  }, 0);
+  const element =
+    document.getElementById(
+      "pctTotal",
+    );
 
-  const el = document.getElementById("pctTotal");
-
-  if (!el) {
+  if (!element) {
     return;
   }
 
-  el.textContent = `Total allocated: ${total}%`;
+  element.textContent =
+    `Total allocated: ${total}%`;
 
-  el.className =
-    "pct-total " + (Math.abs(total - 100) < 0.000001 ? "good" : "bad");
+  element.className =
+    "pct-total " +
+    (
+      Math.abs(total - 100) <
+      0.000001
+        ? "good"
+        : "bad"
+    );
 }
 
-// ─── Main Submit & Blockchain Execution ─────────────────
-async function submitCreateAgreement() {
+/* ============================================================
+   ESCROW VALIDATION
+   ============================================================ */
+
+function validatePayloadValue() {
+  const input =
+    document.getElementById(
+      "f-value",
+    );
+
+  const error =
+    document.getElementById(
+      "eth-validation",
+    );
+
+  if (!input) {
+    return false;
+  }
+
+  if (!error) {
+    console.warn(
+      "eth-validation element not found.",
+    );
+  }
+
+  const raw =
+    input.value.trim();
+
+  if (error) {
+    error.style.display =
+      "none";
+
+    error.textContent = "";
+  }
+
+  input.classList.remove(
+    "input-valid",
+    "input-invalid",
+  );
+
+  /* Empty */
+
+  if (!raw) {
+    showEthError(
+      "Please enter the escrow amount.",
+    );
+
+    return false;
+  }
+
+  /* Number */
+
+  const amount =
+    Number(raw);
+
+  if (
+    !Number.isFinite(amount)
+  ) {
+    showEthError(
+      "Please enter a valid ETH amount.",
+    );
+
+    return false;
+  }
+
+  /* Greater than zero */
+
+  if (amount <= 0) {
+    showEthError(
+      "Escrow amount must be greater than 0 ETH.",
+    );
+
+    return false;
+  }
+
+  /* Wallet */
+
+  if (!currentWalletAddress) {
+    showEthError(
+      "Please connect your MetaMask wallet first.",
+    );
+
+    return false;
+  }
+
+  /* Balance */
+
+  if (
+    amount >
+    currentEthBalance
+  ) {
+    showEthError(
+      `Insufficient ETH balance. You need ${amount.toFixed(
+        6,
+      )} ETH, but your wallet has only ${currentEthBalance.toFixed(
+        6,
+      )} ETH.`,
+    );
+
+    return false;
+  }
+
+  input.classList.add(
+    "input-valid",
+  );
+
+  return true;
+}
+
+function showEthError(message) {
+  const error =
+    document.getElementById(
+      "eth-validation",
+    );
+
+  const input =
+    document.getElementById(
+      "f-value",
+    );
+
+  if (error) {
+    error.textContent =
+      message;
+
+    error.style.display =
+      "block";
+  }
+
+  if (input) {
+    input.classList.add(
+      "input-invalid",
+    );
+  }
+}
+
+/* ============================================================
+   DEADLINE VALIDATION
+   ============================================================ */
+
+function setMinimumDeadline() {
+  const input =
+    document.getElementById(
+      "f-deadline",
+    );
+
+  if (!input) {
+    return;
+  }
+
+  const minimumDate =
+    new Date(
+      Date.now() +
+        MIN_DEADLINE_MINUTES *
+          60 *
+          1000,
+    );
+
+  const year =
+    minimumDate.getFullYear();
+
+  const month =
+    String(
+      minimumDate.getMonth() + 1,
+    ).padStart(2, "0");
+
+  const day =
+    String(
+      minimumDate.getDate(),
+    ).padStart(2, "0");
+
+  const hours =
+    String(
+      minimumDate.getHours(),
+    ).padStart(2, "0");
+
+  const minutes =
+    String(
+      minimumDate.getMinutes(),
+    ).padStart(2, "0");
+
+  input.min =
+    `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+function validateDeadline() {
+  const input =
+    document.getElementById(
+      "f-deadline",
+    );
+
+  const error =
+    document.getElementById(
+      "deadline-validation",
+    );
+
+  const hint =
+    document.getElementById(
+      "deadline-info",
+    );
+
+  if (!input) {
+    return false;
+  }
+
+  if (error) {
+    error.style.display =
+      "none";
+
+    error.textContent = "";
+  }
+
+  input.classList.remove(
+    "input-valid",
+    "input-invalid",
+  );
+
+  if (!input.value) {
+    showDeadlineError(
+      "Please select a delivery deadline.",
+    );
+
+    return false;
+  }
+
+  const deadline =
+    new Date(
+      input.value,
+    );
+
+  if (
+    Number.isNaN(
+      deadline.getTime(),
+    )
+  ) {
+    showDeadlineError(
+      "Please enter a valid deadline.",
+    );
+
+    return false;
+  }
+
+  const minimumDeadline =
+    new Date(
+      Date.now() +
+        MIN_DEADLINE_MINUTES *
+          60 *
+          1000,
+    );
+
+  if (
+    deadline <=
+    minimumDeadline
+  ) {
+    showDeadlineError(
+      "Delivery deadline must be at least 1 hour from now.",
+    );
+
+    return false;
+  }
+
+  input.classList.add(
+    "input-valid",
+  );
+
+  if (hint) {
+    hint.textContent =
+      "✅ Deadline is valid";
+
+    hint.style.color =
+      "var(--lime)";
+  }
+
+  return true;
+}
+
+function showDeadlineError(
+  message,
+) {
+  const error =
+    document.getElementById(
+      "deadline-validation",
+    );
+
+  const input =
+    document.getElementById(
+      "f-deadline",
+    );
+
+  if (error) {
+    error.textContent =
+      message;
+
+    error.style.display =
+      "block";
+  }
+
+  if (input) {
+    input.classList.add(
+      "input-invalid",
+    );
+  }
+}
+
+/* ============================================================
+   FINAL VALIDATION BEFORE BLOCKCHAIN
+   ============================================================ */
+
+async function validateAllAgreementInputs() {
+  const nameInput =
+    document.getElementById(
+      "f-name",
+    );
+
+  const carrierSelect =
+    document.getElementById(
+      "f-carrier",
+    );
+
+  const cargoTypeInput =
+    document.getElementById(
+      "f-cargo-type",
+    );
+
+  const weightInput =
+    document.getElementById(
+      "f-weight",
+    );
+
+  const valueInput =
+    document.getElementById(
+      "f-value",
+    );
+
+  const deadlineInput =
+    document.getElementById(
+      "f-deadline",
+    );
+
+  /* ----------------------------------------------------------
+     Required DOM
+     ---------------------------------------------------------- */
+
+  if (
+    !nameInput ||
+    !carrierSelect ||
+    !cargoTypeInput ||
+    !weightInput ||
+    !valueInput ||
+    !deadlineInput
+  ) {
+    alert(
+      "One or more agreement fields are missing. Please reload the page.",
+    );
+
+    return false;
+  }
+
+  /* ----------------------------------------------------------
+     Agreement name
+     ---------------------------------------------------------- */
+
+  const agreementName =
+    nameInput.value.trim();
+
+  if (!agreementName) {
+    alert(
+      "Please enter an agreement name.",
+    );
+    nameInput.focus();
+    return false;
+  }
+
+  if (
+    agreementName.length >
+    MAX_AGREEMENT_NAME_LENGTH
+  ) {
+    alert(
+      `Agreement name must be ${MAX_AGREEMENT_NAME_LENGTH} characters or fewer.`,
+    );
+    nameInput.focus();
+    return false;
+  }
+
+  /* ----------------------------------------------------------
+     Carrier
+     ---------------------------------------------------------- */
+
+  const carrierOption =
+    carrierSelect.selectedOptions?.[0];
+
+  if (
+    !carrierOption ||
+    !carrierOption.value
+  ) {
+    alert(
+      "Please select a carrier.",
+    );
+    carrierSelect.focus();
+    return false;
+  }
+
+  const carrierAddress =
+    carrierOption.value.trim();
+
+  if (
+    !ethers.isAddress(
+      carrierAddress,
+    )
+  ) {
+    alert(
+      "Invalid carrier wallet address.",
+    );
+
+    carrierSelect.focus();
+
+    return false;
+  }
+
+  /* ----------------------------------------------------------
+     Cargo type
+     ---------------------------------------------------------- */
+
+  const cargoType =
+    cargoTypeInput.value.trim();
+
+  if (!cargoType) {
+    alert(
+      "Please enter the cargo type.",
+    );
+
+    cargoTypeInput.focus();
+
+    return false;
+  }
+
+  if (
+    cargoType.length >
+    MAX_CARGO_TYPE_LENGTH
+  ) {
+    alert(
+      `Cargo type must be ${MAX_CARGO_TYPE_LENGTH} characters or fewer.`,
+    );
+
+    cargoTypeInput.focus();
+
+    return false;
+  }
+
+  /* ----------------------------------------------------------
+     Weight
+     ---------------------------------------------------------- */
+
+  const weightRaw =
+    weightInput.value.trim();
+
+  const weightKg =
+    Number(weightRaw);
+
+  if (
+    !weightRaw ||
+    !Number.isFinite(
+      weightKg,
+    ) ||
+    weightKg <= 0
+  ) {
+    alert(
+      "Cargo weight must be a valid number greater than 0 kg.",
+    );
+
+    weightInput.focus();
+
+    return false;
+  }
+
+  if (
+    weightKg >
+    MAX_WEIGHT_KG
+  ) {
+    alert(
+      "Cargo weight is too large.",
+    );
+
+    weightInput.focus();
+
+    return false;
+  }
+
+  /* ----------------------------------------------------------
+     Escrow
+     ---------------------------------------------------------- */
+
+  if (
+    !validatePayloadValue()
+  ) {
+    return false;
+  }
+
+  /* ----------------------------------------------------------
+     Deadline
+     ---------------------------------------------------------- */
+
+  if (
+    !validateDeadline()
+  ) {
+    return false;
+  }
+
+  /* ----------------------------------------------------------
+     Milestones
+     ---------------------------------------------------------- */
+
+  if (
+    !validateMilestones()
+  ) {
+    goStep(2);
+    return false;
+  }
+
+  /* ----------------------------------------------------------
+     Authenticated Shipper
+     ---------------------------------------------------------- */
+
+  const authenticatedWallet =
+    getAuthenticatedWallet();
+
+  if (
+    !authenticatedWallet ||
+    !ethers.isAddress(
+      authenticatedWallet,
+    )
+  ) {
+    alert(
+      "Authenticated Shipper wallet is not available.",
+    );
+
+    return false;
+  }
+
+  /* ----------------------------------------------------------
+     MetaMask + Network + current account
+     ---------------------------------------------------------- */
+
   try {
-    // =====================================================
-    // 1. VALIDATE MILESTONES
-    // =====================================================
+    const {
+      chainId,
+    } = await ensureSepoliaNetwork();
 
-    if (!Array.isArray(milestones) || milestones.length === 0) {
-      alert("Please add at least one milestone.");
+    console.log(
+      "✅ Final network check:",
+      chainId,
+    );
 
-      goStep(2);
+    const accounts =
+      await window.ethereum.request({
+        method: "eth_accounts",
+      });
 
-      return;
-    }
+    const activeWallet =
+      accounts?.[0] || null;
 
-    // Check every milestone
-    for (let i = 0; i < milestones.length; i++) {
-      const milestone = milestones[i];
-
-      const percentage = parseFloat(milestone.pct);
-
-      if (!Number.isFinite(percentage)) {
-        alert(`Milestone ${i + 1} has an invalid payment percentage.`);
-
-        goStep(2);
-
-        return;
-      }
-
-      if (percentage <= 0 || percentage > 100) {
-        alert(`Milestone ${i + 1} percentage must be between 0% and 100%.`);
-
-        goStep(2);
-
-        return;
-      }
-    }
-
-    // =====================================================
-    // 2. CALCULATE TOTAL PERCENTAGE
-    // =====================================================
-
-    const totalPct = milestones.reduce((sum, milestone) => {
-      return sum + parseFloat(milestone.pct);
-    }, 0);
-
-    // =====================================================
-    // 3. TOTAL MUST EQUAL 100%
-    // =====================================================
-
-    if (Math.abs(totalPct - 100) > 0.000001) {
+    if (!activeWallet) {
       alert(
-        `Milestone percentages must total exactly 100%. Current total: ${totalPct}%.`,
+        "Please connect your MetaMask wallet first.",
       );
 
-      goStep(2);
-
-      return;
+      return false;
     }
 
-    // =====================================================
-    // 2. GET FORM DATA
-    // =====================================================
+    if (
+      activeWallet.toLowerCase() !==
+      authenticatedWallet.toLowerCase()
+    ) {
+      alert(
+        "Your MetaMask account does not match the authenticated Shipper account.",
+      );
 
-    const agreementName = document.getElementById("f-name").value.trim();
-
-    const carrierSelect = document.getElementById("f-carrier");
-
-    const carrierOption = carrierSelect?.selectedOptions[0];
-
-    const cargoType = document.getElementById("f-cargo-type")?.value || null;
-    const weightKg = document.getElementById("f-weight")?.value || null;
-
-    if (!carrierOption) {
-      alert("Please select a carrier.");
-
-      goStep(1);
-
-      return;
+      return false;
     }
 
-    let carrierAddress = carrierOption.value;
+    /* --------------------------------------------------------
+       Re-check selected carrier
+       -------------------------------------------------------- */
 
-    // =====================================================
-    // 3. VALIDATE CARRIER WALLET
-    // =====================================================
+    if (
+      typeof window.checkUserRegistered !==
+        "function" ||
+      typeof window.getUserRole !==
+        "function"
+    ) {
+      alert(
+        "Blockchain carrier verification functions are unavailable.",
+      );
 
-    if (!ethers.isAddress(carrierAddress)) {
-      alert("Invalid carrier wallet address.");
-
-      return;
+      return false;
     }
 
-    // =====================================================
-    // 4. GET ESCROW AMOUNT
-    // =====================================================
+    const registered =
+      await window.checkUserRegistered(
+        carrierAddress,
+      );
 
-    const totalAmountEth = parseFloat(document.getElementById("f-value").value);
+    if (!registered) {
+      alert(
+        "The selected carrier is no longer registered on the current blockchain.",
+      );
 
-    if (!totalAmountEth || totalAmountEth <= 0) {
-      alert("Escrow amount must be greater than 0 ETH.");
-
-      goStep(1);
-
-      return;
+      return false;
     }
 
-    // =====================================================
-    // 5. GET DEADLINE
-    // =====================================================
+    const role =
+      await window.getUserRole(
+        carrierAddress,
+      );
 
-    const deadlineInput = document.getElementById("f-deadline").value;
+    if (
+      !role ||
+      role.role !== "Carrier"
+    ) {
+      alert(
+        "The selected wallet is no longer a Carrier on the current blockchain.",
+      );
 
-    if (!deadlineInput) {
-      alert("Please select a delivery deadline.");
-
-      goStep(1);
-
-      return;
+      return false;
     }
-
-    const deadlineDate = new Date(deadlineInput);
-
-    const deadlineTimestamp = Math.floor(deadlineDate.getTime() / 1000);
-
-    if (deadlineTimestamp <= Math.floor(Date.now() / 1000)) {
-      alert("The deadline must be in the future.");
-
-      goStep(1);
-
-      return;
-    }
-
-    // =====================================================
-    // 6. PREPARE MILESTONES
-    // =====================================================
-
-    const paymentPercentages = milestones.map((milestone) =>
-      Number(milestone.pct),
+  } catch (error) {
+    console.error(
+      "Final validation failed:",
+      error,
     );
 
-    const descriptions = milestones.map(
-      (milestone) => milestone.desc || milestone.name,
+    alert(
+      "Final blockchain validation failed: " +
+        (
+          error.reason ||
+          error.message
+        ),
     );
 
-    console.log("Payment percentages:", paymentPercentages);
+    return false;
+  }
 
-    console.log("Milestone descriptions:", descriptions);
+  return true;
+}
 
-    // =====================================================
-    // 7. GET SHIPPER WALLET
-    // =====================================================
+/* ============================================================
+   CREATE AGREEMENT
+   ============================================================ */
 
-    const shipperWallet = localStorage.getItem("traxenWallet");
+async function submitCreateAgreement() {
+  const valid =
+    await validateAllAgreementInputs();
 
-    // if (!shipperWallet) {
-    //   alert("Please connect your wallet first.");
+  if (!valid) {
+    return;
+  }
 
-    //   window.location.href = "/";
+  try {
+    /* --------------------------------------------------------
+       Read validated values
+       -------------------------------------------------------- */
 
-    //   return;
-    // }
+    const agreementName =
+      getElementValue(
+        "f-name",
+      );
 
-    // =====================================================
-    // 8. CREATE AGREEMENT ON BLOCKCHAIN
-    // =====================================================
+    const carrierSelect =
+      document.getElementById(
+        "f-carrier",
+      );
 
-    console.log("⏳ Creating agreement on blockchain...");
+    const carrierOption =
+      carrierSelect?.selectedOptions?.[0];
 
-    // IMPORTANT:
-    // createAgreement() accepts ONLY:
-    // 1. carrierAddress
-    // 2. totalAmountEth
-    // 3. deadlineTimestamp
-    // 4. paymentPercentages
+    const carrierAddress =
+      carrierOption?.value?.trim();
 
-    const blockchainResult = await createAgreement(
-      carrierAddress,
-      totalAmountEth,
-      deadlineTimestamp,
-      descriptions,
-      paymentPercentages,
+    const cargoType =
+      getElementValue(
+        "f-cargo-type",
+      );
+
+    const weightKg =
+      getElementValue(
+        "f-weight",
+      );
+
+    const valueRaw =
+      getElementValue(
+        "f-value",
+      );
+
+    const deadlineValue =
+      getElementValue(
+        "f-deadline",
+      );
+
+    if (
+      !agreementName ||
+      !carrierAddress ||
+      !cargoType ||
+      !weightKg ||
+      !valueRaw ||
+      !deadlineValue
+    ) {
+      throw new Error(
+        "Required agreement data is missing.",
+      );
+    }
+
+    const totalAmountEth =
+      Number(valueRaw);
+
+    const deadlineDate =
+      new Date(
+        deadlineValue,
+      );
+
+    const deadlineTimestamp =
+      Math.floor(
+        deadlineDate.getTime() /
+          1000,
+      );
+
+    /* --------------------------------------------------------
+       Prepare milestones
+       -------------------------------------------------------- */
+
+    const paymentPercentages =
+      milestones.map(
+        (milestone) =>
+          Number(
+            milestone.pct,
+          ),
+      );
+
+    const descriptions =
+      milestones.map(
+        (milestone) =>
+          milestone.desc.trim(),
+      );
+
+    /* --------------------------------------------------------
+       Authenticated shipper
+       -------------------------------------------------------- */
+
+    const shipperWallet =
+      getAuthenticatedWallet();
+
+    if (
+      !shipperWallet ||
+      !ethers.isAddress(
+        shipperWallet,
+      )
+    ) {
+      throw new Error(
+        "Authenticated Shipper wallet is unavailable.",
+      );
+    }
+
+    /* --------------------------------------------------------
+       Final MetaMask verification
+       -------------------------------------------------------- */
+
+    const accounts =
+      await window.ethereum.request({
+        method: "eth_accounts",
+      });
+
+    const activeWallet =
+      accounts?.[0] || null;
+
+    if (!activeWallet) {
+      throw new Error(
+        "MetaMask wallet is not connected.",
+      );
+    }
+
+    if (
+      activeWallet.toLowerCase() !==
+      shipperWallet.toLowerCase()
+    ) {
+      throw new Error(
+        "MetaMask account does not match the authenticated Shipper account.",
+      );
+    }
+
+    /* --------------------------------------------------------
+       Blockchain transaction
+       -------------------------------------------------------- */
+
+    console.log(
+      "⏳ Creating agreement on blockchain...",
     );
 
-    console.log("✅ Agreement created on blockchain:", blockchainResult);
+    const blockchainResult =
+      await createAgreement(
+        carrierAddress,
+        totalAmountEth,
+        deadlineTimestamp,
+        descriptions,
+        paymentPercentages,
+      );
 
-    // Expected result:
-    //
-    // {
-    //   agreementId,
-    //   transactionHash
-    // }
+    console.log(
+      "✅ Agreement created on blockchain:",
+      blockchainResult,
+    );
 
-    // =====================================================
-    // 9. SAVE AGREEMENT TO SUPABASE
-    // =====================================================
+    if (
+      !blockchainResult ||
+      blockchainResult.agreementId ===
+        undefined ||
+      !blockchainResult.transactionHash
+    ) {
+      throw new Error(
+        "Blockchain transaction succeeded but agreement result is incomplete.",
+      );
+    }
 
-    console.log("💾 Saving agreement metadata...");
+    /* --------------------------------------------------------
+       Save metadata to database
+       -------------------------------------------------------- */
 
-    const token = localStorage.getItem("traxenAuthToken");
+    const token =
+      getAuthToken();
 
     if (!token) {
-      throw new Error("Authentication token required.");
+      throw new Error(
+        "Authentication token required.",
+      );
     }
 
-    const dbResponse = await fetch("/api/agreements/create", {
-      method: "POST",
+    console.log(
+      "💾 Saving agreement metadata...",
+    );
 
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
+    const dbResponse =
+      await fetch(
+        "/api/agreements/create",
+        {
+          method: "POST",
 
-      body: JSON.stringify({
-        onchainId: blockchainResult.agreementId,
-        carrier: carrierAddress,
-        totalAmountEth: totalAmountEth,
-        descriptions: descriptions,
-        percentages: paymentPercentages,
-        deadlineTimestamp: deadlineTimestamp,
-        createTx: blockchainResult.transactionHash,
-        cargoType: cargoType,
-        weightKg: weightKg,
-        agreementName: agreementName,
-      }),
-    });
+          headers: {
+            "Content-Type":
+              "application/json",
 
-    // =====================================================
-    // 10. CHECK DATABASE RESULT
-    // =====================================================
+            Authorization:
+              `Bearer ${token}`,
+          },
+
+          body: JSON.stringify({
+            onchainId:
+              blockchainResult.agreementId,
+
+            carrier:
+              carrierAddress,
+
+            totalAmountEth:
+              totalAmountEth,
+
+            descriptions:
+              descriptions,
+
+            percentages:
+              paymentPercentages,
+
+            deadlineTimestamp:
+              deadlineTimestamp,
+
+            createTx:
+              blockchainResult.transactionHash,
+
+            cargoType:
+              cargoType,
+
+            weightKg:
+              weightKg,
+
+            agreementName:
+              agreementName,
+          }),
+        },
+      );
 
     if (!dbResponse.ok) {
-      const errorData = await dbResponse.json();
+      let errorData = {};
 
-      console.error("Database synchronization failed:", errorData);
+      try {
+        errorData =
+          await dbResponse.json();
+      } catch (_) {
+        // Ignore invalid JSON.
+      }
 
-      throw new Error(errorData.error || "Failed to save agreement metadata");
+      console.error(
+        "Database synchronization failed:",
+        errorData,
+      );
+
+      throw new Error(
+        errorData.error ||
+          errorData.message ||
+          "Failed to save agreement metadata.",
+      );
     }
 
-    const databaseResult = await dbResponse.json();
+    const databaseResult =
+      await dbResponse.json();
 
-    console.log("✅ Agreement saved:", databaseResult);
+    console.log(
+      "✅ Agreement saved:",
+      databaseResult,
+    );
 
-    // =====================================================
-    // 11. SUCCESS
-    // =====================================================
+    /* --------------------------------------------------------
+       Success
+       -------------------------------------------------------- */
 
     alert(
       "Agreement created successfully!\n\n" +
         "Waiting for the carrier to accept the agreement.",
     );
 
-    // =====================================================
-    // 12. REDIRECT
-    // =====================================================
-
-    // ═══ YON : deposit_balance page was removed; redirect to
-    // the agreement detail page instead so the shipper can track the
-    // acceptance / funding status of the new agreement. ═══
     window.location.href =
-      "agreement_details_shipper.html?id=" + blockchainResult.agreementId;
-    // ═══ YON End ═══
+      "agreement_details_shipper.html?id=" +
+      blockchainResult.agreementId;
   } catch (error) {
-    console.error("❌ Agreement creation error:", error);
+    console.error(
+      "❌ Agreement creation error:",
+      error,
+    );
 
-    if (error.reason) {
-      alert("Blockchain Error: " + error.reason);
-    } else {
-      alert(error.message || "Failed to create agreement.");
-    }
+    alert(
+      error.reason
+        ? `Blockchain Error: ${error.reason}`
+        : error.message ||
+          "Failed to create agreement.",
+    );
   }
 }
 
-// ─── Fallback for openSuccess / openError ──────────────
-if (typeof openSuccess !== "function") {
-  window.openSuccess = (title, message, details, next) => {
-    alert(`${title}\n${message}\n${details || ""}`);
-    if (next) window.location.href = next;
-  };
-  window.openError = (title, message, details, code, retry) => {
-    alert(`${title}\n${message}\n${details || ""}`);
-    if (retry) window.location.href = retry;
-  };
-}
+/* ============================================================
+   REVIEW PAGE
+   Null-safe to prevent:
+   Cannot set properties of null (setting 'textContent')
+   ============================================================ */
 
 function fillReview() {
-  const nameInput = document.getElementById("f-name");
-  const carrierSelect = document.getElementById("f-carrier");
-  const valueInput = document.getElementById("f-value");
-  const deadlineInput = document.getElementById("f-deadline");
+  const nameInput =
+    document.getElementById(
+      "f-name",
+    );
 
-  // New Cargo Inputs
-  const cargoTypeInput = document.getElementById("f-cargo-type");
-  const weightInput = document.getElementById("f-weight");
+  const carrierSelect =
+    document.getElementById(
+      "f-carrier",
+    );
 
-  document.getElementById("rv-name").textContent =
-    (nameInput && nameInput.value.trim()) || "Logistics Agreement";
+  const valueInput =
+    document.getElementById(
+      "f-value",
+    );
 
-  if (carrierSelect && carrierSelect.selectedOptions.length > 0) {
-    document.getElementById("rv-carrier").textContent =
-      carrierSelect.selectedOptions[0].textContent;
+  const deadlineInput =
+    document.getElementById(
+      "f-deadline",
+    );
+
+  const cargoTypeInput =
+    document.getElementById(
+      "f-cargo-type",
+    );
+
+  const weightInput =
+    document.getElementById(
+      "f-weight",
+    );
+
+  const setText =
+    (
+      id,
+      value,
+    ) => {
+      const el =
+        document.getElementById(
+          id,
+        );
+
+      if (el) {
+        el.textContent =
+          value;
+      }
+    };
+
+  /* Agreement name */
+
+  setText(
+    "rv-name",
+    nameInput?.value?.trim() ||
+      "Logistics Agreement",
+  );
+
+  /* Carrier */
+
+  setText(
+    "rv-carrier",
+    carrierSelect
+      ?.selectedOptions?.[0]
+      ?.textContent
+      ?.trim() ||
+      "Not selected",
+  );
+
+  /* Value */
+
+  const value =
+    valueInput?.value?.trim() ||
+    "0.00";
+
+  setText(
+    "rv-value",
+    `${value} ETH`,
+  );
+
+  /* Deadline */
+
+  const deadline =
+    deadlineInput?.value ||
+    "";
+
+  setText(
+    "rv-deadline",
+    deadline
+      ? new Date(
+          deadline,
+        ).toLocaleString()
+      : "Not set",
+  );
+
+  /* Cargo */
+
+  setText(
+    "rv-cargo-type",
+    cargoTypeInput?.value?.trim() ||
+      "Not specified",
+  );
+
+  /* Weight */
+
+  const weight =
+    weightInput?.value?.trim() ||
+    "";
+
+  setText(
+    "rv-weight",
+    weight
+      ? `${weight} kg`
+      : "Not specified",
+  );
+
+  /* Milestones */
+
+  const wrap =
+    document.getElementById(
+      "rv-milestones",
+    );
+
+  if (!wrap) {
+    return;
   }
 
-  const val = (valueInput && valueInput.value) || "0.00";
-  document.getElementById("rv-value").textContent = val + " ETH";
-
-  const dl = deadlineInput ? deadlineInput.value : "";
-  document.getElementById("rv-deadline").textContent = dl
-    ? new Date(dl).toLocaleString()
-    : "Not set";
-
-  // Display Cargo Data
-  document.getElementById("rv-cargo-type").textContent =
-    (cargoTypeInput && cargoTypeInput.value.trim()) || "Not specified";
-
-  document.getElementById("rv-weight").textContent =
-    weightInput && weightInput.value.trim()
-      ? `${weightInput.value} kg`
-      : "Not specified";
-
-  const wrap = document.getElementById("rv-milestones");
-  if (!wrap) return;
-
   wrap.innerHTML = "";
-  milestones.forEach((m, i) => {
-    const amt = (((Number(val) || 0) * m.pct) / 100).toFixed(4);
-    wrap.insertAdjacentHTML(
-      "beforeend",
-      `<div class="mini-milestone" style="display:flex; justify-content:space-between; margin-bottom:8px; padding:8px; background:rgba(255,255,255,0.03); border-radius:6px;">
+
+  milestones.forEach(
+    (milestone, index) => {
+      const amount =
+        (
+          (
+            Number(value) *
+            Number(
+              milestone.pct ||
+                0,
+            )
+          ) /
+          100
+        ).toFixed(4);
+
+      const row =
+        document.createElement(
+          "div",
+        );
+
+      row.className =
+        "mini-milestone";
+
+      row.innerHTML = `
         <div>
-          <div class="name" style="font-weight:600;">${i + 1}. ${m.name}</div>
-          <div class="sub" style="font-size:12px; color:var(--text-faint);">${m.desc}</div>
+          <div class="name">
+            ${index + 1}. ${
+              milestone.name ||
+              "Milestone"
+            }
+          </div>
+
+          <div class="sub">
+            ${
+              milestone.desc ||
+              "No description"
+            }
+          </div>
         </div>
-        <div class="pct" style="font-weight:600; color:var(--lime);">${m.pct}% (${amt} ETH)</div>
-      </div>`,
-    );
-  });
+
+        <div class="pct">
+          ${Number(
+            milestone.pct ||
+              0,
+          )}%
+          (${amount} ETH)
+        </div>
+      `;
+
+      wrap.appendChild(row);
+    },
+  );
 }
 
+/* ============================================================
+   WALLET BALANCE
+   ============================================================ */
+
 async function loadWalletBalance() {
-  const balanceInfo = document.getElementById("eth-balance-info");
+  const balanceInfo =
+    document.getElementById(
+      "eth-balance-info",
+    );
 
-  const walletAddress = localStorage.getItem("traxenWallet");
+  const walletAddress =
+    getAuthenticatedWallet();
 
-  if (!walletAddress) {
-    currentWalletAddress = null;
-    currentEthBalance = 0;
+  if (
+    !walletAddress ||
+    !ethers.isAddress(
+      walletAddress,
+    )
+  ) {
+    currentWalletAddress =
+      null;
+
+    currentEthBalance =
+      0;
 
     if (balanceInfo) {
-      balanceInfo.textContent = "Wallet Balance: Wallet not connected";
+      balanceInfo.textContent =
+        "Wallet Balance: Wallet not connected";
     }
 
     return;
@@ -917,270 +2331,191 @@ async function loadWalletBalance() {
 
   try {
     if (!window.ethereum) {
-      throw new Error("MetaMask is not installed.");
+      throw new Error(
+        "MetaMask is not installed.",
+      );
     }
 
-    currentWalletAddress = walletAddress;
+    const provider =
+      new ethers.BrowserProvider(
+        window.ethereum,
+      );
 
-    const provider = new ethers.BrowserProvider(window.ethereum);
+    currentWalletAddress =
+      walletAddress;
 
-    // ---------------------------------------------
-    // Get latest blockchain balance
-    // ---------------------------------------------
+    const balance =
+      await provider.getBalance(
+        walletAddress,
+      );
 
-    const balance = await provider.getBalance(walletAddress);
-
-    currentEthBalance = Number(ethers.formatEther(balance));
-
-    // ---------------------------------------------
-    // Display balance
-    // ---------------------------------------------
+    currentEthBalance =
+      Number(
+        ethers.formatEther(
+          balance,
+        ),
+      );
 
     if (balanceInfo) {
-      balanceInfo.textContent = `Wallet Balance: ${currentEthBalance.toFixed(6)} ETH`;
+      balanceInfo.textContent =
+        `Wallet Balance: ${currentEthBalance.toFixed(
+          6,
+        )} ETH`;
     }
 
-    // Revalidate payload after balance update
     validatePayloadValue();
   } catch (error) {
-    console.error("Failed to load ETH balance:", error);
+    console.error(
+      "Failed to load ETH balance:",
+      error,
+    );
 
-    currentEthBalance = 0;
+    currentEthBalance =
+      0;
 
     if (balanceInfo) {
-      balanceInfo.textContent = "Wallet Balance: Unable to load";
+      balanceInfo.textContent =
+        "Wallet Balance: Unable to load";
     }
   }
 }
 
-// =====================================================
-// VALIDATE PAYLOAD VALUE
-// =====================================================
-
-function validatePayloadValue() {
-  const input = document.getElementById("f-value");
-
-  const error = document.getElementById("eth-validation");
-
-  if (!input || !error) {
-    return false;
-  }
-
-  const amount = Number(input.value);
-
-  // Reset
-  error.style.display = "none";
-  error.textContent = "";
-
-  input.classList.remove("input-valid", "input-invalid");
-
-  // ---------------------------------------------
-  // Empty
-  // ---------------------------------------------
-
-  if (input.value.trim() === "") {
-    showEthError("Please enter the escrow amount.");
-
-    return false;
-  }
-
-  // ---------------------------------------------
-  // Invalid number
-  // ---------------------------------------------
-
-  if (!Number.isFinite(amount)) {
-    showEthError("Please enter a valid ETH amount.");
-
-    return false;
-  }
-
-  // ---------------------------------------------
-  // Must be greater than zero
-  // ---------------------------------------------
-
-  if (amount <= 0) {
-    showEthError("Escrow amount must be greater than 0 ETH.");
-
-    return false;
-  }
-
-  // ---------------------------------------------
-  // Check wallet connection
-  // ---------------------------------------------
-
-  if (!currentWalletAddress) {
-    showEthError("Please connect your MetaMask wallet first.");
-
-    return false;
-  }
-
-  // ---------------------------------------------
-  // Check real-time ETH balance
-  // ---------------------------------------------
-
-  if (amount > currentEthBalance) {
-    showEthError(
-      `Insufficient ETH balance. You need ${amount.toFixed(
-        6,
-      )} ETH, but your wallet has only ${currentEthBalance.toFixed(6)} ETH.`,
-    );
-
-    return false;
-  }
-
-  // ---------------------------------------------
-  // Valid
-  // ---------------------------------------------
-
-  input.classList.add("input-valid");
-
-  return true;
-}
-
-function showEthError(message) {
-  const error = document.getElementById("eth-validation");
-
-  const input = document.getElementById("f-value");
-
-  if (error) {
-    error.textContent = message;
-
-    error.style.display = "block";
-  }
-
-  if (input) {
-    input.classList.add("input-invalid");
-  }
-}
-
-// =====================================================
-// SET MINIMUM DEADLINE
-// =====================================================
-
-function setMinimumDeadline() {
-  const deadlineInput = document.getElementById("f-deadline");
-
-  if (!deadlineInput) {
-    return;
-  }
-
-  const minimumTime = new Date(Date.now() + MIN_DEADLINE_MINUTES * 60 * 1000);
-
-  // datetime-local requires:
-  // YYYY-MM-DDTHH:mm
-
-  const year = minimumTime.getFullYear();
-
-  const month = String(minimumTime.getMonth() + 1).padStart(2, "0");
-
-  const day = String(minimumTime.getDate()).padStart(2, "0");
-
-  const hours = String(minimumTime.getHours()).padStart(2, "0");
-
-  const minutes = String(minimumTime.getMinutes()).padStart(2, "0");
-
-  const minimumValue = `${year}-${month}-${day}T${hours}:${minutes}`;
-
-  deadlineInput.min = minimumValue;
-}
-
-// =====================================================
-// VALIDATE DEADLINE
-// =====================================================
-
-function validateDeadline() {
-  const input = document.getElementById("f-deadline");
-  const error = document.getElementById("deadline-validation");
-  const hint = document.getElementById("deadline-info");
-
-  if (!input) return false;
-
-  error.style.display = "none";
-  error.textContent = "";
-  input.classList.remove("input-valid", "input-invalid");
-
-  if (!input.value) {
-    showDeadlineError("Please select a delivery deadline.");
-    return false;
-  }
-
-  const deadline = new Date(input.value);
-  if (isNaN(deadline.getTime())) {
-    showDeadlineError("Please enter a valid deadline.");
-    return false;
-  }
-
-  //  const minDeadline = new Date(Date.now() + 60 * 60 * 1000);
-  const minDeadline = new Date(Date.now() + 1 * 60 * 1000);
-
-  if (deadline <= minDeadline) {
-    showDeadlineError("Delivery deadline must be at least 1 hour from now.");
-    return false;
-  }
-
-  // ✅ Valid
-  input.classList.add("input-valid");
-  if (hint) {
-    hint.textContent = "✅ Deadline is valid";
-    hint.style.color = "var(--lime)";
-  }
-  return true;
-}
-
-function showDeadlineError(message) {
-  const error = document.getElementById("deadline-validation");
-
-  const input = document.getElementById("f-deadline");
-
-  if (error) {
-    error.textContent = message;
-
-    error.style.display = "block";
-  }
-
-  if (input) {
-    input.classList.add("input-invalid");
-  }
-}
-
-// =====================================================
-// CENTRAL INITIALISATION FUNCTION
-// =====================================================
+/* ============================================================
+   INITIALIZATION
+   ============================================================ */
 
 function initCreateAgreement() {
   setMinimumDeadline();
-  loadWalletBalance().then(() => {
-    validatePayloadValue();
-  });
+
+  loadWalletBalance().then(
+    () => {
+      validatePayloadValue();
+    },
+  );
+
   loadCarriersFromBlockchain();
+
   validateDeadline();
 
-  const valueInput = document.getElementById("f-value");
+  /* Escrow */
+
+  const valueInput =
+    document.getElementById(
+      "f-value",
+    );
+
   if (valueInput) {
-    valueInput.addEventListener("input", validatePayloadValue);
+    valueInput.addEventListener(
+      "input",
+      validatePayloadValue,
+    );
   }
 
-  const deadlineInput = document.getElementById("f-deadline");
+  /* Deadline */
+
+  const deadlineInput =
+    document.getElementById(
+      "f-deadline",
+    );
+
   if (deadlineInput) {
-    deadlineInput.addEventListener("input", validateDeadline);
+    deadlineInput.addEventListener(
+      "input",
+      validateDeadline,
+    );
   }
 
-  window.addEventListener("walletConnected", loadWalletBalance);
+  /* Wallet connection */
 
-  console.log("✅ Create Agreement page initialized (blockchain carriers)");
+  window.addEventListener(
+    "walletConnected",
+    () => {
+      loadWalletBalance();
+      loadCarriersFromBlockchain();
+    },
+  );
+
+  /* Network/account changes */
+
+  if (window.ethereum) {
+    window.ethereum.on(
+      "accountsChanged",
+      () => {
+        loadWalletBalance();
+        loadCarriersFromBlockchain();
+      },
+    );
+
+    window.ethereum.on(
+      "chainChanged",
+      () => {
+        loadCarriersFromBlockchain();
+      },
+    );
+  }
+
+  console.log(
+    "✅ Create Agreement page initialized with full validation.",
+  );
 }
 
-// ─── Expose for SPA Router ──────────────────────────────
-window.initCreateAgreement = initCreateAgreement;
+/* ============================================================
+   SPA EXPORT
+   ============================================================ */
 
-// ─── Auto‑init on direct page load ────────────────────
-if (document.getElementById("f-carrier")) {
+window.initCreateAgreement =
+  initCreateAgreement;
+
+window.loadCarriersFromBlockchain =
+  loadCarriersFromBlockchain;
+
+window.nextFromStep1 =
+  nextFromStep1;
+
+window.nextFromStep2 =
+  nextFromStep2;
+
+window.renderMilestones =
+  renderMilestones;
+
+window.addMilestone =
+  addMilestone;
+
+window.validatePayloadValue =
+  validatePayloadValue;
+
+window.validateDeadline =
+  validateDeadline;
+
+window.validateMilestones =
+  validateMilestones;
+
+window.fillReview =
+  fillReview;
+
+window.submitCreateAgreement =
+  submitCreateAgreement;
+
+/* ============================================================
+   DIRECT PAGE FALLBACK
+   ============================================================ */
+
+if (
+  document.getElementById(
+    "f-carrier",
+  )
+) {
   if (
-    document.readyState === "complete" ||
-    document.readyState === "interactive"
+    document.readyState ===
+      "complete" ||
+    document.readyState ===
+      "interactive"
   ) {
     initCreateAgreement();
   } else {
-    document.addEventListener("DOMContentLoaded", initCreateAgreement);
+    document.addEventListener(
+      "DOMContentLoaded",
+      initCreateAgreement,
+    );
   }
 }

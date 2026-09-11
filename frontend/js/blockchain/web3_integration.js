@@ -831,7 +831,7 @@ async function getAllCarriers() {
     if (!isConnected()) await connectWallet();
     const contract = getContract();
 
-    const totalUsers = Number(await contract.getTotalRegisteredUsers());
+    const totalUsers = Number(await contract.getRegisteredUsersCount());
     const carriers = [];
 
     for (let i = 0; i < totalUsers; i++) {
