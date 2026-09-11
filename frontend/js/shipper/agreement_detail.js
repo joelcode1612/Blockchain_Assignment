@@ -608,9 +608,6 @@
   };
 
   // ─── Existing actions ────────────────────────────────────
-  // ═══ YON — FUND ESCROW (agreement detail page) ═══
-  // Funds the escrow with the full agreement amount — no manual input.
-  // Mirrors the deposit flow from the Escrow Overview page.
   let fundEscrowInProgress = false;
   window.fundEscrow = async function () {
     if (fundEscrowInProgress) return;
@@ -684,15 +681,15 @@
         );
         if (!syncResponse.ok) {
           console.warn(
-            "[Yon] Escrow funded on-chain, but DB sync failed:",
+            "Escrow funded on-chain, but DB sync failed:",
             syncResponse.status,
           );
         }
       } catch (syncError) {
-        console.warn("[Yon] Backend sync failed:", syncError);
+        console.warn("Backend sync failed:", syncError);
       }
 
-      showToast(`✅ Escrow funded with ${amountEth} ETH!`, "success");
+      showToast(`Escrow funded with ${amountEth} ETH!`, "success");
 
       // Refresh the page with the new on-chain/DB state.
       if (typeof window.initAgreementDetails === "function") {
@@ -710,7 +707,7 @@
       }
     }
   };
-  // ═══ YON End ═══
+
   window.raiseDispute = function () {
     alert("Dispute functionality will be implemented in the next step.");
   };
