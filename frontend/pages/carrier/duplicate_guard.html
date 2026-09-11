@@ -127,7 +127,16 @@
   async function loadAgreements() {
     try {
       const res = await fetch('/api/agreements', {
-        headers: { 'x-wallet-address': window.userWalletAddress || '' }
+        ///Fix - auth incpmplete migration
+        // This demo page never loads auth.js, so fall back to reading the
+        // stored JWT directly.
+        headers: window.getAuthHeaders
+          ? window.getAuthHeaders()
+          : {
+              Authorization:
+                'Bearer ' + (localStorage.getItem('traxenAuthToken') || '')
+            }
+        ///Fix end
       });
       if (!res.ok) throw new Error('Failed to fetch agreements');
       const data = await res.json();

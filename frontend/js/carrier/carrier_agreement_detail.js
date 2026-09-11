@@ -621,9 +621,14 @@
 
       const uploadResponse = await fetch("/api/milestones/upload-proof", {
         method: "POST",
+        ///Fix - auth incpmplete migration
+        // Multipart upload — send ONLY the bearer token. Adding
+        // Content-Type: application/json would strip the multipart boundary
+        // and break the file upload.
         headers: {
-          "x-wallet-address": wallet,
+          Authorization: `Bearer ${window.getAuthToken()}`,
         },
+        ///Fix end
         body: formData,
       });
 
@@ -649,9 +654,9 @@
 
       // ─── 3. Sync blockchain status to Supabase ────────────────
       const syncResponse = await fetch(`/api/agreements/${agreementId}`, {
-        headers: {
-          "x-wallet-address": wallet,
-        },
+        ///Fix - auth incpmplete migration
+        headers: window.getAuthHeaders(),
+        ///Fix end
       });
 
       if (!syncResponse.ok) {

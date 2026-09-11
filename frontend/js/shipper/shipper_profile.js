@@ -6,12 +6,10 @@
   async function fetchProfile() {
     const walletAddress = localStorage.getItem("traxenWallet");
     if (!walletAddress) throw new Error("No wallet connected");
-    const token = localStorage.getItem("traxenAuthToken");
-
     const res = await fetch("/api/users/me", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      ///Fix - auth incpmplete migration
+      headers: window.getAuthHeaders(),
+      ///Fix end
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
@@ -133,8 +131,7 @@
 
     const fillEl = document.getElementById("reputationFill");
     if (fillEl) {
-      fillEl.style.width =
-        Math.min((balance / REPUTATION_CAP) * 100, 100) + "%";
+      fillEl.style.width = Math.min((balance / REPUTATION_CAP) * 100, 100) + "%";
     }
 
     const noteEl = document.getElementById("reputationNote");
@@ -152,12 +149,10 @@
     if (!wallet) return;
 
     try {
-      const token = localStorage.getItem("traxenAuthToken");
-
       const res = await fetch("/api/reputation/me", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        ///Fix - auth incpmplete migration
+        headers: window.getAuthHeaders(),
+        ///Fix end
       });
       if (!res.ok) return;
 
@@ -190,12 +185,10 @@
     if (!wallet) return;
 
     try {
-      const token = localStorage.getItem("traxenAuthToken");
-
       const res = await fetch("/api/agreements", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        ///Fix - auth incpmplete migration
+        headers: window.getAuthHeaders(),
+        ///Fix end
       });
       if (!res.ok) return;
 
@@ -287,10 +280,9 @@
       const walletAddress = localStorage.getItem("traxenWallet");
       const res = await fetch("/api/users/me", {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        ///Fix - auth incpmplete migration
+        headers: window.getAuthHeaders(),
+        ///Fix end
         body: JSON.stringify({ display_name: name, email }),
       });
       if (!res.ok) throw new Error("Failed to update profile");

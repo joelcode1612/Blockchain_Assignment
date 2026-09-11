@@ -328,10 +328,9 @@
 
       const syncResponse = await fetch("/api/milestones/verify", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-wallet-address": wallet,
-        },
+        ///Fix - auth incpmplete migration
+        headers: window.getAuthHeaders(),
+        ///Fix end
         body: JSON.stringify({
           agreementId: currentAgreement.onchain_id,
           milestoneId: milestoneIndex,
@@ -442,10 +441,9 @@
       try {
         const paymentSyncResponse = await fetch("/api/payment/release", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-wallet-address": wallet,
-          },
+          ///Fix - auth incpmplete migration
+          headers: window.getAuthHeaders(),
+          ///Fix end
           body: JSON.stringify({
             agreementId: currentAgreement.onchain_id,
             milestoneId: milestoneIndex,

@@ -44,7 +44,12 @@ console.log("🚀 history.js loaded");
         return;
       }
       const res = await fetch("/api/agreements", {
-        headers: { Authorization: `Bearer ${token}` },
+        ///Fix - auth incpmplete migration
+        // `token` was never defined in this file, so this threw a
+        // ReferenceError that the catch block swallowed — the whole
+        // history page silently rendered nothing.
+        headers: window.getAuthHeaders(),
+        ///Fix end
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       allAgreements = await res.json();
@@ -128,7 +133,9 @@ console.log("🚀 history.js loaded");
         return;
       }
       const res = await fetch(url, {
-        headers: { "x-wallet-address": address },
+        ///Fix - auth incpmplete migration
+        headers: window.getAuthHeaders(),
+        ///Fix end
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();

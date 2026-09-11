@@ -44,7 +44,9 @@
       } else if (role === "Carrier") {
         // Carrier: fetch from API
         const response = await fetch("/api/agreements", {
-          headers: { "x-wallet-address": walletAddress },
+          ///Fix - auth incpmplete migration
+          headers: window.getAuthHeaders(),
+          ///Fix end
         });
         if (!response.ok) {
           const err = await response.json();

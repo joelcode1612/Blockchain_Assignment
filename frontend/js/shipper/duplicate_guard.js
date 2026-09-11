@@ -13,7 +13,15 @@ function log(msg) {
 async function loadAgreements() {
   try {
     const res = await fetch("/api/agreements", {
-      headers: { Authorization: `Bearer ${token}` || "" },
+      ///Fix - auth incpmplete migration
+      // `token` was never defined here. The guard keeps this working even if
+      // auth.js has not finished loading yet.
+      headers: window.getAuthHeaders
+        ? window.getAuthHeaders()
+        : {
+            Authorization: `Bearer ${localStorage.getItem("traxenAuthToken") || ""}`,
+          },
+      ///Fix end
     });
     if (!res.ok) throw new Error("Failed to fetch agreements");
     const data = await res.json();

@@ -33,7 +33,9 @@
       const repByAgreement = {};
       try {
         const repRes = await fetch("/api/reputation/history", {
-          headers: { "x-wallet-address": wallet },
+          ///Fix - auth incpmplete migration
+          headers: window.getAuthHeaders(),
+          ///Fix end
         });
         if (repRes.ok) {
           const repData = await repRes.json();

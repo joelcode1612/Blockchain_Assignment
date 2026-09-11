@@ -26,10 +26,9 @@
 
       const token = localStorage.getItem("traxenAuthToken");
       const response = await fetch("/api/agreements", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "x-wallet-address": wallet.trim().toLowerCase(),
-        },
+        ///Fix - auth incpmplete migration
+        headers: window.getAuthHeaders(),
+        ///Fix end
       });
 
       if (!response.ok) {

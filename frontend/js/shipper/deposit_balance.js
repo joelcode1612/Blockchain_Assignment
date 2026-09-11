@@ -69,7 +69,11 @@ console.log("🚀 deposit_balance.js loaded");
 
     try {
       const res = await fetch("/api/agreements", {
-        headers: { Authorization: `Bearer ${token}` },
+        ///Fix - auth incpmplete migration
+        // `token` was never defined in this file — this threw a ReferenceError
+        // that broke the agreement dropdown.
+        headers: window.getAuthHeaders(),
+        ///Fix end
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
       allAgreements = await res.json();
@@ -500,10 +504,9 @@ console.log("🚀 deposit_balance.js loaded");
       try {
         await fetch(`/api/escrow/shipper/${currentAgreementId}/deposit`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-wallet-address": window.userWalletAddress,
-          },
+          ///Fix - auth incpmplete migration
+          headers: window.getAuthHeaders(),
+          ///Fix end
           body: JSON.stringify({
             amount: amountWei.toString(),
             txHash: tx.hash,
