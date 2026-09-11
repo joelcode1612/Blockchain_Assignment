@@ -27,7 +27,7 @@ function showToast(message, type = "info", duration = 4000) {
 // const params = new URLSearchParams(location.search);
 
 // function setRole(role) {
-//   localStorage.setItem("traxenRole", role);
+//   localStorage.setItem("traxenUserRole", role);
 //   if (location.pathname.endsWith("agreements.html")) {
 //     const ship = document.getElementById("grid-shipper"),
 //       car = document.getElementById("grid-carrier");

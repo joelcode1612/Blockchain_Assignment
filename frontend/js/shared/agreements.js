@@ -1,271 +1,824 @@
 // ─── SHARED AGREEMENTS PAGE ──────────────────────────
 // Detects role and fetches agreements accordingly.
+function ensureAgreementStyles() {
+  if (document.getElementById("traxen-agreements-styles")) {
+    return;
+  }
+
+  const style = document.createElement("style");
+
+  style.id = "traxen-agreements-styles";
+
+  style.textContent = `
+    /* =========================================================
+       TRAXEN AGREEMENTS - SPA UI
+       Scoped only to the agreements page
+       ========================================================= */
+
+    #contentPlaceholder .traxen-agreements {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    #contentPlaceholder .agreements-card {
+      width: 100%;
+      background: var(--panel);
+      border: 1px solid var(--border-soft);
+      border-radius: 14px;
+      padding: 22px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.10);
+      overflow: hidden;
+    }
+
+    /* ---------- HEADER ---------- */
+
+    #contentPlaceholder .agreements-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+
+      border-bottom: 1px solid var(--border-soft);
+    }
+
+    #contentPlaceholder .agreements-heading h2 {
+      margin: 0;
+
+      color: var(--text);
+
+      font-size: 18px;
+      font-weight: 750;
+
+      letter-spacing: -0.02em;
+    }
+
+    #contentPlaceholder .agreements-heading p {
+      margin: 5px 0 0;
+
+      color: var(--text-faint);
+
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    /* ---------- VERIFIED INDICATOR ---------- */
+
+    #contentPlaceholder .agreements-network {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+
+      flex-shrink: 0;
+
+      padding: 6px 11px;
+
+      border-radius: 999px;
+
+      background: var(--lime-glow);
+
+      border: 1px solid rgba(205, 250, 63, 0.25);
+
+      color: var(--lime);
+
+      font-size: 10.5px;
+      font-weight: 700;
+
+      white-space: nowrap;
+    }
+
+    #contentPlaceholder .agreements-network .dot {
+      width: 6px;
+      height: 6px;
+
+      border-radius: 50%;
+
+      background: currentColor;
+    }
+
+    /* ---------- TABLE CONTAINER ---------- */
+
+    #contentPlaceholder .agreements-table-wrap {
+      width: 100%;
+
+      overflow-x: auto;
+
+      background: var(--panel);
+
+      border: 1px solid var(--border-soft);
+
+      border-radius: 12px;
+
+      box-shadow:
+        0 4px 16px rgba(0, 0, 0, 0.10);
+    } 
+
+    #contentPlaceholder .agreements-table {
+      width: 100%;
+      min-width: 760px;
+
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+
+    /* ---------- TABLE HEADER ---------- */
+
+    #contentPlaceholder .agreements-table th {
+      padding: 12px 14px;
+
+      background: #191c22;
+
+      border-bottom: 1px solid var(--border);
+
+      color: var(--text-faint);
+
+      font-size: 10px;
+      font-weight: 700;
+
+      text-align: left;
+
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+
+      white-space: nowrap;
+    }
+
+    #contentPlaceholder .agreements-table th:first-child {
+      border-radius: 10px 0 0 0;
+    }
+
+    #contentPlaceholder .agreements-table th:last-child {
+      border-radius: 0 10px 0 0;
+    }
+
+    /* ---------- TABLE ROWS ---------- */
+
+    #contentPlaceholder .agreements-table tbody tr {
+      transition: background 0.15s ease;
+    }
+
+    #contentPlaceholder .agreements-table tbody tr:hover {
+      background: rgba(255, 255, 255, 0.025);
+    }
+
+    #contentPlaceholder .agreements-table td {
+      padding: 15px 14px;
+
+      border-bottom: 1px solid var(--border-soft);
+
+      color: var(--text);
+
+      font-size: 12px;
+
+      vertical-align: middle;
+    }
+
+    #contentPlaceholder .agreements-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    /* ---------- AGREEMENT ID ---------- */
+
+    #contentPlaceholder .agreement-id {
+      display: inline-flex;
+      align-items: center;
+
+      min-width: 58px;
+
+      padding: 5px 8px;
+
+      background: var(--panel);
+
+      border: 1px solid var(--border);
+
+      border-radius: 7px;
+
+      color: var(--text);
+
+      font-family: var(--mono);
+
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    /* ---------- VALUE ---------- */
+
+    #contentPlaceholder .agreement-value {
+      color: var(--text);
+
+      font-family: var(--mono);
+
+      font-size: 11.5px;
+      font-weight: 700;
+
+      white-space: nowrap;
+    }
+
+    /* ---------- STATUS ---------- */
+
+    #contentPlaceholder .agreement-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+
+      padding: 5px 9px;
+
+      border-radius: 999px;
+
+      background: var(--panel);
+
+      border: 1px solid var(--border);
+
+      color: var(--text-dim);
+
+      font-size: 10.5px;
+      font-weight: 700;
+
+      white-space: nowrap;
+    }
+
+    #contentPlaceholder .agreement-status.active {
+      background: var(--lime-glow);
+      border-color: rgba(205, 250, 63, 0.25);
+      color: var(--lime);
+    }
+
+    #contentPlaceholder .agreement-status.pending {
+      background: var(--amber-glow);
+      border-color: rgba(255, 180, 60, 0.25);
+      color: var(--amber);
+    }
+
+    #contentPlaceholder .agreement-status.completed {
+      background: var(--panel-2);
+      color: var(--text-dim);
+    }
+
+    #contentPlaceholder .agreement-status.cancelled {
+      background: var(--red-glow);
+      border-color: rgba(255, 92, 92, 0.25);
+      color: var(--red);
+    }
+
+    #contentPlaceholder .agreement-status .dot {
+      width: 5px;
+      height: 5px;
+
+      border-radius: 50%;
+
+      background: currentColor;
+    }
+
+    /* ---------- BLOCKCHAIN VERIFICATION ---------- */
+
+    #contentPlaceholder .agreement-verified {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+
+      padding: 5px 9px;
+
+      border-radius: 999px;
+
+      background: var(--lime-glow);
+
+      border: 1px solid rgba(205, 250, 63, 0.22);
+
+      color: var(--lime);
+
+      font-size: 10px;
+      font-weight: 700;
+
+      white-space: nowrap;
+    }
+
+    /* ---------- VIEW BUTTON ---------- */
+
+    #contentPlaceholder .agreement-view-btn {
+      min-width: 62px;
+
+      padding: 8px 12px;
+
+      background: transparent;
+
+      border: 1px solid var(--border);
+
+      border-radius: 8px;
+
+      color: var(--text-dim);
+
+      font-size: 11px;
+      font-weight: 700;
+
+      cursor: pointer;
+
+      transition:
+        background 0.15s ease,
+        border-color 0.15s ease,
+        color 0.15s ease;
+    }
+
+    #contentPlaceholder .agreement-view-btn:hover {
+      background: var(--lime);
+
+      border-color: var(--lime);
+
+      color: #0a0b0d;
+    }
+
+    /* ---------- LOADING / EMPTY ---------- */
+
+    #contentPlaceholder .agreements-state {
+      display: flex;
+      flex-direction: column;
+
+      align-items: center;
+      justify-content: center;
+
+      min-height: 180px;
+
+      padding: 30px;
+
+      background: var(--panel-2);
+
+      border: 1px dashed var(--border);
+
+      border-radius: 10px;
+
+      text-align: center;
+
+      color: var(--text-faint);
+    }
+
+    #contentPlaceholder .agreements-state h3 {
+      margin: 0 0 8px;
+
+      color: var(--text);
+
+      font-size: 15px;
+    }
+
+    #contentPlaceholder .agreements-state p {
+      margin: 0;
+
+      max-width: 520px;
+
+      font-size: 12px;
+
+      line-height: 1.55;
+    }
+
+    /* ---------- RESPONSIVE ---------- */
+
+    @media (max-width: 700px) {
+      #contentPlaceholder .agreements-card {
+        padding: 16px;
+      }
+
+      #contentPlaceholder .agreements-header {
+        flex-direction: column;
+      }
+
+      #contentPlaceholder .agreements-network {
+        align-self: flex-start;
+      }
+    }
+  `;
+
+  document.head.appendChild(style);
+}
 
 (function () {
   async function renderAgreements() {
-    let container = document.getElementById("agreements-list");
+    // ============================================================
+    // LOAD AGREEMENT PAGE STYLES
+    // ============================================================
+
+    ensureAgreementStyles();
+
+    // ============================================================
+    // GET CONTAINER
+    // ============================================================
+
+    const container = document.getElementById("agreements-list");
+
     if (!container) {
-      container = document.querySelector(".content");
-      if (!container) {
-        console.error("Agreements container not found.");
-        return;
-      }
+      console.warn(
+        "⏭️ agreements-list not ready yet. Skipping agreements initialization.",
+      );
+      return;
     }
 
     container.innerHTML = `
-      <div style="padding: 40px; text-align: center; color: var(--text-faint);">
-        <span>⏳ Loading your agreements...</span>
+      <div style="
+        padding:40px;
+        text-align:center;
+        color:var(--text-faint);
+      ">
+        ⏳ Loading and verifying your agreements...
       </div>
     `;
 
     try {
-      const walletAddress = localStorage.getItem("traxenWallet");
-      if (!walletAddress) {
-        container.innerHTML = `
-          <div style="padding: 60px 20px; text-align: center; color: var(--text-faint);">
-            <h3>🔑 Please connect your wallet</h3>
-            <p>You need to be logged in to view your agreements.</p>
-          </div>
-        `;
-        return;
+      // ============================================================
+      // 1. GET JWT
+      // ============================================================
+      const token =
+        typeof window.getAuthToken === "function"
+          ? window.getAuthToken()
+          : localStorage.getItem("traxenAuthToken");
+
+      if (!token) {
+        throw new Error("Authentication token required.");
       }
 
-      // ─── Determine role ──────────────────────────────────
-      const role = localStorage.getItem("traxenRole") || "Shipper";
-
-      let agreements = [];
-
-      if (role === "Shipper") {
-        // Shipper: fetch from blockchain
-        if (typeof window.getAgreementsByShipper !== "function") {
-          throw new Error("getAgreementsByShipper not available.");
-        }
-        agreements = await window.getAgreementsByShipper(walletAddress);
-      } else if (role === "Carrier") {
-        // Carrier: fetch from API
-        const response = await fetch("/api/agreements", {
-          ///Fix - auth incpmplete migration
-          headers: window.getAuthHeaders(),
-          ///Fix end
-        });
-        if (!response.ok) {
-          const err = await response.json();
-          throw new Error(err.error || "Failed to fetch agreements");
-        }
-        agreements = await response.json();
-      } else {
-        throw new Error("Unknown role: " + role);
-      }
-
-      if (!agreements || agreements.length === 0) {
-        const msg =
-          role === "Shipper"
-            ? "Create your first agreement using the 'Create Agreement' button."
-            : "No past contracts yet. Accept a job to get started.";
-        container.innerHTML = `
-          <div style="padding: 60px 20px; text-align: center; color: var(--text-faint);">
-            <h3 style="margin-bottom: 8px;">📭 No agreements found</h3>
-            <p style="margin-top: 0;">${msg}</p>
-          </div>
-        `;
-        return;
-      }
-
-      // ─── Build table ─────────────────────────────────────
-      // (The table logic is the same, but we need to adapt the data shape)
-      let tableHtml = `
-        <div style="overflow-x: auto; margin-top: 16px;">
-          <table style="width: 100%; border-collapse: collapse; font-size: 0.95rem;">
-            <thead>
-              <tr style="border-bottom: 2px solid var(--border-color, #e2e8f0); text-align: left;">
-                <th style="padding: 12px 16px;">ID</th>
-                <th style="padding: 12px 16px;">${role === "Shipper" ? "Carrier" : "Shipper"}</th>
-                <th style="padding: 12px 16px;">Value (ETH)</th>
-                <th style="padding: 12px 16px;">Status</th>
-                <th style="padding: 12px 16px;">Deadline</th>
-                <th style="padding: 12px 16px; text-align: center;">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-      `;
-
-      agreements.forEach((ag) => {
-        // Normalize data (handle both blockchain and API shapes)
-        const id = ag.id || ag.onchain_id || "—";
-        const status = ag.statusName || ag.status || "Unknown";
-        const valueEth =
-          ag.escrowAmountETH ||
-          (ag.escrow_amount
-            ? parseFloat(ethers.formatEther(ag.escrow_amount)).toFixed(2)
-            : "0.00");
-        const deadline = ag.deadline
-          ? new Date(ag.deadline * 1000 || ag.deadline).toLocaleDateString(
-              "en-US",
-              { month: "short", day: "numeric", year: "numeric" },
-            )
-          : "—";
-        const counterparty =
-          role === "Shipper" ? ag.carrier || "N/A" : ag.shipper || "N/A";
-        // For carrier API response, we might have nested objects
-        const partyName =
-          role === "Shipper"
-            ? ag.carrier || "N/A"
-            : ag.shipper?.display_name || ag.shipper_wallet || "N/A";
-
-        // Status badge color
-        let statusColor = "var(--text-faint, #6b7280)";
-        let statusBg = "var(--bg-muted, #f3f4f6)";
-        if (status === "Active") {
-          statusColor = "#0b6e4f";
-          statusBg = "#d1fae5";
-        } else if (
-          status === "PendingAcceptance" ||
-          status === "AwaitingFunding"
-        ) {
-          statusColor = "#b45309";
-          statusBg = "#fef3c7";
-        } else if (status === "Completed") {
-          statusColor = "#1e40af";
-          statusBg = "#dbeafe";
-        } else if (
-          status === "Expired" ||
-          status === "Rejected" ||
-          status === "Cancelled"
-        ) {
-          statusColor = "#991b1b";
-          statusBg = "#fee2e2";
-        }
-
-        const agreementId = id;
-        tableHtml += `
-          <tr style="border-bottom: 1px solid var(--border-color, #e2e8f0);">
-            <td style="padding: 12px 16px; font-weight: 500; color: var(--primary, #2563eb);">
-              ${agreementId}
-            </td>
-            <td style="padding: 12px 16px; font-family: monospace; font-size: 0.85rem;">
-              ${typeof partyName === "string" && partyName.length > 10 ? partyName.slice(0, 6) + "…" + partyName.slice(-4) : partyName}
-            </td>
-            <td style="padding: 12px 16px; font-weight: 500;">${valueEth}</td>
-            <td style="padding: 12px 16px;">
-              <span style="
-                background: ${statusBg};
-                color: ${statusColor};
-                padding: 4px 12px;
-                border-radius: 9999px;
-                font-size: 0.8rem;
-                font-weight: 600;
-                display: inline-block;
-              ">
-                ${status}
-              </span>
-            </td>
-            <td style="padding: 12px 16px;">${deadline}</td>
-            <td style="padding: 12px 16px; text-align: center;">
-              <button 
-                class="view-agreement-btn" 
-                data-id="${agreementId}"
-                style="
-                  background: var(--primary, #2563eb);
-                  color: white;
-                  border: none;
-                  padding: 6px 14px;
-                  border-radius: 6px;
-                  font-size: 0.8rem;
-                  cursor: pointer;
-                  transition: opacity 0.2s;
-                "
-                onmouseover="this.style.opacity='0.85'"
-                onmouseout="this.style.opacity='1'"
-              >
-                View
-              </button>
-            </td>
-          </tr>
-        `;
+      // ============================================================
+      // 2. GET CURRENT USER
+      // ============================================================
+      const userResponse = await fetch("/api/users/me", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
 
+      if (!userResponse.ok) {
+        throw new Error("Unable to verify authenticated user.");
+      }
+
+      const user = await userResponse.json();
+
+      if (!user.wallet_address) {
+        throw new Error("Authenticated wallet not found.");
+      }
+
+      const userWallet = user.wallet_address.toLowerCase();
+
+      // ============================================================
+      // 3. GET AGREEMENTS FROM DATABASE
+      // ============================================================
+      const response = await fetch("/api/agreements", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+
+        throw new Error(
+          err.error ||
+            err.message ||
+            `Failed to fetch agreements (HTTP ${response.status})`,
+        );
+      }
+
+      const databaseAgreements = await response.json();
+
+      console.log("📦 Agreements loaded from database:", databaseAgreements);
+
+      // ============================================================
+      // 4. VERIFY META MASK / NETWORK
+      // ============================================================
+      if (!window.ethereum) {
+        throw new Error("MetaMask is not available.");
+      }
+
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const network = await provider.getNetwork();
+
+      const currentChainId = Number(network.chainId);
+
+      // Sepolia
+      const EXPECTED_CHAIN_ID = 11155111;
+
+      console.log("🌐 Current chain ID:", currentChainId);
+
+      if (currentChainId !== EXPECTED_CHAIN_ID) {
+        throw new Error(
+          `Wrong network. Please switch MetaMask to Sepolia (Chain ID: ${EXPECTED_CHAIN_ID}).`,
+        );
+      }
+
+      // ============================================================
+      // 5. VERIFY CURRENT CONTRACT
+      // ============================================================
+      if (!window.contract) {
+        if (typeof window.initContract === "function") {
+          await window.initContract();
+        }
+      }
+
+      const contract = window.contract || window.getContract?.();
+
+      if (!contract) {
+        throw new Error("Smart contract is not initialized.");
+      }
+
+      console.log("📍 Contract address:", await contract.getAddress());
+
+      // ============================================================
+      // 6. VERIFY EACH DATABASE AGREEMENT ON BLOCKCHAIN
+      // ============================================================
+      const verificationResults = await Promise.all(
+        databaseAgreements.map(async (dbAgreement) => {
+          const agreementId = Number(dbAgreement.onchain_id);
+
+          if (!Number.isInteger(agreementId) || agreementId <= 0) {
+            console.warn(
+              "⚠️ Invalid database agreement ID:",
+              dbAgreement.onchain_id,
+            );
+
+            return null;
+          }
+
+          try {
+            console.log(
+              `🔍 Verifying agreement #${agreementId} on blockchain...`,
+            );
+
+            const chainAgreement = await contract.getAgreement(agreementId);
+
+            // ------------------------------------------------------
+            // Compare shipper
+            // ------------------------------------------------------
+            const chainShipper = String(chainAgreement.shipper).toLowerCase();
+
+            if (chainShipper !== userWallet) {
+              console.warn(`⚠️ Agreement #${agreementId}: shipper mismatch.`);
+
+              return null;
+            }
+
+            // ------------------------------------------------------
+            // Compare carrier
+            // ------------------------------------------------------
+            const dbCarrier =
+              dbAgreement.carrier?.wallet_address ||
+              dbAgreement.carrier_wallet ||
+              dbAgreement.carrier;
+
+            if (
+              dbCarrier &&
+              ethers.isAddress(dbCarrier) &&
+              chainAgreement.carrier.toLowerCase() !== dbCarrier.toLowerCase()
+            ) {
+              console.warn(`⚠️ Agreement #${agreementId}: carrier mismatch.`);
+
+              return null;
+            }
+
+            // ------------------------------------------------------
+            // Compare escrow amount
+            // ------------------------------------------------------
+            const dbAmount = String(dbAgreement.escrow_amount || "0");
+
+            if (
+              dbAmount !== "0" &&
+              chainAgreement.escrowAmount.toString() !== dbAmount
+            ) {
+              console.warn(
+                `⚠️ Agreement #${agreementId}: escrow amount mismatch.`,
+              );
+
+              return null;
+            }
+
+            console.log(`✅ Agreement #${agreementId} verified successfully.`);
+
+            return {
+              ...dbAgreement,
+
+              blockchain_verified: true,
+
+              blockchain_shipper: chainAgreement.shipper,
+
+              blockchain_carrier: chainAgreement.carrier,
+
+              blockchain_escrow_amount: chainAgreement.escrowAmount.toString(),
+
+              blockchain_deadline: Number(chainAgreement.deadline),
+
+              blockchain_status: Number(chainAgreement.status),
+            };
+          } catch (chainError) {
+            console.warn(
+              `❌ Agreement #${agreementId} does not exist on the current network/contract.`,
+              chainError.reason || chainError.message,
+            );
+
+            return null;
+          }
+        }),
+      );
+
+      const verifiedAgreements = verificationResults.filter(Boolean);
+
+      // ============================================================
+      // 7. DISPLAY ONLY VERIFIED AGREEMENTS
+      // ============================================================
+      if (verifiedAgreements.length === 0) {
+        container.innerHTML = `
+          <div style="
+            padding:60px 20px;
+            text-align:center;
+            color:var(--text-faint);
+          ">
+            <h3>📭 No verified agreements found</h3>
+            <p>
+              No database agreement could be verified on the
+              current Sepolia blockchain contract.
+            </p>
+          </div>
+        `;
+
+        return;
+      }
+
+      // ============================================================
+      // 8. BUILD TABLE
+      // ============================================================
+      let tableHtml = `
+  <div class="traxen-agreements">
+
+    <div class="agreements-table-wrap">
+
+      <table class="agreements-table">
+
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Carrier</th>
+            <th>Value</th>
+            <th>Status</th>
+            <th>Verification</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+
+        <tbody>
+`;
+
+      verifiedAgreements.forEach((agreement) => {
+        const id = agreement.onchain_id;
+
+        const carrier =
+          agreement.carrier?.display_name ||
+          agreement.carrier?.wallet_address ||
+          agreement.carrier_wallet ||
+          agreement.carrier ||
+          "Unknown";
+
+        const amount = agreement.escrow_amount
+          ? parseFloat(
+              ethers.formatEther(String(agreement.escrow_amount)),
+            ).toFixed(4)
+          : "0.0000";
+
+        const status = agreement.status || "Unknown";
+
+        let statusClass = "";
+
+        if (status === "Active" || status === "AwaitingFunding") {
+          statusClass = "active";
+        } else if (status === "PendingAcceptance") {
+          statusClass = "pending";
+        } else if (status === "Completed") {
+          statusClass = "completed";
+        } else if (
+          status === "Cancelled" ||
+          status === "Rejected" ||
+          status === "Expired"
+        ) {
+          statusClass = "cancelled";
+        }
+
+        tableHtml += `
+    <tr>
+
+      <td>
+        <span class="agreement-id">
+          #${id}
+        </span>
+      </td>
+
+      <td>
+        ${carrier}
+      </td>
+
+      <td>
+        <span class="agreement-value">
+          ${amount} ETH
+        </span>
+      </td>
+
+      <td>
+        <span class="agreement-status ${statusClass}">
+          <span class="dot"></span>
+          ${status}
+        </span>
+      </td>
+
+      <td>
+        <span class="agreement-verified">
+          ✓ Verified
+        </span>
+      </td>
+
+      <td>
+        <button
+          type="button"
+          class="agreement-view-btn"
+          data-id="${id}"
+        >
+          View
+        </button>
+      </td>
+
+    </tr>
+  `;
+      });
       tableHtml += `
-            </tbody>
-          </table>
-        </div>
-      `;
+        </tbody>
+
+      </table>
+
+    </div>
+
+  </div>
+`;
 
       container.innerHTML = tableHtml;
 
-      // ─── View button listeners ──────────────────────────
-      document.querySelectorAll(".view-agreement-btn").forEach((btn) => {
-        btn.addEventListener("click", function (e) {
-          e.preventDefault();
+      // ============================================================
+      // 9. VIEW BUTTONS
+      // ============================================================
+      container.querySelectorAll(".agreement-view-btn").forEach((btn) => {
+        btn.addEventListener("click", function () {
           const agreementId = this.dataset.id;
-          const role = localStorage.getItem("traxenRole") || "Shipper";
-          if (typeof window.loadPage === "function") {
-            window.loadPage("agreement_details");
-            // Build correct detail URL based on role
-            const detailPath =
-              role === "Shipper"
-                ? `/shipper/agreement_details_shipper.html?id=${agreementId}`
-                : `/carrier/carrier_agreement_detail.html?id=${agreementId}`;
-            window.history.pushState(
-              { page: "agreement_details" },
-              "",
-              detailPath,
-            );
-          } else {
-            // fallback
-            const detailFile =
-              role === "Shipper"
-                ? "agreement_details_shipper.html"
-                : "carrier_agreement_detail.html";
-            window.location.href = `${detailFile}?id=${agreementId}`;
-          }
+
+          window.history.pushState(
+            { page: "agreement_details" },
+            "",
+            `/shipper/agreement_details_shipper.html?id=${agreementId}`,
+          );
+
+          window.loadPage("agreement_details");
         });
       });
     } catch (error) {
-      console.error("Failed to load agreements:", error);
+      console.error("❌ Agreement verification failed:", error);
+
       container.innerHTML = `
-        <div style="padding: 40px; text-align: center; color: var(--red, #dc2626);">
+        <div style="
+          padding:40px;
+          text-align:center;
+          color:var(--red);
+        ">
           <h3>❌ Failed to load agreements</h3>
-          <p style="margin-top: 4px;">${error.message}</p>
-          <button onclick="window.initAgreements()" class="btn btn-primary" style="margin-top: 12px;">
-            Retry
-          </button>
+          <p>${error.message}</p>
         </div>
       `;
     }
   }
 
   window.initAgreements = renderAgreements;
-
-  // Inside renderAgreements() after fetching agreements
-
-  // ─── Update stats ──────────────────────────────────────
-  // const completed = agreements.filter((a) => a.status === "Completed");
-  // const refunded = agreements.filter((a) => a.status === "Refunded");
-  // const totalEarned = completed.reduce((sum, a) => {
-  //   const amt = a.escrow_amount
-  //     ? parseFloat(ethers.formatEther(a.escrow_amount))
-  //     : 0;
-  //   return sum + amt;
-  // }, 0);
-
-  // document.getElementById("historyCompleted").textContent = completed.length;
-  // document.getElementById("historyEarned").textContent =
-  //   totalEarned.toFixed(2) + " ETH";
-  // document.getElementById("historyRefunded").textContent = refunded.length;
-  // document.getElementById("historyAvg").textContent =
-  //   completed.length > 0
-  //     ? (totalEarned / completed.length).toFixed(2) + " ETH"
-  //     : "—";
-
-  // Auto-init if the page is loaded directly (non‑SPA fallback)
-  if (document.getElementById("agreements-list")) {
-    if (
-      document.readyState === "complete" ||
-      document.readyState === "interactive"
-    ) {
-      renderAgreements();
-    } else {
-      document.addEventListener("DOMContentLoaded", renderAgreements);
-    }
-  }
 })();
+// Inside renderAgreements() after fetching agreements
+
+// ─── Update stats ──────────────────────────────────────
+// const completed = agreements.filter((a) => a.status === "Completed");
+// const refunded = agreements.filter((a) => a.status === "Refunded");
+// const totalEarned = completed.reduce((sum, a) => {
+//   const amt = a.escrow_amount
+//     ? parseFloat(ethers.formatEther(a.escrow_amount))
+//     : 0;
+//   return sum + amt;
+// }, 0);
+
+// document.getElementById("historyCompleted").textContent = completed.length;
+// document.getElementById("historyEarned").textContent =
+//   totalEarned.toFixed(2) + " ETH";
+// document.getElementById("historyRefunded").textContent = refunded.length;
+// document.getElementById("historyAvg").textContent =
+//   completed.length > 0
+//     ? (totalEarned / completed.length).toFixed(2) + " ETH"
+//     : "—";
+
+// Auto-init if the page is loaded directly (non‑SPA fallback)
+//   if (document.getElementById("agreements-list")) {
+//     if (
+//       document.readyState === "complete" ||
+//       document.readyState === "interactive"
+//     ) {
+//       renderAgreements();
+//     } else {
+//       document.addEventListener("DOMContentLoaded", renderAgreements);
+//     }
+//   }
+// })();

@@ -465,9 +465,42 @@ async function createAgreement(
   paymentPercentages,
 ) {
   try {
-    if (!isConnected()) await connectWallet();
-    const contract = getContract();
+    if (!window.ethereum) {
+      throw new Error("MetaMask is not available.");
+    }
+
+    if (!isConnected()) {
+      await connectWallet();
+    }
+
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();
+
+    const signerAddress = await signer.getAddress();
+    const authenticatedWallet =
+      typeof window.Auth?.getWallet === "function"
+        ? window.Auth.getWallet()
+        : localStorage.getItem("traxenWallet");
+
+    console.log("🔐 Authenticated wallet:", authenticatedWallet);
+    console.log("🦊 MetaMask signer wallet:", signerAddress);
+
+    if (!authenticatedWallet) {
+      throw new Error("Authenticated wallet not found.");
+    }
+
+    if (signerAddress.toLowerCase() !== authenticatedWallet.toLowerCase()) {
+      throw new Error(
+        "MetaMask account does not match the authenticated Shipper wallet.",
+      );
+    }
+
+    const contract = getContract().connect(signer);
+
     const escrowWei = ethers.parseEther(String(escrowAmount));
+
+    console.log("👤 Transaction sender:", signerAddress);
+    console.log("🚚 Carrier:", carrierAddress);
 
     const transaction = await contract.createAgreement(
       carrierAddress,
@@ -478,8 +511,10 @@ async function createAgreement(
     );
 
     console.log("⏳ Agreement transaction:", transaction.hash);
+
     const receipt = await transaction.wait();
-    console.log("✅ Agreement created.");
+
+    console.log("✅ Agreement created:", receipt);
 
     const agreementCount = await contract.getAgreementCount();
 

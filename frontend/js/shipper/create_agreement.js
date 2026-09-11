@@ -17,61 +17,263 @@ let milestones = [
 ];
 
 // ─── Load Carriers from Blockchain ──────────────────────────
+// ─── Load Carriers from Database + Verify Blockchain ─────────
 async function loadCarriersFromBlockchain() {
   const carrierSelect = document.getElementById("f-carrier");
   const carrierStatus = document.getElementById("carrier-status");
+
   if (!carrierSelect) return;
 
   try {
-    // Check wallet connection (optional, but good for UX)
-    const walletAddress = localStorage.getItem("traxenWallet");
+    // ==========================================================
+    // 1. CHECK AUTHENTICATED WALLET
+    // ==========================================================
+
+    const walletAddress =
+      typeof window.Auth?.getWallet === "function"
+        ? window.Auth.getWallet()
+        : localStorage.getItem("traxenWallet");
+
     if (!walletAddress) {
       carrierSelect.innerHTML = `<option value="">Please connect your wallet first</option>`;
-      if (carrierStatus)
+
+      if (carrierStatus) {
         carrierStatus.textContent = "Wallet connection required.";
+      }
+
       return;
     }
 
-    carrierSelect.innerHTML = `<option value="">Loading carriers...</option>`;
-    if (carrierStatus)
+    // ==========================================================
+    // 2. SHOW LOADING STATE
+    // ==========================================================
+
+    carrierSelect.innerHTML = `<option value="">Loading verified carriers...</option>`;
+
+    if (carrierStatus) {
       carrierStatus.textContent = "Loading carriers from database...";
-
-    // ─── Fetch carriers from the database API ──────────────
-    const response = await fetch("/api/users/carriers");
-    if (!response.ok) {
-      throw new Error(`Failed to fetch carriers: ${response.statusText}`);
     }
-    const carriers = await response.json(); // array of { wallet_address, display_name, email, ... }
 
-    console.log("Carriers from DB:", carriers);
+    // ==========================================================
+    // 3. LOAD CARRIERS FROM DATABASE FIRST
+    // ==========================================================
 
-    if (!Array.isArray(carriers) || carriers.length === 0) {
+    const response = await fetch("/api/users/carriers", {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch carriers: HTTP ${response.status}`);
+    }
+
+    const databaseCarriers = await response.json();
+
+    console.log("📦 Carriers loaded from database:", databaseCarriers);
+
+    if (!Array.isArray(databaseCarriers) || databaseCarriers.length === 0) {
       carrierSelect.innerHTML = `<option value="">No carriers available</option>`;
-      if (carrierStatus)
+
+      if (carrierStatus) {
         carrierStatus.textContent =
-          "No carriers are registered in the system yet.";
+          "No carriers are registered in the database.";
+      }
+
       return;
     }
+
+    // ==========================================================
+    // 4. CHECK METAMASK
+    // ==========================================================
+
+    if (!window.ethereum) {
+      throw new Error("MetaMask is not available.");
+    }
+
+    const provider = new ethers.BrowserProvider(window.ethereum);
+
+    // ==========================================================
+    // 5. CHECK CURRENT NETWORK
+    // ==========================================================
+
+    const network = await provider.getNetwork();
+
+    const currentChainId = Number(network.chainId);
+
+    const EXPECTED_CHAIN_ID = 11155111; // Sepolia
+
+    console.log("🌐 Current blockchain chain ID:", currentChainId);
+
+    if (currentChainId !== EXPECTED_CHAIN_ID) {
+      carrierSelect.innerHTML = `<option value="">Wrong blockchain network</option>`;
+
+      if (carrierStatus) {
+        carrierStatus.textContent = `Please switch MetaMask to Sepolia (Chain ID ${EXPECTED_CHAIN_ID}) to verify carriers.`;
+      }
+
+      return;
+    }
+
+    // ==========================================================
+    // 6. ENSURE CURRENT CONTRACT EXISTS
+    // ==========================================================
+
+    if (!window.contract) {
+      if (typeof window.initContract === "function") {
+        await window.initContract();
+      }
+    }
+
+    const contract =
+      window.contract ||
+      (typeof window.getContract === "function" ? window.getContract() : null);
+
+    if (!contract) {
+      throw new Error("Smart contract is not initialized.");
+    }
+
+    const contractAddress = await contract.getAddress();
+
+    console.log("📄 Current contract:", contractAddress);
+
+    // ==========================================================
+    // 7. VERIFY DATABASE CARRIERS IN PARALLEL
+    // ==========================================================
+
+    if (carrierStatus) {
+      carrierStatus.textContent =
+        "Verifying carriers on the current Sepolia blockchain...";
+    }
+
+    const verificationResults = await Promise.all(
+      databaseCarriers.map(async (carrier) => {
+        try {
+          // ----------------------------------------------------
+          // Validate DB wallet
+          // ----------------------------------------------------
+
+          const dbWallet = carrier?.wallet_address;
+
+          if (!dbWallet || !ethers.isAddress(dbWallet)) {
+            console.warn("⚠️ Invalid carrier wallet in database:", dbWallet);
+
+            return null;
+          }
+
+          const normalizedWallet = dbWallet.toLowerCase();
+
+          // ----------------------------------------------------
+          // Check blockchain registration
+          // ----------------------------------------------------
+
+          const isRegistered =
+            await window.checkUserRegistered(normalizedWallet);
+
+          if (!isRegistered) {
+            console.warn(
+              `⚠️ Carrier ${normalizedWallet} exists in DB but is not registered on the current blockchain.`,
+            );
+
+            return null;
+          }
+
+          // ----------------------------------------------------
+          // Check blockchain role
+          // ----------------------------------------------------
+
+          const roleInfo = await window.getUserRole(normalizedWallet);
+
+          if (!roleInfo || roleInfo.role !== "Carrier") {
+            console.warn(
+              `⚠️ Wallet ${normalizedWallet} is not a Carrier on the current blockchain.`,
+            );
+
+            return null;
+          }
+
+          // ----------------------------------------------------
+          // Carrier is valid on current network
+          // ----------------------------------------------------
+
+          console.log(`✅ Carrier verified: ${normalizedWallet}`);
+
+          return {
+            ...carrier,
+
+            wallet_address: normalizedWallet,
+
+            blockchainVerified: true,
+
+            blockchainChainId: currentChainId,
+
+            blockchainContractAddress: contractAddress,
+          };
+        } catch (error) {
+          console.warn(
+            `❌ Failed to verify carrier ${
+              carrier?.wallet_address || "unknown"
+            }:`,
+            error.reason || error.message,
+          );
+
+          return null;
+        }
+      }),
+    );
+
+    // ==========================================================
+    // 8. KEEP ONLY VERIFIED CARRIERS
+    // ==========================================================
+
+    const verifiedCarriers = verificationResults.filter(Boolean);
+
+    console.log("✅ Verified carriers:", verifiedCarriers);
+
+    // ==========================================================
+    // 9. DISPLAY ONLY VERIFIED CARRIERS
+    // ==========================================================
 
     carrierSelect.innerHTML = `<option value="">-- Select a carrier --</option>`;
-    carriers.forEach((carrier) => {
+
+    verifiedCarriers.forEach((carrier) => {
       const option = document.createElement("option");
-      option.value = carrier.wallet_address; // store the wallet address
+
+      option.value = carrier.wallet_address;
+
       const display =
         carrier.display_name || carrier.wallet_address.substring(0, 8) + "...";
+
       const email = carrier.email ? ` (${carrier.email})` : "";
+
       option.textContent = `${display}${email}`;
+
       carrierSelect.appendChild(option);
     });
 
+    // ==========================================================
+    // 10. STATUS
+    // ==========================================================
+
     if (carrierStatus) {
-      carrierStatus.textContent = `${carriers.length} carrier(s) available.`;
+      if (verifiedCarriers.length === 0) {
+        carrierStatus.textContent =
+          "No database carriers could be verified on the current Sepolia blockchain.";
+      } else {
+        carrierStatus.textContent = `${verifiedCarriers.length} verified carrier${
+          verifiedCarriers.length === 1 ? "" : "s"
+        } available.`;
+      }
     }
   } catch (error) {
-    console.error("❌ Failed to load carriers:", error);
-    carrierSelect.innerHTML = `<option value="">Unable to load carriers</option>`;
+    console.error("❌ Failed to load and verify carriers:", error);
+
+    carrierSelect.innerHTML = `<option value="">Unable to verify carriers</option>`;
+
     if (carrierStatus) {
-      carrierStatus.textContent = error.message || "Failed to load carriers.";
+      carrierStatus.textContent =
+        error.message || "Failed to load and verify carriers.";
     }
   }
 }
@@ -557,33 +759,33 @@ async function submitCreateAgreement() {
 
     console.log("💾 Saving agreement metadata...");
 
-const token = localStorage.getItem("traxenAuthToken");
+    const token = localStorage.getItem("traxenAuthToken");
 
-if (!token) {
-  throw new Error("Authentication token required.");
-}
+    if (!token) {
+      throw new Error("Authentication token required.");
+    }
 
-const dbResponse = await fetch("/api/agreements/create", {
-  method: "POST",
+    const dbResponse = await fetch("/api/agreements/create", {
+      method: "POST",
 
-  headers: {
-    "Content-Type": "application/json",
-    "Authorization": `Bearer ${token}`,
-  },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
 
-  body: JSON.stringify({
-    onchainId: blockchainResult.agreementId,
-    carrier: carrierAddress,
-    totalAmountEth: totalAmountEth,
-    descriptions: descriptions,
-    percentages: paymentPercentages,
-    deadlineTimestamp: deadlineTimestamp,
-    createTx: blockchainResult.transactionHash,
-    cargoType: cargoType,
-    weightKg: weightKg,
-    agreementName: agreementName,
-  }),
-});
+      body: JSON.stringify({
+        onchainId: blockchainResult.agreementId,
+        carrier: carrierAddress,
+        totalAmountEth: totalAmountEth,
+        descriptions: descriptions,
+        percentages: paymentPercentages,
+        deadlineTimestamp: deadlineTimestamp,
+        createTx: blockchainResult.transactionHash,
+        cargoType: cargoType,
+        weightKg: weightKg,
+        agreementName: agreementName,
+      }),
+    });
 
     // =====================================================
     // 10. CHECK DATABASE RESULT
@@ -607,7 +809,7 @@ const dbResponse = await fetch("/api/agreements/create", {
 
     alert(
       "Agreement created successfully!\n\n" +
-      "Waiting for the carrier to accept the agreement.",
+        "Waiting for the carrier to accept the agreement.",
     );
 
     // =====================================================
@@ -908,7 +1110,7 @@ function validateDeadline() {
     return false;
   }
 
-//  const minDeadline = new Date(Date.now() + 60 * 60 * 1000);
+  //  const minDeadline = new Date(Date.now() + 60 * 60 * 1000);
   const minDeadline = new Date(Date.now() + 1 * 60 * 1000);
 
   if (deadline <= minDeadline) {

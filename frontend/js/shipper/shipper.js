@@ -154,264 +154,701 @@ document.addEventListener("DOMContentLoaded", function () {
     // DASHBOARD HTML
     // ============================================================
 
+    // ============================================================
+    // DASHBOARD HTML + CSS
+    // ============================================================
+
     function getDashboardHTML() {
       return `
-        <div class="view active">
+    <style>
+      /* ========================================================
+         TRAXEN SPA DASHBOARD
+         CSS is scoped ONLY to #contentPlaceholder
+         ======================================================== */
 
-        <!-- Two‑column layout -->
-        <div class="two-col">
-          <div class="panel">
-            <h2>Recent Agreements</h2>
-            <div class="desc">Your latest logistics contracts</div>
-            <div id="recent-agreements-list"><div style="padding:20px;text-align:center;color:var(--text-faint);">Loading...</div></div>
-            <div style="margin-top:14px;">
-              <button class="btn btn-ghost" onclick="window.loadPage('agreements')">View All →</button>
-            </div>
+      #contentPlaceholder .traxen-dashboard {
+        width: 100%;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 4px 0 32px;
+        color: var(--text);
+      }
+
+      #contentPlaceholder .traxen-dashboard *,
+      #contentPlaceholder .traxen-dashboard *::before,
+      #contentPlaceholder .traxen-dashboard *::after {
+        box-sizing: border-box;
+      }
+
+      /* ========================================================
+         STATISTICS
+         ======================================================== */
+
+      #contentPlaceholder .dashboard-stats {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
+        margin-bottom: 20px;
+      }
+
+      #contentPlaceholder .dashboard-stat-card {
+        position: relative;
+        min-width: 0;
+        min-height: 124px;
+
+        padding: 20px;
+
+        background: var(--panel);
+        border: 1px solid var(--border-soft);
+        border-radius: 14px;
+
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.10);
+
+        overflow: hidden;
+
+        transition:
+          transform 0.18s ease,
+          box-shadow 0.18s ease,
+          border-color 0.18s ease;
+      }
+
+      #contentPlaceholder .dashboard-stat-card::before {
+        content: "";
+
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+
+        height: 3px;
+
+        background: var(--border-soft);
+      }
+
+      #contentPlaceholder .dashboard-stat-card.primary::before {
+        background: var(--lime);
+      }
+
+      #contentPlaceholder .dashboard-stat-card.amber::before {
+        background: var(--amber);
+      }
+
+      #contentPlaceholder .dashboard-stat-card:hover {
+        transform: translateY(-2px);
+
+        border-color: var(--border);
+
+        box-shadow:
+          0 8px 22px rgba(0, 0, 0, 0.16);
+      }
+
+      #contentPlaceholder .dashboard-stat-label {
+        margin-bottom: 10px;
+
+        font-size: 10.5px;
+        font-weight: 700;
+        line-height: 1.3;
+
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+
+        color: var(--text-faint);
+      }
+
+      #contentPlaceholder .dashboard-stat-value {
+        font-size: 27px;
+        line-height: 1.15;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+
+        color: var(--text);
+      }
+
+      #contentPlaceholder .dashboard-stat-value.lime {
+        color: var(--lime);
+      }
+
+      #contentPlaceholder .dashboard-stat-value.amber {
+        color: var(--amber);
+      }
+
+      #contentPlaceholder .dashboard-stat-delta {
+        margin-top: 8px;
+
+        font-size: 11px;
+        line-height: 1.4;
+
+        color: var(--text-faint);
+      }
+
+      /* ========================================================
+         MAIN DASHBOARD GRID
+         ======================================================== */
+
+      #contentPlaceholder .dashboard-grid {
+        display: grid;
+
+        grid-template-columns:
+          minmax(0, 1.65fr)
+          minmax(300px, 1fr);
+
+        gap: 18px;
+
+        align-items: stretch;
+      }
+
+      /* ========================================================
+         PANELS
+         ======================================================== */
+
+      #contentPlaceholder .dashboard-panel {
+        min-width: 0;
+
+        padding: 22px;
+
+        background: var(--panel);
+
+        border: 1px solid var(--border-soft);
+
+        border-radius: 14px;
+
+        box-shadow:
+          0 4px 14px rgba(0, 0, 0, 0.09);
+
+        overflow: hidden;
+      }
+
+      #contentPlaceholder .dashboard-panel-head {
+        display: flex;
+
+        align-items: flex-start;
+        justify-content: space-between;
+
+        gap: 16px;
+
+        margin-bottom: 18px;
+        padding-bottom: 14px;
+
+        border-bottom: 1px solid var(--border-soft);
+      }
+
+      #contentPlaceholder .dashboard-panel h2 {
+        margin: 0;
+
+        font-size: 15px;
+        line-height: 1.35;
+        font-weight: 700;
+
+        color: var(--text);
+      }
+
+      #contentPlaceholder .dashboard-desc {
+        margin-top: 4px;
+
+        font-size: 11.5px;
+        line-height: 1.45;
+
+        color: var(--text-faint);
+      }
+
+      /* ========================================================
+         LOADING / EMPTY
+         ======================================================== */
+
+      #contentPlaceholder .dashboard-loading {
+        display: flex;
+
+        align-items: center;
+        justify-content: center;
+
+        min-height: 140px;
+
+        padding: 24px;
+
+        text-align: center;
+
+        background: var(--panel-2);
+
+        border: 1px dashed var(--border);
+
+        border-radius: 10px;
+
+        color: var(--text-faint);
+
+        font-size: 12px;
+      }
+
+      /* ========================================================
+         RECENT AGREEMENTS TABLE
+         ======================================================== */
+
+      #contentPlaceholder .dashboard-table-wrap {
+        width: 100%;
+
+        overflow-x: auto;
+
+        border: 1px solid var(--border-soft);
+
+        border-radius: 10px;
+      }
+
+      #contentPlaceholder .dashboard-table {
+        width: 100%;
+        min-width: 500px;
+
+        border-collapse: collapse;
+      }
+
+      #contentPlaceholder .dashboard-table th {
+        padding: 11px 12px;
+
+        background: var(--panel-2);
+
+        border-bottom: 1px solid var(--border-soft);
+
+        color: var(--text-faint);
+
+        font-size: 10.5px;
+        font-weight: 700;
+
+        text-align: left;
+
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      #contentPlaceholder .dashboard-table td {
+        padding: 13px 12px;
+
+        border-bottom: 1px solid var(--border-soft);
+
+        color: var(--text);
+
+        font-size: 12px;
+
+        vertical-align: middle;
+      }
+
+      #contentPlaceholder .dashboard-table tbody tr {
+        transition: background 0.15s ease;
+      }
+
+      #contentPlaceholder .dashboard-table tbody tr:hover {
+        background: var(--panel-2);
+      }
+
+      #contentPlaceholder .dashboard-table tbody tr:last-child td {
+        border-bottom: none;
+      }
+
+      #contentPlaceholder .dashboard-mono {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text-dim);
+      }
+
+      /* ========================================================
+         STATUS
+         ======================================================== */
+
+      #contentPlaceholder .dashboard-status {
+        display: inline-flex;
+
+        align-items: center;
+
+        gap: 5px;
+
+        padding: 4px 9px;
+
+        border-radius: 999px;
+
+        font-size: 10.5px;
+        font-weight: 700;
+
+        white-space: nowrap;
+      }
+
+      #contentPlaceholder .dashboard-status .dot {
+        width: 5px;
+        height: 5px;
+
+        border-radius: 50%;
+
+        background: currentColor;
+      }
+
+      #contentPlaceholder .dashboard-status.active {
+        background: var(--lime-glow);
+        color: var(--lime);
+      }
+
+      #contentPlaceholder .dashboard-status.pending {
+        background: var(--amber-glow);
+        color: var(--amber);
+      }
+
+      #contentPlaceholder .dashboard-status.completed {
+        background: var(--panel-2);
+        border: 1px solid var(--border);
+
+        color: var(--text-faint);
+      }
+
+      #contentPlaceholder .dashboard-status.cancelled {
+        background: var(--red-glow);
+        color: var(--red);
+      }
+
+      /* ========================================================
+         BUTTONS
+         ======================================================== */
+
+      #contentPlaceholder .dashboard-actions {
+        display: flex;
+
+        flex-direction: column;
+
+        gap: 10px;
+
+        margin-top: 14px;
+      }
+
+      #contentPlaceholder .dashboard-action {
+        width: 100%;
+      }
+
+      #contentPlaceholder .dashboard-divider {
+        margin: 20px 0;
+
+        border: 0;
+
+        border-top: 1px solid var(--border-soft);
+      }
+
+      /* ========================================================
+         MILESTONE
+         ======================================================== */
+
+      #contentPlaceholder .dashboard-milestone-header {
+        display: flex;
+
+        align-items: center;
+        justify-content: space-between;
+
+        gap: 12px;
+
+        margin-bottom: 10px;
+
+        font-size: 12px;
+
+        color: var(--text-faint);
+      }
+
+      #contentPlaceholder #next-milestone-days {
+        color: var(--amber);
+
+        font-weight: 700;
+      }
+
+      #contentPlaceholder .dashboard-progress {
+        width: 100%;
+        height: 8px;
+
+        margin-bottom: 12px;
+
+        overflow: hidden;
+
+        background: var(--panel-2);
+
+        border: 1px solid var(--border-soft);
+
+        border-radius: 999px;
+      }
+
+      #contentPlaceholder .dashboard-progress-fill {
+        width: 0%;
+        height: 100%;
+
+        background: var(--lime);
+
+        border-radius: inherit;
+
+        transition: width 0.35s ease;
+      }
+
+      #contentPlaceholder .dashboard-milestones {
+        display: grid;
+
+        grid-template-columns:
+          repeat(4, minmax(0, 1fr));
+
+        gap: 6px;
+
+        font-size: 9.5px;
+        line-height: 1.35;
+
+        color: var(--text-faint);
+
+        text-align: center;
+      }
+
+      /* ========================================================
+         RESPONSIVE
+         ======================================================== */
+
+      @media (max-width: 1050px) {
+        #contentPlaceholder .dashboard-stats {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        #contentPlaceholder .dashboard-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 650px) {
+        #contentPlaceholder .dashboard-stats {
+          grid-template-columns: 1fr;
+        }
+
+        #contentPlaceholder .dashboard-panel {
+          padding: 17px;
+        }
+
+        #contentPlaceholder .dashboard-panel-head {
+          flex-direction: column;
+        }
+
+        #contentPlaceholder .dashboard-milestones {
+          font-size: 8.5px;
+        }
+      }
+    </style>
+
+    <div class="traxen-dashboard">
+
+      <!-- ======================================================
+           STATISTICS
+           ====================================================== -->
+
+      <div class="dashboard-stats">
+
+        <div class="dashboard-stat-card primary">
+          <div class="dashboard-stat-label">
+            Total Agreements
           </div>
-          <div class="panel">
-            <h2>Quick Actions</h2>
-            <div class="desc">What would you like to do?</div>
-            <div style="display:flex; flex-direction:column; gap:10px; margin-top:12px;">
-              <button class="btn btn-primary btn-block" onclick="window.loadPage('create_agreement')">+ Create New Agreement</button>
-              <!-- ═══ YON : removed removed-page quick actions
-                   ("Escrow Overview", "Milestone Tracking") ═══ -->
-            </div>
-            <hr style="border-color:var(--border-soft); margin:18px 0;">
-            <div>
-              <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--text-faint);">
-                <span>Next Milestone Due</span>
-                <span style="color:var(--amber);" id="next-milestone-days">--</span>
-              </div>
 
-              <div
-                class="val lime"
-                id="stat-total"
-              >
-                0
-              </div>
-
-              <div
-                class="delta"
-                id="stat-total-delta"
-              >
-                Loading...
-              </div>
-            </div>
-
-
-            <div class="stat-card">
-
-              <div class="lbl">
-                Active
-              </div>
-
-              <div
-                class="val"
-                id="stat-active"
-              >
-                0
-              </div>
-
-              <div class="delta">
-                In progress
-              </div>
-
-            </div>
-
-
-            <div class="stat-card">
-
-              <div class="lbl">
-                Completed
-              </div>
-
-              <div
-                class="val"
-                id="stat-completed"
-              >
-                0
-              </div>
-
-              <div class="delta">
-                ✅ On time
-              </div>
-
-            </div>
-
-
-            <div class="stat-card">
-
-              <div class="lbl">
-                Total Escrow (ETH)
-              </div>
-
-              <div
-                class="val amber"
-                id="stat-escrow"
-              >
-                0.00
-              </div>
-
-              <div class="delta">
-                Locked in contracts
-              </div>
-
-            </div>
-
+          <div
+            class="dashboard-stat-value lime"
+            id="stat-total"
+          >
+            0
           </div>
 
-
-          <!-- Two Column Layout -->
-
-          <div class="two-col">
-
-            <div class="panel">
-
-              <h2>
-                Recent Agreements
-              </h2>
-
-              <div class="desc">
-                Your latest logistics contracts
-              </div>
-
-              <div id="recent-agreements-list">
-
-                <div
-                  style="
-                    padding:20px;
-                    text-align:center;
-                    color:var(--text-faint);
-                  "
-                >
-                  Loading...
-                </div>
-
-              </div>
-
-              <div style="margin-top:14px;">
-
-                <button
-                  class="btn btn-ghost"
-                  onclick="window.loadPage('agreements')"
-                >
-                  View All →
-                </button>
-
-              </div>
-
-            </div>
-
-
-            <div class="panel">
-
-              <h2>
-                Quick Actions
-              </h2>
-
-              <div class="desc">
-                What would you like to do?
-              </div>
-
-              <div
-                style="
-                  display:flex;
-                  flex-direction:column;
-                  gap:10px;
-                  margin-top:12px;
-                "
-              >
-
-                <button
-                  class="btn btn-primary btn-block"
-                  onclick="window.loadPage('create_agreement')"
-                >
-                  + Create New Agreement
-                </button>
-
-                <button
-                  class="btn btn-ghost btn-block"
-                  onclick="window.loadPage('deposit_balance')"
-                >
-                  💰 View Escrow Balances
-                </button>
-
-                <button
-                  class="btn btn-ghost btn-block"
-                  onclick="window.loadPage('milestone_release')"
-                >
-                  📍 Track Milestones
-                </button>
-
-              </div>
-
-
-              <hr
-                style="
-                  border-color:var(--border-soft);
-                  margin:18px 0;
-                "
-              >
-
-
-              <div>
-
-                <div
-                  style="
-                    display:flex;
-                    justify-content:space-between;
-                    font-size:12px;
-                    color:var(--text-faint);
-                  "
-                >
-
-                  <span>
-                    Next Milestone Due
-                  </span>
-
-                  <span
-                    style="color:var(--amber);"
-                    id="next-milestone-days"
-                  >
-                    --
-                  </span>
-
-                </div>
-
-
-                <div class="progress-track">
-
-                  <div
-                    class="progress-fill"
-                    id="milestone-progress"
-                    style="width:0%;"
-                  ></div>
-
-                </div>
-
-
-                <div
-                  style="
-                    display:flex;
-                    justify-content:space-between;
-                    font-size:11px;
-                    color:var(--text-faint);
-                  "
-                >
-                  <span>Pickup ✓</span>
-                  <span>In Transit</span>
-                  <span>Out for Delivery</span>
-                  <span>Delivered</span>
-                </div>
-
-              </div>
-
-            </div>
-
+          <div
+            class="dashboard-stat-delta"
+            id="stat-total-delta"
+          >
+            Loading...
           </div>
-
         </div>
-      `;
+
+
+        <div class="dashboard-stat-card">
+          <div class="dashboard-stat-label">
+            Active Agreements
+          </div>
+
+          <div
+            class="dashboard-stat-value"
+            id="stat-active"
+          >
+            0
+          </div>
+
+          <div class="dashboard-stat-delta">
+            Currently in progress
+          </div>
+        </div>
+
+
+        <div class="dashboard-stat-card">
+          <div class="dashboard-stat-label">
+            Completed
+          </div>
+
+          <div
+            class="dashboard-stat-value"
+            id="stat-completed"
+          >
+            0
+          </div>
+
+          <div class="dashboard-stat-delta">
+            Successfully completed
+          </div>
+        </div>
+
+
+        <div class="dashboard-stat-card amber">
+          <div class="dashboard-stat-label">
+            Total Escrow
+          </div>
+
+          <div
+            class="dashboard-stat-value amber"
+            id="stat-escrow"
+          >
+            0.00
+          </div>
+
+          <div class="dashboard-stat-delta">
+            ETH secured in contracts
+          </div>
+        </div>
+
+      </div>
+
+
+      <!-- ======================================================
+           MAIN DASHBOARD
+           ====================================================== -->
+
+      <div class="dashboard-grid">
+
+        <!-- ====================================================
+             RECENT AGREEMENTS
+             ==================================================== -->
+
+        <section class="dashboard-panel">
+
+          <div class="dashboard-panel-head">
+            <div>
+              <h2>Recent Agreements</h2>
+
+              <div class="dashboard-desc">
+                Your latest verified logistics contracts
+              </div>
+            </div>
+          </div>
+
+
+          <div id="recent-agreements-list">
+
+            <div class="dashboard-loading">
+              Verifying agreements on the blockchain...
+            </div>
+
+          </div>
+
+
+          <div class="dashboard-actions">
+
+            <button
+              class="btn btn-ghost dashboard-action"
+              onclick="window.loadPage('agreements')"
+            >
+              View All Agreements →
+            </button>
+
+          </div>
+
+        </section>
+
+
+        <!-- ====================================================
+             QUICK ACTIONS
+             ==================================================== -->
+
+        <section class="dashboard-panel">
+
+          <div class="dashboard-panel-head">
+            <div>
+              <h2>Quick Actions</h2>
+
+              <div class="dashboard-desc">
+                Manage your logistics agreements
+              </div>
+            </div>
+          </div>
+
+
+          <div class="dashboard-actions">
+
+            <button
+              class="btn btn-primary btn-block dashboard-action"
+              onclick="window.loadPage('create_agreement')"
+            >
+              + Create New Agreement
+            </button>
+
+            <button
+              class="btn btn-ghost btn-block dashboard-action"
+              onclick="window.loadPage('deposit_balance')"
+            >
+              💰 View Escrow Balances
+            </button>
+
+            <button
+              class="btn btn-ghost btn-block dashboard-action"
+              onclick="window.loadPage('milestone_release')"
+            >
+              📍 Track Milestones
+            </button>
+
+          </div>
+
+
+          <hr class="dashboard-divider">
+
+
+          <!-- MILESTONE -->
+
+          <div>
+
+            <div class="dashboard-milestone-header">
+
+              <span>
+                Next Milestone Due
+              </span>
+
+              <span id="next-milestone-days">
+                --
+              </span>
+
+            </div>
+
+
+            <div class="dashboard-progress">
+
+              <div
+                class="dashboard-progress-fill"
+                id="milestone-progress"
+              ></div>
+
+            </div>
+
+
+            <div class="dashboard-milestones">
+
+              <span>Pickup ✓</span>
+
+              <span>In Transit</span>
+
+              <span>Out for Delivery</span>
+
+              <span>Delivered</span>
+
+            </div>
+
+          </div>
+
+        </section>
+
+      </div>
+
+    </div>
+  `;
     }
 
     // ============================================================
@@ -420,6 +857,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
     async function loadDashboardStats() {
       try {
+        // ========================================================
+        // 1. Get authenticated JWT
+        // ========================================================
         const token =
           typeof window.getAuthToken === "function"
             ? window.getAuthToken()
@@ -427,13 +867,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (!token) {
           console.warn("❌ No JWT available.");
-
           return;
         }
 
+        // ========================================================
+        // 2. Get agreements from DATABASE
+        // ========================================================
         const response = await fetch("/api/agreements", {
           method: "GET",
-
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -445,12 +886,237 @@ document.addEventListener("DOMContentLoaded", function () {
           );
         }
 
-        const agreements = await response.json();
+        const databaseAgreements = await response.json();
 
-        // --------------------------------------------------------
-        // Statistics
-        // --------------------------------------------------------
+        console.log("📦 Database agreements:", databaseAgreements);
 
+        // ========================================================
+        // 3. Validate CURRENT MetaMask network
+        // ========================================================
+        if (!window.ethereum) {
+          throw new Error("MetaMask is not available.");
+        }
+
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const network = await provider.getNetwork();
+
+        const currentChainId = Number(network.chainId);
+
+        // Sepolia
+        const expectedChainId = 11155111;
+
+        console.log("🌐 Current chain ID:", currentChainId);
+
+        if (currentChainId !== expectedChainId) {
+          console.warn(
+            `❌ Wrong network. Expected Sepolia (${expectedChainId}), got ${currentChainId}.`,
+          );
+
+          const recentContainer = document.getElementById(
+            "recent-agreements-list",
+          );
+
+          if (recentContainer) {
+            recentContainer.innerHTML = `
+          <div style="
+            padding:20px;
+            text-align:center;
+            color:var(--text-faint);
+          ">
+            <strong>Wrong blockchain network</strong><br>
+            Please switch MetaMask to Sepolia to verify your agreements.
+          </div>
+        `;
+          }
+
+          // Do not display database agreements on a wrong network.
+          if (document.getElementById("stat-total")) {
+            document.getElementById("stat-total").textContent = "0";
+          }
+
+          if (document.getElementById("stat-active")) {
+            document.getElementById("stat-active").textContent = "0";
+          }
+
+          if (document.getElementById("stat-completed")) {
+            document.getElementById("stat-completed").textContent = "0";
+          }
+
+          if (document.getElementById("stat-escrow")) {
+            document.getElementById("stat-escrow").textContent = "0.00";
+          }
+
+          if (document.getElementById("stat-total-delta")) {
+            document.getElementById("stat-total-delta").textContent =
+              "No verified agreements";
+          }
+
+          return;
+        }
+
+        // ========================================================
+        // 4. Get CURRENT contract address
+        // ========================================================
+        let contractAddress = window.__CONFIG?.contractAddress || null;
+
+        if (!contractAddress && window.contract) {
+          contractAddress = await window.contract.getAddress();
+        }
+
+        if (!contractAddress) {
+          throw new Error("Blockchain contract address is not configured.");
+        }
+
+        let contract;
+
+        // ========================================================
+        // 5. Make sure active contract matches configured address
+        // ========================================================
+        if (window.contract) {
+          const activeContractAddress = await window.contract.getAddress();
+
+          if (
+            activeContractAddress.toLowerCase() !==
+            contractAddress.toLowerCase()
+          ) {
+            throw new Error(
+              "Active Web3 contract does not match the configured contract address.",
+            );
+          }
+
+          // Read-only contract for validation
+          const abi =
+            typeof window.__loadContractABI === "function"
+              ? await window.__loadContractABI()
+              : null;
+
+          if (abi) {
+            contract = new ethers.Contract(contractAddress, abi, provider);
+          } else {
+            contract = window.contract;
+          }
+        } else {
+          const abi =
+            typeof window.__loadContractABI === "function"
+              ? await window.__loadContractABI()
+              : null;
+
+          if (!abi) {
+            throw new Error("Contract ABI is not available.");
+          }
+
+          contract = new ethers.Contract(contractAddress, abi, provider);
+        }
+
+        console.log("📄 Current contract address:", contractAddress);
+
+        console.log("🌐 Contract network chain ID:", currentChainId);
+
+        // ========================================================
+        // 6. Get authenticated Shipper wallet
+        // ========================================================
+        const authenticatedWallet =
+          typeof window.Auth?.getWallet === "function"
+            ? window.Auth.getWallet()
+            : localStorage.getItem("traxenWallet");
+
+        const shipperWallet = authenticatedWallet
+          ? authenticatedWallet.toLowerCase()
+          : null;
+
+        // ========================================================
+        // 7. Verify EVERY database agreement on blockchain
+        // ========================================================
+        const verifiedAgreements = [];
+
+        for (const dbAgreement of Array.isArray(databaseAgreements)
+          ? databaseAgreements
+          : []) {
+          const agreementId = Number(dbAgreement.onchain_id);
+
+          if (!Number.isInteger(agreementId) || agreementId <= 0) {
+            console.warn(
+              "⚠️ Invalid database onchain_id:",
+              dbAgreement.onchain_id,
+            );
+
+            continue;
+          }
+
+          try {
+            console.log(
+              `🔍 Verifying database agreement #${agreementId} on Sepolia...`,
+            );
+
+            // ------------------------------------------------------
+            // Ask CURRENT blockchain contract for this agreement
+            // ------------------------------------------------------
+            const chainAgreement = await contract.getAgreement(agreementId);
+
+            // ------------------------------------------------------
+            // Verify the agreement belongs to this Shipper
+            // ------------------------------------------------------
+            const chainShipper = String(chainAgreement.shipper).toLowerCase();
+
+            if (shipperWallet && chainShipper !== shipperWallet) {
+              console.warn(
+                `⚠️ Agreement #${agreementId} exists, but blockchain shipper does not match the authenticated Shipper.`,
+              );
+
+              continue;
+            }
+
+            // ------------------------------------------------------
+            // Verify returned blockchain ID
+            // ------------------------------------------------------
+            if (
+              chainAgreement[0] !== undefined &&
+              Number(chainAgreement[0]) !== agreementId
+            ) {
+              console.warn(
+                `⚠️ Agreement #${agreementId} returned a different on-chain ID.`,
+              );
+
+              continue;
+            }
+
+            // ------------------------------------------------------
+            // Agreement is valid
+            // ------------------------------------------------------
+            verifiedAgreements.push({
+              ...dbAgreement,
+
+              blockchainVerified: true,
+              blockchainChainId: currentChainId,
+              blockchainContractAddress: contractAddress,
+              blockchainAgreement: chainAgreement,
+            });
+
+            console.log(`✅ Agreement #${agreementId} verified.`);
+          } catch (chainError) {
+            // ------------------------------------------------------
+            // Agreement does NOT exist on current network/contract
+            // ------------------------------------------------------
+            console.warn(
+              `❌ Agreement #${agreementId} is NOT available on the current Sepolia contract:`,
+              chainError.reason || chainError.message,
+            );
+
+            // IMPORTANT:
+            // Do not add this agreement to verifiedAgreements.
+          }
+        }
+
+        console.log("✅ Verified agreements:", verifiedAgreements);
+
+        // ========================================================
+        // 8. ONLY VERIFIED AGREEMENTS ARE DISPLAYED
+        // ========================================================
+        const agreements = verifiedAgreements;
+
+        // ========================================================
+        // 9. Statistics
+        // ========================================================
         const total = agreements.length;
 
         const active = agreements.filter(
@@ -477,10 +1143,9 @@ document.addEventListener("DOMContentLoaded", function () {
           }
         });
 
-        // --------------------------------------------------------
-        // Update statistics
-        // --------------------------------------------------------
-
+        // ========================================================
+        // 10. Update statistics
+        // ========================================================
         const totalEl = document.getElementById("stat-total");
 
         const activeEl = document.getElementById("stat-active");
@@ -510,14 +1175,13 @@ document.addEventListener("DOMContentLoaded", function () {
         if (totalDeltaEl) {
           totalDeltaEl.textContent =
             total > 0
-              ? `${total} agreement${total > 1 ? "s" : ""}`
-              : "No agreements yet";
+              ? `${total} verified agreement${total > 1 ? "s" : ""}`
+              : "No verified agreements";
         }
 
-        // --------------------------------------------------------
-        // Recent agreements
-        // --------------------------------------------------------
-
+        // ========================================================
+        // 11. Display ONLY verified recent agreements
+        // ========================================================
         const recentContainer = document.getElementById(
           "recent-agreements-list",
         );
@@ -530,33 +1194,28 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (recent.length === 0) {
           recentContainer.innerHTML = `
-            <div
-              style="
-                padding:20px;
-                text-align:center;
-                color:var(--text-faint);
-              "
-            >
-              No agreements yet. Create one!
-            </div>
-          `;
+        <div style="
+          padding:20px;
+          text-align:center;
+          color:var(--text-faint);
+        ">
+          No verified agreements found.
+        </div>
+      `;
         } else {
           let html = `
-            <table>
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Carrier</th>
+              <th>Status</th>
+              <th>Value</th>
+            </tr>
+          </thead>
 
-              <thead>
-
-                <tr>
-                  <th>ID</th>
-                  <th>Carrier</th>
-                  <th>Status</th>
-                  <th>Value</th>
-                </tr>
-
-              </thead>
-
-              <tbody>
-          `;
+          <tbody>
+      `;
 
           recent.forEach((a) => {
             const status = a.status || "Unknown";
@@ -578,57 +1237,49 @@ document.addEventListener("DOMContentLoaded", function () {
               : "0.00";
 
             const carrierName =
-              a.carrier?.display_name || a.carrier?.wallet_address || "Unknown";
+              a.carrier?.display_name ||
+              a.carrier?.wallet_address ||
+              a.carrier_wallet ||
+              a.carrier ||
+              "Unknown";
 
             html += `
+          <tr>
+            <td>
+              <span class="mono">
+                #${a.onchain_id || "—"}
+              </span>
+            </td>
 
-              <tr>
+            <td>
+              ${carrierName}
+            </td>
 
-                <td>
-                  <span class="mono">
-                    #${a.onchain_id || "—"}
-                  </span>
-                </td>
+            <td>
+              <span class="${pillClass}">
+                <span class="dot"></span>
+                ${status}
+              </span>
+            </td>
 
-                <td>
-                  ${carrierName}
-                </td>
-
-                <td>
-
-                  <span
-                    class="${pillClass}"
-                  >
-
-                    <span class="dot"></span>
-
-                    ${status}
-
-                  </span>
-
-                </td>
-
-                <td>
-                  ${value} ETH
-                </td>
-
-              </tr>
-
-            `;
+            <td>
+              ${value} ETH
+            </td>
+          </tr>
+        `;
           });
 
           html += `
-              </tbody>
-            </table>
-          `;
+          </tbody>
+        </table>
+      `;
 
           recentContainer.innerHTML = html;
         }
 
-        // --------------------------------------------------------
-        // Milestone progress
-        // --------------------------------------------------------
-
+        // ========================================================
+        // 12. Milestone progress
+        // ========================================================
         const activeAgreement = agreements.find(
           (a) => a.status === "Active" || a.status === "AwaitingFunding",
         );
@@ -668,10 +1319,22 @@ document.addEventListener("DOMContentLoaded", function () {
           }
         }
       } catch (error) {
-        console.error("Dashboard stats error:", error);
+        console.error("❌ Dashboard verification error:", error);
 
-        if (typeof showToast === "function") {
-          showToast("Failed to load dashboard data", "error");
+        const recentContainer = document.getElementById(
+          "recent-agreements-list",
+        );
+
+        if (recentContainer) {
+          recentContainer.innerHTML = `
+        <div style="
+          padding:20px;
+          text-align:center;
+          color:var(--text-faint);
+        ">
+          Unable to verify agreements.
+        </div>
+      `;
         }
       }
     }
@@ -1074,21 +1737,35 @@ document.addEventListener("DOMContentLoaded", function () {
     // NAVIGATION CLICK HANDLERS
     // ============================================================
 
+    let navigationInProgress = false;
+
     navItems.forEach((item) => {
-      item.addEventListener("click", function (e) {
+      item.addEventListener("click", async function (e) {
         e.preventDefault();
 
         const page = this.dataset.page;
 
-        loadPage(page);
+        // Prevent two SPA navigations from running at the same time.
+        if (navigationInProgress) {
+          console.warn("⏳ Navigation already in progress:", page);
+          return;
+        }
 
-        // --------------------------------------------------
-        // Update browser URL
-        // --------------------------------------------------
+        navigationInProgress = true;
 
-        const targetUrl = `${ROLE_PATH}/${page}.html`;
+        try {
+          await loadPage(page);
 
-        window.history.pushState({ page }, "", targetUrl);
+          const targetUrl = `${ROLE_PATH}/${page}.html`;
+
+          if (window.location.pathname !== targetUrl) {
+            window.history.pushState({ page }, "", targetUrl);
+          }
+        } catch (error) {
+          console.error("❌ Navigation failed:", error);
+        } finally {
+          navigationInProgress = false;
+        }
       });
     });
 
