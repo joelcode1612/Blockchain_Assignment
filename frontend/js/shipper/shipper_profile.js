@@ -263,10 +263,15 @@
     const form = document.getElementById("editForm");
     form.style.display = form.style.display === "none" ? "block" : "none";
     // Pre-fill with current values
+    /// Part B fix : this used to copy the *display* text into the inputs, so an
+    /// account with no email prefilled "—", which the new backend email
+    /// validation then rejected (400 Invalid email address). Use the raw data.
     document.getElementById("nameInput").value =
+      (profileData && profileData.display_name) ||
       document.getElementById("nameValue").textContent;
     document.getElementById("emailInput").value =
-      document.getElementById("emailValue").textContent;
+      (profileData && profileData.email) || "";
+    /// Part B fix end
   };
 
   window.saveProfile = async function () {

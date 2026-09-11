@@ -54,11 +54,15 @@
         console.log("On-chain agreement:", onchainAgreement);
         // Compare status, escrow amount, etc. and log discrepancies
         // You can display a warning if they differ
-        if (onchainAgreement.status !== dbAgreement.status) {
+        /// Q1 fix : this file defines `agreement` but referenced an undefined
+        /// `dbAgreement` at 4 places, which threw a ReferenceError and killed
+        /// the page after every fetch. Renamed to `agreement`.
+        if (String(onchainAgreement.status) !== String(agreement.status)) {
           console.warn(
-            `Status mismatch: DB=${dbAgreement.status}, On-chain=${onchainAgreement.status}`,
+            `Status check: DB=${agreement.status}, On-chain enum=${onchainAgreement.status}`,
           );
         }
+        /// Q1 fix end
         // You could also update UI with on-chain data if DB is stale
         // For now we trust DB, but we could override status if needed.
       } catch (e) {
@@ -66,10 +70,10 @@
       }
 
       // 3. Populate UI
-      populateUI(dbAgreement);
+      populateUI(agreement);
 
       // 4. Enable/disable action buttons
-      setupActions(dbAgreement);
+      setupActions(agreement);
     } catch (error) {
       console.error("Agreement details error:", error);
       showError(error.message);

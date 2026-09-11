@@ -552,7 +552,11 @@ function ensureAgreementStyles() {
             if (chainShipper !== userWallet) {
               console.warn(`⚠️ Agreement #${agreementId}: shipper mismatch.`);
 
-              return null;
+              /// Part A fix : these checks used to `return null`, which
+              /// silently deleted valid agreements (and blanked the whole page
+              /// when every row failed). Keep the row and flag it instead.
+              return { ...dbAgreement, blockchain_verified: false };
+              /// Part A fix end
             }
 
             // ------------------------------------------------------
@@ -570,7 +574,8 @@ function ensureAgreementStyles() {
             ) {
               console.warn(`⚠️ Agreement #${agreementId}: carrier mismatch.`);
 
-              return null;
+              // Part A fix : keep the row, just mark it unverified.
+              return { ...dbAgreement, blockchain_verified: false };
             }
 
             // ------------------------------------------------------
@@ -586,7 +591,8 @@ function ensureAgreementStyles() {
                 `⚠️ Agreement #${agreementId}: escrow amount mismatch.`,
               );
 
-              return null;
+              // Part A fix : keep the row, just mark it unverified.
+              return { ...dbAgreement, blockchain_verified: false };
             }
 
             console.log(`✅ Agreement #${agreementId} verified successfully.`);
@@ -608,11 +614,13 @@ function ensureAgreementStyles() {
             };
           } catch (chainError) {
             console.warn(
-              `❌ Agreement #${agreementId} does not exist on the current network/contract.`,
+              `⚠️ Agreement #${agreementId} could not be verified on the current network/contract.`,
               chainError.reason || chainError.message,
             );
 
-            return null;
+            // Part A fix : previously returned null, so an RPC hiccup removed
+            // the agreement from the UI. Show it unverified instead.
+            return { ...dbAgreement, blockchain_verified: false };
           }
         }),
       );

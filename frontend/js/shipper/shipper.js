@@ -1063,6 +1063,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 `⚠️ Agreement #${agreementId} exists, but blockchain shipper does not match the authenticated Shipper.`,
               );
 
+              // Part A fix : keep the row (flagged) instead of dropping it, so a
+              // mismatch or RPC hiccup can never blank the dashboard.
+              verifiedAgreements.push({
+                ...dbAgreement,
+                blockchainVerified: false,
+              });
+
               continue;
             }
 
@@ -1076,6 +1083,12 @@ document.addEventListener("DOMContentLoaded", function () {
               console.warn(
                 `⚠️ Agreement #${agreementId} returned a different on-chain ID.`,
               );
+
+              // Part A fix : keep the row instead of dropping it.
+              verifiedAgreements.push({
+                ...dbAgreement,
+                blockchainVerified: false,
+              });
 
               continue;
             }
@@ -1098,12 +1111,15 @@ document.addEventListener("DOMContentLoaded", function () {
             // Agreement does NOT exist on current network/contract
             // ------------------------------------------------------
             console.warn(
-              `❌ Agreement #${agreementId} is NOT available on the current Sepolia contract:`,
+              `⚠️ Agreement #${agreementId} could not be verified on the current Sepolia contract:`,
               chainError.reason || chainError.message,
             );
 
-            // IMPORTANT:
-            // Do not add this agreement to verifiedAgreements.
+            // Part A fix : show the row as unverified instead of hiding it.
+            verifiedAgreements.push({
+              ...dbAgreement,
+              blockchainVerified: false,
+            });
           }
         }
 

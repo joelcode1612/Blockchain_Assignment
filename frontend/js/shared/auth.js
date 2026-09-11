@@ -649,6 +649,18 @@ async function finishRegister() {
 
     const registerData = await dbResponse.json();
 
+    /// Q2 fix (temporary) : the on-chain isRegistered() flag and the Supabase
+    /// users row can disagree after a contract redeploy / DB reset, so an
+    /// existing database user gets routed to the register form and the backend
+    /// answers 409 "already registered" - leaving them unable to register OR
+    /// log in. Treat 409 as "you already have an account" and just log in.
+    if (dbResponse.status === 409) {
+      showToast("Account already registered. Signing you in...", "info");
+      await handleLogin();
+      return;
+    }
+    /// Q2 fix end
+
     // ======================================================
     // 9. BACKEND AUTHENTICATION RESULT
     // ======================================================
