@@ -127,16 +127,31 @@
 
       // ─── Load dashboard stats ──────────────────────────────
       async function loadDashboardStats() {
-        const walletAddress =
-          window.Session?.getWalletAddress?.() ||
-          localStorage.getItem("traxenWallet");
-        if (!walletAddress) return;
+        const token =
+          typeof window.getAuthToken === "function"
+            ? window.getAuthToken()
+            : localStorage.getItem("traxenAuthToken");
+
+        if (!token) {
+          console.warn("❌ No JWT available.");
+          return;
+        }
 
         try {
           const response = await fetch("/api/agreements", {
-            headers: { "x-wallet-address": walletAddress.trim().toLowerCase() },
+            method: "GET",
+
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
           });
-          if (!response.ok) throw new Error("Failed to fetch agreements");
+
+          if (!response.ok) {
+            throw new Error(
+              `Failed to fetch agreements: HTTP ${response.status}`,
+            );
+          }
+
           const agreements = await response.json();
 
           const active = agreements.filter(
@@ -160,7 +175,7 @@
           const earned = agreements.reduce(
             (sum, ag) =>
               sum + Number(ethers.formatEther(String(ag.released_amount || 0))),
-            0
+            0,
           );
           document.getElementById("stat-earned").textContent =
             `${earned.toFixed(2)} ETH`;
@@ -234,44 +249,175 @@
         const miniName = document.querySelector(".mini-name");
         const miniRole = document.querySelector(".mini-role");
         const miniAvatar = document.querySelectorAll(".mini-avatar");
-        if (miniName) miniName.textContent = name;
-        if (miniRole) miniRole.textContent = role;
-        const initials = name.substring(0, 2).toUpperCase();
-        miniAvatar.forEach((el) => (el.textContent = initials));
+
+        const displayName = name || "Carrier";
+        const displayRole = role || "Carrier";
+
+        if (miniName) {
+          miniName.textContent = displayName;
+        }
+
+        if (miniRole) {
+          miniRole.textContent = displayRole;
+        }
+
+        const initials = displayName
+          .trim()
+          .split(/\s+/)
+          .map((part) => part.charAt(0))
+          .join("")
+          .substring(0, 2)
+          .toUpperCase();
+
+        miniAvatar.forEach((el) => {
+          el.textContent = initials || "CA";
+        });
       }
 
+      // ─── Load current authenticated user ─────────────────────────
       async function fillUserInfo() {
-        if (window.Session) {
-          const session = window.Session.getSession();
-          const name =
-            session.name || session.wallet?.slice(0, 6) + "..." || "Carrier";
-          const role = session.role || "Carrier";
-          updateSidebar(name, role);
-          return;
-        }
-        const wallet = localStorage.getItem("traxenWallet");
-        if (!wallet) return;
         try {
-          const res = await fetch("/api/users/me", {
-            headers: { "x-wallet-address": wallet },
+          // ========================================================
+          // 1. Get JWT and locally stored wallet
+          // ========================================================
+
+          const token =
+            typeof window.getAuthToken === "function"
+              ? window.getAuthToken()
+              : localStorage.getItem("traxenAuthToken");
+
+          const storedWallet =
+            typeof window.Auth?.getWallet === "function"
+              ? window.Auth.getWallet()
+              : localStorage.getItem("traxenWallet");
+
+          if (!token || !storedWallet) {
+            console.warn("❌ No authenticated user session found.");
+            return;
+          }
+
+          // ========================================================
+          // 2. Request CURRENT user from backend
+          // ========================================================
+
+          const response = await fetch("/api/users/me", {
+            method: "GET",
+
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
           });
-          if (res.ok) {
-            const user = await res.json();
-            updateSidebar(
+
+          if (!response.ok) {
+            console.warn(
+              "❌ Failed to retrieve authenticated user:",
+              response.status,
+            );
+
+            return;
+          }
+
+          const user = await response.json();
+
+          // ========================================================
+          // 3. Verify backend wallet matches current session
+          // ========================================================
+
+          if (
+            !user.wallet_address ||
+            user.wallet_address.toLowerCase() !== storedWallet.toLowerCase()
+          ) {
+            console.warn(
+              "❌ Backend user wallet does not match current session.",
+            );
+
+            return;
+          }
+
+          // ========================================================
+          // 4. Verify this is really a Carrier
+          // ========================================================
+
+          if (user.role !== "Carrier") {
+            console.warn("❌ Current authenticated user is not a Carrier.");
+
+            return;
+          }
+
+          // ========================================================
+          // 5. Synchronize local authentication information
+          // ========================================================
+
+          if (window.Auth && typeof window.Auth.setAuthData === "function") {
+            window.Auth.setAuthData(
+              user.wallet_address,
+              user.role,
               user.display_name || "Carrier",
-              user.role || "Carrier",
+              user.email || "",
             );
           }
-        } catch (e) {
-          console.warn("Could not fetch user info", e);
+
+          // ========================================================
+          // 6. Update sidebar using BACKEND user data
+          // ========================================================
+
+          updateSidebar(user.display_name || "Carrier", user.role || "Carrier");
+
+          console.log("✅ Carrier sidebar synchronized.");
+          console.log("✅ Current user:", user.display_name);
+          console.log("✅ Current role:", user.role);
+        } catch (error) {
+          console.error("❌ Could not synchronize carrier sidebar:", error);
+
+          // --------------------------------------------------------
+          // Fallback to Auth local data ONLY
+          // --------------------------------------------------------
+
+          const fallbackName =
+            typeof window.Auth?.getName === "function"
+              ? window.Auth.getName()
+              : localStorage.getItem("traxenUserName");
+
+          const fallbackRole =
+            typeof window.Auth?.getCurrentRole === "function"
+              ? window.Auth.getCurrentRole()
+              : localStorage.getItem("traxenUserRole");
+
+          updateSidebar(fallbackName || "Carrier", fallbackRole || "Carrier");
+        }
+      }
+
+      // ─── ADD CACHE OBJECT HERE ──────────────────────────────
+      const templateCache = {};
+
+      // ─── HELPER TO INITIALIZE CACHED PAGES ──────────────────
+      function runPageInit(pageKey, details) {
+        setActiveNav(pageKey);
+        setTitles(details.title, details.sub);
+
+        const pageInits = {
+          carrier_available_jobs: "initAvailableJobs",
+          carrier_agreements: "initCarrierAgreements",
+          carrier_my_deliveries: "initMyDeliveries",
+          carrier_milestone_release: "initMilestoneTracking",
+          carrier_history: "initHistory",
+          carrier_profile: "initCarrierProfile",
+          agreement_details: "initAgreementDetails",
+        };
+        const initFn = pageInits[pageKey];
+        if (initFn && typeof window[initFn] === "function") {
+          window[initFn]();
         }
       }
 
       // ─── Load a page ──────────────────────────────────────────
       async function loadPage(pageKey, params = {}) {
-        // ─── Guard ──────────────────────────────────────────────
         const sessionOk = await window.Auth.ensureFullSession();
-        if (!sessionOk) return;
+
+        if (!sessionOk) {
+          console.warn("⚠️ Carrier navigation blocked: invalid session.");
+          return;
+        }
 
         // Map "dashboard" from nav to "carrier_dashboard"
         if (pageKey === "dashboard") pageKey = "carrier_dashboard";
@@ -286,9 +432,8 @@
           );
         }
 
-        setActiveNav(pageKey);
-
         if (pageKey === "carrier_dashboard") {
+          setActiveNav(pageKey);
           setTitles(
             "Dashboard",
             "Here's what's happening with your deliveries",
@@ -304,33 +449,37 @@
           return;
         }
 
+        const url = details.file;
+
+        // ─── NEW: CHECK CACHE FIRST ───
+        if (templateCache[url]) {
+          contentEl.innerHTML = templateCache[url];
+          runPageInit(pageKey, details);
+          return;
+        }
+
+        setActiveNav(pageKey);
         setTitles(details.title, details.sub);
         contentEl.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text-faint);">Loading...</div>`;
 
         try {
-          const response = await fetch(details.file);
+          const response = await fetch(url);
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
           const html = await response.text();
           const parser = new DOMParser();
           const doc = parser.parseFromString(html, "text/html");
           const newContent = doc.querySelector(".content");
-          contentEl.innerHTML = newContent
+
+          const finalHTML = newContent
             ? newContent.innerHTML
             : doc.body.innerHTML;
 
-          const pageInits = {
-            // ═══ YON : removed carrier_available_jobs &
-            // carrier_milestone_release entries ═══
-            carrier_agreements: "initCarrierAgreements",
-            carrier_my_deliveries: "initMyDeliveries",
-            carrier_history: "initHistory",
-            carrier_profile: "initCarrierProfile",
-            agreement_details: "initAgreementDetails",
-          };
-          const initFn = pageInits[pageKey];
-          if (initFn && typeof window[initFn] === "function") {
-            window[initFn]();
-          }
+          // Save HTML to cache
+          templateCache[url] = finalHTML;
+          contentEl.innerHTML = finalHTML;
+
+          runPageInit(pageKey, details);
         } catch (error) {
           console.error("Load error:", error);
           contentEl.innerHTML = `<div style="padding:40px;color:var(--red);">❌ Failed to load page: ${error.message}</div>`;
@@ -391,25 +540,50 @@
       // ─── INITIAL PAGE LOAD ──────────────────────────────────
       const path = window.location.pathname;
       const segments = path.split("/").filter((s) => s.length > 0);
+
       let pageKey = "carrier_dashboard";
+
+      // Support both the new carrier SPA URLs
+      // and the old carrier_dashboard.html URL.
       if (segments.length >= 2 && segments[0] === "carrier") {
         const raw = segments[1].replace(".html", "");
-        if (raw === "carrier_agreement_detail") pageKey = "agreement_details";
-        else if (pageMap[raw]) pageKey = raw;
-        else pageKey = "carrier_dashboard";
+
+        if (raw === "carrier_agreement_detail") {
+          pageKey = "agreement_details";
+        } else if (raw === "carrier_dashboard") {
+          pageKey = "carrier_dashboard";
+        } else if (pageMap[raw]) {
+          pageKey = raw;
+        } else {
+          pageKey = "carrier_dashboard";
+        }
+      } else if (
+        path === "/carrier_dashboard.html" ||
+        path === "/carrier_dashboard"
+      ) {
+        // Legacy URL — stay inside SPA instead of forcing a browser redirect.
+        pageKey = "carrier_dashboard";
+
+        window.history.replaceState(
+          { page: "carrier_dashboard" },
+          "",
+          `${ROLE_PATH}/carrier_dashboard.html`,
+        );
       } else {
-        window.location.href = `${ROLE_PATH}/carrier_dashboard.html`;
-        return;
+        pageKey = "carrier_dashboard";
+
+        window.history.replaceState(
+          { page: "carrier_dashboard" },
+          "",
+          `${ROLE_PATH}/carrier_dashboard.html`,
+        );
       }
-      if (!pageKey) pageKey = "carrier_dashboard";
+
       const initialPage = availablePages.includes(pageKey)
         ? pageKey
         : "carrier_dashboard";
-      loadPage(initialPage);
 
-      // ─── Expose loadPage globally ──────────────────────────
-      window.loadPage = loadPage;
-      window.carrierNavigate = loadPage;
+      await loadPage(initialPage);
     })();
   });
 })();

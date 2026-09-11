@@ -30,8 +30,8 @@
           <a href="#contact">Contact</a>
         </div>
         <div class="nav-actions">
-          <a class="btn btn-ghost" href="/login">Log In</a>
-          <a class="btn btn-primary" href="/register">Connect Wallet</a>
+          <!-- UPDATED PATH: Points to the new unified auth page -->
+          <a class="btn btn-primary" href="/connect.html">Connect Wallet</a>
         </div>
       </div>
     </div>
@@ -41,10 +41,12 @@
         <div>
           <div class="eyebrow"><span class="dot"></span> Built on Ethereum · Powered by Smart Contracts</div>
           <h1 class="headline">Secure. Transparent.<br><span class="accent">Decentralized Logistics.</span></h1>
-          <p class="lede">Traxen uses blockchain escrow and milestone verification to ensure secure payments and on-time
-            deliveries — no intermediaries, no paperwork, no payment delays.</p>
+          <p class="lede">Seamlessly connecting <strong>Shippers and Carriers</strong>, Traxen uses blockchain escrow
+            and milestone verification to ensure secure payments and on-time deliveries — no intermediaries, no
+            paperwork, no payment delays.</p>
           <div class="hero-actions">
-            <a class="btn btn-primary btn-lg" href="/register">Connect Wallet</a>
+            <!-- UPDATED PATH -->
+            <a class="btn btn-primary btn-lg" href="/connect.html">Connect Wallet</a>
             <a class="btn btn-ghost btn-lg" href="#how-it-works">Learn More</a>
           </div>
           <div class="hero-stats">
@@ -251,8 +253,8 @@
           <h2>Ready to ship with confidence?</h2>
           <p>Connect your wallet and create your first milestone-based agreement in minutes.</p>
           <div class="cta-actions">
-            <a class="btn btn-primary btn-lg" href="/login">Connect Wallet</a>
-            <a class="btn btn-ghost btn-lg" href="/register">Create Account</a>
+            <!-- UPDATED PATH -->
+            <a class="btn btn-primary btn-lg" href="/connect.html">Connect Wallet</a>
           </div>
         </div>
       </div>
@@ -286,6 +288,12 @@
       </div>
     </footer>
   </div>
+
+  <!-- MISSING SCRIPTS ADDED HERE -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.15.0/dist/ethers.umd.min.js"></script>
+  <script src="/js/blockchain/web3_integration.js"></script>
+  <script src="/js/shared/auth.js"></script>
+
   <script src="/js/shared/app.js"></script>
   <script src="/js/shared/common.js"></script>
 </body>

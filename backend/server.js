@@ -3,7 +3,7 @@ const cors = require("cors");
 const path = require("path");
 
 const app = express();
-const PORT = process.env.PORT || 5100;
+const PORT = process.env.PORT || 5300;
 
 app.use(cors());
 app.use(express.json());
@@ -19,7 +19,7 @@ const PUBLIC_DIR = path.join(FRONTEND_PAGES_DIR, "public");
 const SHARED_DIR = path.join(FRONTEND_PAGES_DIR, "shared");
 
 // ─── Public & shared (no role required) ──────────────
-app.use("/", express.static(PUBLIC_DIR)); // serves index.html, login.html, register.html
+app.use("/", express.static(PUBLIC_DIR)); // serves index.html, connect.html
 app.use("/shared", express.static(SHARED_DIR));
 
 // ─── Fragments (SPA content) – ADD THIS ──────────────
@@ -35,7 +35,7 @@ app.get("/api/health", (req, res) => res.json({ status: "OK" }));
 const userRoutes = require("./routes/userRoutes");
 app.use("/api/users", userRoutes);
 
-// ─── Main routes (login, register, etc.) ──────────────
+// ─── Main routes (auth, agreements, etc.) ──────────────
 const pagesRouter = require("./routes/mainRoutes");
 app.use(pagesRouter);
 

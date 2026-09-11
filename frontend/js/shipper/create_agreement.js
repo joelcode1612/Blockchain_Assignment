@@ -513,13 +513,13 @@ async function submitCreateAgreement() {
 
     const shipperWallet = localStorage.getItem("traxenWallet");
 
-    if (!shipperWallet) {
-      alert("Please connect your wallet first.");
+    // if (!shipperWallet) {
+    //   alert("Please connect your wallet first.");
 
-      window.location.href = "/";
+    //   window.location.href = "/";
 
-      return;
-    }
+    //   return;
+    // }
 
     // =====================================================
     // 8. CREATE AGREEMENT ON BLOCKCHAIN
@@ -557,28 +557,33 @@ async function submitCreateAgreement() {
 
     console.log("💾 Saving agreement metadata...");
 
-    const dbResponse = await fetch("/api/agreements/create", {
-      method: "POST",
+const token = localStorage.getItem("traxenAuthToken");
 
-      headers: {
-        "Content-Type": "application/json",
+if (!token) {
+  throw new Error("Authentication token required.");
+}
 
-        "x-wallet-address": shipperWallet,
-      },
+const dbResponse = await fetch("/api/agreements/create", {
+  method: "POST",
 
-      body: JSON.stringify({
-        onchainId: blockchainResult.agreementId,
-        carrier: carrierAddress,
-        totalAmountEth: totalAmountEth,
-        descriptions: descriptions,
-        percentages: paymentPercentages,
-        deadlineTimestamp: deadlineTimestamp,
-        createTx: blockchainResult.transactionHash,
-        cargoType: cargoType,
-        weightKg: weightKg,
-        agreementName: agreementName,
-      }),
-    });
+  headers: {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${token}`,
+  },
+
+  body: JSON.stringify({
+    onchainId: blockchainResult.agreementId,
+    carrier: carrierAddress,
+    totalAmountEth: totalAmountEth,
+    descriptions: descriptions,
+    percentages: paymentPercentages,
+    deadlineTimestamp: deadlineTimestamp,
+    createTx: blockchainResult.transactionHash,
+    cargoType: cargoType,
+    weightKg: weightKg,
+    agreementName: agreementName,
+  }),
+});
 
     // =====================================================
     // 10. CHECK DATABASE RESULT

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>Traxen — Connect Wallet</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="/css/responsive.css">
+    <link rel="stylesheet" href="/css/auth.css">
+</head>
+
+<body>
+    <div id="toast-container"
+        style="position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px;">
+    </div>
+    <main class="auth-stage">
+        <a class="auth-back" href="/">← Back to Home</a>
+        <section class="auth-card">
+            <div class="auth-brand">
+                <div class="brand-mark">T</div> Traxen
+            </div>
+
+            <!-- Progress dots are now used specifically for new user onboarding -->
+            <div class="progress-dots" id="regDots">
+                <div class="dot-bar on"></div>
+                <div class="dot-bar"></div>
+                <div class="dot-bar"></div>
+            </div>
+
+            <!-- STEP 1: Unified Wallet Connection (Login & Register) -->
+            <div class="auth-step active" id="reg-step-1">
+                <h2 class="title">Welcome to Traxen</h2>
+                <p class="subtitle">Log in or create a new account by connecting your Web3 wallet.</p>
+
+                <!-- MetaMask Connection (Enforces BR-1.2) -->
+                <div class="wallet-opt" onclick="handleRegisterWalletConnection(this)">
+                    <div class="wallet-icon metamask">🦊</div>
+                    <div>
+                        <div class="wallet-name">MetaMask</div>
+                        <div class="wallet-sub">Connect using browser extension</div>
+                    </div>
+                </div>
+
+                <!-- Connection status -->
+                <div class="status-line" id="regWalletStatus">
+                    <div class="status-dot"></div>
+                    <span>No wallet connected</span>
+                </div>
+
+                <!-- Removed the "Already have an account?" link, as this page handles both -->
+            </div>
+
+            <!-- STEP 2: Select Role (Only shown to NEW users) -->
+            <div class="auth-step" id="reg-step-2">
+                <h2 class="title">Select your role</h2>
+                <p class="subtitle">Choose how you want to participate on Traxen.</p>
+
+                <div class="role-grid">
+                    <div class="role-card" data-role="Shipper" onclick="selectRole(this)">
+                        <div class="role-check">✓</div>
+                        <div class="role-icon">📦</div>
+                        <h4>Shipper</h4>
+                        <p>I need to ship goods and manage deliveries</p>
+                    </div>
+                    <div class="role-card" data-role="Carrier" onclick="selectRole(this)">
+                        <div class="role-check">✓</div>
+                        <div class="role-icon">🚚</div>
+                        <h4>Carrier</h4>
+                        <p>I provide transport and deliver goods</p>
+                    </div>
+                </div>
+
+                <!-- UI Warning to enforce BR-1.1 Role Exclusivity -->
+                <div style="margin-top: 15px; font-size: 0.85rem; color: #a0a0a0; text-align: center;">
+                    <strong>Note:</strong> Your wallet address will be permanently associated with this role and cannot
+                    be changed later.
+                </div>
+
+                <div class="btn-row" style="margin-top: 20px;">
+                    <button class="btn btn-ghost" onclick="goRegStep(1)">Back</button>
+                    <button class="btn btn-primary" id="regRoleContinue" disabled
+                        onclick="goRegStep(3)">Continue</button>
+                </div>
+            </div>
+
+            <!-- STEP 3: Confirm Details (Only shown to NEW users) -->
+            <div class="auth-step" id="reg-step-3">
+                <h2 class="title">You're all set</h2>
+                <p class="subtitle">Confirm your details to finish creating your account.</p>
+
+                <!-- Display Name -->
+                <div class="field">
+                    <label for="regDisplayName">Display Name</label>
+                    <input id="regDisplayName" type="text" placeholder="e.g. Mike Johnson" autocomplete="name">
+                </div>
+
+                <!-- Email -->
+                <div class="field">
+                    <label for="regEmail">Email (Optional)</label>
+                    <input id="regEmail" type="email" placeholder="e.g. mike@example.com" autocomplete="email">
+                </div>
+
+                <!-- Wallet Confirmation -->
+                <div class="wallet-readonly">
+                    <span id="regWalletAddr">Not connected</span>
+                    <span class="tag">Connected</span>
+                </div>
+
+                <!-- Buttons -->
+                <div class="btn-row">
+                    <button class="btn btn-ghost" onclick="goRegStep(2)">Back</button>
+                    <!-- Completing this step pushes the data to your PostgreSQL users table -->
+                    <button class="btn btn-primary" onclick="finishRegister()">Complete Setup</button>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.15.0/dist/ethers.umd.min.js"></script>
+    <script src="/js/blockchain/web3_integration.js"></script>
+    <script src="/js/shared/common.js"></script>
+    <script src="/js/shared/auth.js"></script>
+</body>
+
+</html>

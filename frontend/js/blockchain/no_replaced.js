@@ -647,7 +647,7 @@ function setupListeners() {
       updateWalletUI(null);
       const current = window.location.pathname;
       if (!["/login", "/register", "/"].includes(current)) {
-        window.location.href = "/login";
+        window.location.href = "/connect.html";
       }
       return;
     }
@@ -674,7 +674,7 @@ function setupListeners() {
     syncWalletToStorage(null);
     updateWalletUI(null);
     if (!["/login", "/register", "/"].includes(window.location.pathname)) {
-      window.location.href = "/login";
+      window.location.href = "/connect.html";
     }
   });
 
@@ -724,11 +724,11 @@ async function initializeWeb3() {
         window.Auth.clearAuthData();
       }
       syncWalletToStorage(null);
-      if (!isPublic) window.location.href = "/login";
+      if (!isPublic) window.location.href = "/connect.html";
     }
   } else {
     console.log("No account – redirect to login.");
-    if (!isPublic) window.location.href = "/login";
+    if (!isPublic) window.location.href = "/connect.html";
   }
 }
 

@@ -11,8 +11,9 @@ async function fetchAgreements() {
   }
 
   try {
+    const token = localStorage.getItem("traxenAuthToken");
     const response = await fetch("/api/agreements", {
-      headers: { "x-wallet-address": walletAddress },
+      headers: { Authorization: `Bearer ${token}` },
     });
     if (!response.ok) throw new Error("Failed to fetch agreements");
     allAgreements = await response.json();

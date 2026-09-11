@@ -1,35 +1,59 @@
+const jwt = require("jsonwebtoken");
 const supabase = require("../config/supabase");
 
 // =====================================================
-// AUTHENTICATE USER
+// AUTHENTICATE USER USING JWT
 // =====================================================
 
 exports.authenticate = async (req, res, next) => {
   try {
-    const walletAddress = req.headers["x-wallet-address"];
+    const authHeader = req.headers.authorization;
 
-    console.log("🔍 authenticate - walletAddress:", walletAddress);
-
-    if (!walletAddress) {
-      return res.status(401).json({ error: "Wallet address required" });
+    // No Authorization header
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({
+        error: "Authentication token required",
+      });
     }
 
+    const token = authHeader.substring(7);
+
+    // Verify JWT
+    let decoded;
+
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (error) {
+      console.error("❌ JWT verification failed:", error.message);
+
+      return res.status(401).json({
+        error: "Invalid or expired authentication token",
+      });
+    }
+
+    // Find current user in database
     const { data: user, error } = await supabase
       .from("users")
       .select("*")
-      .eq("wallet_address", walletAddress.toLowerCase())
+      .eq("wallet_address", decoded.walletAddress.toLowerCase())
       .single();
 
-    if (!user) {
-      console.warn("⚠️ User not found for address:", walletAddress);
-      return res.status(401).json({ error: "User not registered" });
+    if (error || !user) {
+      return res.status(401).json({
+        error: "User not found",
+      });
     }
 
+    // Make authenticated user available to routes
     req.user = user;
+
     next();
   } catch (error) {
-    console.error("❌ Auth error:", error);
-    return res.status(500).json({ error: error.message });
+    console.error("❌ Authentication middleware error:", error);
+
+    return res.status(500).json({
+      error: "Authentication failed",
+    });
   }
 };
 
@@ -39,14 +63,12 @@ exports.authenticate = async (req, res, next) => {
 
 exports.authorize = (role) => {
   return (req, res, next) => {
-    // Make sure authentication happened first
     if (!req.user) {
       return res.status(401).json({
         error: "Authentication required",
       });
     }
 
-    // Check role
     if (req.user.role !== role) {
       return res.status(403).json({
         error: `Requires ${role} role`,

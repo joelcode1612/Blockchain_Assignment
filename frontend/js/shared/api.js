@@ -11,7 +11,7 @@
 // function getHeaders() {
 //     return {
 //         'Content-Type': 'application/json',
-//         'x-wallet-address': window.userWalletAddress || ''
+//        Authorization: `Bearer ${token}` window.userWalletAddress || ''
 //     };
 // }
 

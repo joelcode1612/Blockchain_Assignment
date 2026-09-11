@@ -6,8 +6,12 @@
   async function fetchProfile() {
     const walletAddress = localStorage.getItem("traxenWallet");
     if (!walletAddress) throw new Error("No wallet connected");
+    const token = localStorage.getItem("traxenAuthToken");
+
     const res = await fetch("/api/users/me", {
-      headers: { "x-wallet-address": walletAddress },
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
@@ -129,7 +133,8 @@
 
     const fillEl = document.getElementById("reputationFill");
     if (fillEl) {
-      fillEl.style.width = Math.min((balance / REPUTATION_CAP) * 100, 100) + "%";
+      fillEl.style.width =
+        Math.min((balance / REPUTATION_CAP) * 100, 100) + "%";
     }
 
     const noteEl = document.getElementById("reputationNote");
@@ -147,8 +152,12 @@
     if (!wallet) return;
 
     try {
+      const token = localStorage.getItem("traxenAuthToken");
+
       const res = await fetch("/api/reputation/me", {
-        headers: { "x-wallet-address": wallet },
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
       if (!res.ok) return;
 
@@ -181,8 +190,12 @@
     if (!wallet) return;
 
     try {
+      const token = localStorage.getItem("traxenAuthToken");
+
       const res = await fetch("/api/agreements", {
-        headers: { "x-wallet-address": wallet },
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
       if (!res.ok) return;
 
@@ -276,7 +289,7 @@
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          "x-wallet-address": walletAddress,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ display_name: name, email }),
       });
