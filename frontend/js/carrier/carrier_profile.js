@@ -36,7 +36,8 @@
 
     try {
       const response = await fetch("/api/users/me", {
-        headers: { "x-wallet-address": walletAddress },
+        method: "GET",
+        headers: window.getAuthHeaders(),
       });
       if (!response.ok) {
         const err = await response.json();
@@ -58,7 +59,8 @@
       if (!wallet) return;
 
       const res = await fetch("/api/reputation/me", {
-        headers: { "x-wallet-address": wallet },
+        method: "GET",
+        headers: window.getAuthHeaders(),
       });
       if (!res.ok) return;
 
@@ -125,16 +127,26 @@
 
     try {
       const res = await fetch("/api/agreements", {
-        headers: { "x-wallet-address": wallet },
+        method: "GET",
+        headers: window.getAuthHeaders(),
       });
       if (!res.ok) return;
 
       const agreements = await res.json();
-      if (!Array.isArray(agreements)) return;
 
+      if (!Array.isArray(agreements)) {
+        return;
+      }
+
+      // First verify that DB agreements exist on Sepolia.
+      const verifiedAgreements = await verifyOnChainAgreements(agreements);
+
+      // Then find this carrier's agreements.
       const target = wallet.toLowerCase();
-      const mine = agreements.filter(
-        (a) => (a.carrier_wallet || "").toLowerCase() === target,
+
+      const mine = verifiedAgreements.filter(
+        (agreement) =>
+          (agreement.carrier_wallet || "").toLowerCase() === target,
       );
 
       const active = mine.filter((a) =>
@@ -185,7 +197,8 @@
 
     try {
       const res = await fetch("/api/history", {
-        headers: { "x-wallet-address": wallet },
+        method: "GET",
+        headers: window.getAuthHeaders(),
       });
       if (!res.ok) throw new Error("HTTP " + res.status);
 
@@ -259,15 +272,14 @@
     if (roleValue) roleValue.textContent = role;
 
     const roleEl = document.getElementById("profileRole");
-    if (roleEl) roleEl.textContent = role === "Carrier" ? "Verified Carrier" : role;
+    if (roleEl)
+      roleEl.textContent = role === "Carrier" ? "Verified Carrier" : role;
 
     const statusEl = document.getElementById("accountStatus");
-    if (statusEl)
-      statusEl.textContent = data.verification_status || "Active";
+    if (statusEl) statusEl.textContent = data.verification_status || "Active";
 
     const badgeEl = document.getElementById("statusBadgeCarrier");
-    if (badgeEl)
-      badgeEl.textContent = data.verification_status || "Verified";
+    if (badgeEl) badgeEl.textContent = data.verification_status || "Verified";
 
     const walletShortEl = document.getElementById("walletShortValue");
     if (walletShortEl)
@@ -328,6 +340,7 @@
     const emailInput = document.getElementById("emailInput");
 
     const displayName = nameInput ? nameInput.value.trim() : "";
+
     const email = emailInput ? emailInput.value.trim() : "";
 
     if (!displayName) {
@@ -335,39 +348,46 @@
       return;
     }
 
-    const walletAddress = localStorage.getItem("traxenWallet");
-    if (!walletAddress) {
-      showToast("Wallet not connected.", "warning");
-      return;
-    }
-
     try {
       const response = await fetch("/api/users/me", {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          "x-wallet-address": walletAddress,
-        },
-        body: JSON.stringify({ display_name: displayName, email: email }),
+        headers: window.getAuthHeaders(),
+        body: JSON.stringify({
+          display_name: displayName,
+          email: email,
+        }),
       });
 
       if (!response.ok) {
         const err = await response.json();
-        throw new Error(err.error || "Failed to update profile");
+
+        throw new Error(err.error || err.message || "Failed to update profile");
       }
 
       const updated = await response.json();
+
       localStorage.setItem("traxenUserName", displayName);
+
+      localStorage.setItem("traxenUserEmail", email);
+
       userData = updated;
+
       populateProfile(updated);
+
       if (typeof window.fillUserInfo === "function") {
         window.fillUserInfo();
       }
+
       showToast("Profile updated successfully!", "success");
+
       const form = document.getElementById("editForm");
-      if (form) form.style.display = "none";
+
+      if (form) {
+        form.style.display = "none";
+      }
     } catch (error) {
       console.error("Save profile error:", error);
+
       showToast(error.message, "error");
     }
   };
@@ -403,7 +423,10 @@
   window.handleWalletConnection = function () {
     const wallet = localStorage.getItem("traxenWallet");
     if (!wallet) {
-      showToast("No wallet connected. Please connect MetaMask first.", "warning");
+      showToast(
+        "No wallet connected. Please connect MetaMask first.",
+        "warning",
+      );
       return;
     }
     copyWallet(wallet);
@@ -445,3 +468,49 @@
     }
   }
 })();
+
+async function verifyOnChainAgreements(agreements) {
+  if (!Array.isArray(agreements) || agreements.length === 0) {
+    return [];
+  }
+
+  if (typeof window.getContract !== "function") {
+    throw new Error("Blockchain contract is unavailable.");
+  }
+
+  const contract = await window.getContract();
+
+  if (!contract) {
+    throw new Error("Blockchain contract is unavailable.");
+  }
+
+  const verified = await Promise.all(
+    agreements.map(async (agreement) => {
+      const id = Number(agreement.onchain_id);
+
+      if (!Number.isInteger(id) || id < 0) {
+        console.warn("⚠️ Invalid on-chain agreement ID:", agreement.onchain_id);
+
+        return null;
+      }
+
+      try {
+        const onChain = await contract.getAgreement(id);
+
+        if (!onChain) {
+          return null;
+        }
+
+        console.log(`✅ Agreement ${id} exists on Sepolia.`);
+
+        return agreement;
+      } catch (error) {
+        console.warn(`⚠️ Agreement ${id} not found on Sepolia.`, error);
+
+        return null;
+      }
+    }),
+  );
+
+  return verified.filter(Boolean);
+}

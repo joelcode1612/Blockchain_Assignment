@@ -14,54 +14,197 @@
   // ─── Init function called by the SPA router ──────────────
   window.initAgreementDetails = async function () {
     try {
-      // 1. Check session
-      const sessionOk = await window.Auth.ensureFullSession();
-      if (!sessionOk) return;
+      // ========================================================
+      // 1. VERIFY FULL SESSION
+      // ========================================================
 
-      // 2. Get agreement ID from URL
+      const sessionOk = await window.Auth.ensureFullSession();
+
+      if (!sessionOk) {
+        return;
+      }
+
+      // ========================================================
+      // 2. GET AGREEMENT ID
+      // ========================================================
+
       const params = new URLSearchParams(window.location.search);
+
       const agreementId = params.get("id");
+
       if (!agreementId) {
         showError("No agreement ID provided.");
         return;
       }
 
-      // 3. Get contract instance
-      if (typeof window.getContract === "function") {
-        contract = window.getContract();
-      } else {
-        throw new Error("Web3 contract not available.");
-      }
+      const numericAgreementId = Number(agreementId);
 
-      // 4. Fetch agreement data (from API)
-      const wallet = localStorage.getItem("traxenWallet");
-      if (!wallet) {
-        showError("Wallet not connected.");
+      if (!Number.isInteger(numericAgreementId) || numericAgreementId < 0) {
+        showError("Invalid agreement ID.");
         return;
       }
 
-      const response = await fetch(`/api/agreements/${agreementId}`, {
-        headers: { "x-wallet-address": wallet },
-      });
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || "Failed to fetch agreement");
+      // ========================================================
+      // 3. GET CONTRACT
+      // ========================================================
+
+      if (typeof window.getContract !== "function") {
+        throw new Error("Web3 contract not available.");
       }
+
+      contract = await window.getContract();
+
+      if (!contract) {
+        throw new Error("Blockchain contract is unavailable.");
+      }
+
+      // ========================================================
+      // 4. FETCH APPLICATION DATA FROM DATABASE
+      // IMPORTANT: JWT, NOT x-wallet-address
+      // ========================================================
+
+      const response = await fetch(`/api/agreements/${numericAgreementId}`, {
+        method: "GET",
+        headers: window.getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        let message = "Failed to fetch agreement.";
+
+        try {
+          const errorData = await response.json();
+
+          message = errorData.error || errorData.message || message;
+        } catch (_) {}
+
+        throw new Error(message);
+      }
+
       const agreement = await response.json();
+
+      if (!agreement) {
+        throw new Error("Agreement was not found in the database.");
+      }
+
+      // ========================================================
+      // 5. VERIFY AGREEMENT EXISTS ON SEPOLIA
+      // ========================================================
+
+      console.log("🔗 Verifying agreement on blockchain:", numericAgreementId);
+
+      let onChainAgreement;
+
+      try {
+        onChainAgreement = await contract.getAgreement(numericAgreementId);
+      } catch (chainError) {
+        console.error("❌ Blockchain agreement lookup failed:", chainError);
+
+        throw new Error(
+          "This agreement could not be found on the Sepolia blockchain.",
+        );
+      }
+
+      if (!onChainAgreement) {
+        throw new Error("Agreement does not exist on the Sepolia blockchain.");
+      }
+
+      // ========================================================
+      // 6. VERIFY BASIC ON-CHAIN AGREEMENT DATA
+      // ========================================================
+
+      // Adjust these indexes if your Solidity struct order differs.
+      //
+      // The exact struct fields must match your contract ABI.
+      //
+      // Common ethers return style:
+      // onChainAgreement.id
+      // onChainAgreement.shipper
+      // onChainAgreement.carrier
+      // onChainAgreement.escrowAmount
+      // etc.
+
+      const currentWallet = window.Auth.getWallet();
+
+      const dbId = Number(agreement.onchain_id ?? agreement.id);
+
+      if (!Number.isInteger(dbId) || dbId !== numericAgreementId) {
+        throw new Error(
+          "Database agreement ID does not match the requested agreement.",
+        );
+      }
+
+      // ========================================================
+      // 7. OPTIONAL PARTY VERIFICATION
+      // Only perform when the contract exposes these fields.
+      // ========================================================
+
+      const dbCarrier = agreement.carrier_wallet?.toLowerCase();
+
+      const dbShipper = agreement.shipper_wallet?.toLowerCase();
+
+      const chainCarrier = onChainAgreement.carrier
+        ? onChainAgreement.carrier.toLowerCase()
+        : null;
+
+      const chainShipper = onChainAgreement.shipper
+        ? onChainAgreement.shipper.toLowerCase()
+        : null;
+
+      if (dbCarrier && chainCarrier && dbCarrier !== chainCarrier) {
+        throw new Error(
+          "Database carrier does not match the blockchain agreement.",
+        );
+      }
+
+      if (dbShipper && chainShipper && dbShipper !== chainShipper) {
+        throw new Error(
+          "Database shipper does not match the blockchain agreement.",
+        );
+      }
+
+      // ========================================================
+      // 8. CURRENT CARRIER MUST MATCH THE AGREEMENT
+      // ========================================================
+
+      if (
+        currentWallet &&
+        dbCarrier &&
+        currentWallet.toLowerCase() !== dbCarrier
+      ) {
+        throw new Error("You are not the carrier assigned to this agreement.");
+      }
+
+      // ========================================================
+      // 9. ONLY AFTER VERIFICATION, KEEP DATA
+      // ========================================================
+
       currentAgreement = agreement;
 
       currentMilestones = [...(agreement.milestones || [])].sort(
-        (a, b) => Number(a.milestone_index) - Number(b.milestone_index)
+        (a, b) => Number(a.milestone_index) - Number(b.milestone_index),
       );
 
-      // 5. Populate UI
+      console.log("✅ Database agreement found.");
+
+      console.log("✅ Blockchain agreement verified.");
+
+      console.log("✅ Agreement is valid on Sepolia.");
+
+      // ========================================================
+      // 10. POPULATE UI
+      // ========================================================
+
       populateUI(agreement);
 
-      // 6. Enable/disable action buttons based on status
+      // ========================================================
+      // 11. SET ACTIONS
+      // ========================================================
+
       setupActions(agreement);
     } catch (error) {
       console.error("Agreement details error:", error);
-      showError(error.message);
+
+      showError(error.message || "Failed to load agreement.");
     }
   };
 
@@ -102,10 +245,8 @@
     if (escrowAmt) {
       const amount = agreement.escrow_amount
         ? parseFloat(
-          ethers.formatEther(
-            BigInt(agreement.escrow_amount).toString()
-          )
-        ).toFixed(4)
+            ethers.formatEther(BigInt(agreement.escrow_amount).toString()),
+          ).toFixed(4)
         : "0.0000";
       escrowAmt.textContent = `${amount} ETH`;
     }
@@ -160,7 +301,7 @@
   // ─── Render milestone progress track ──────────────────────
   function renderMilestoneTrack(milestones) {
     milestones = [...milestones].sort(
-      (a, b) => Number(a.milestone_index) - Number(b.milestone_index)
+      (a, b) => Number(a.milestone_index) - Number(b.milestone_index),
     );
 
     const trackContainer = document.querySelector(".track");
@@ -182,7 +323,7 @@
 
     let html = `<div class="track-fill" style="width:${progress}%"></div>`;
     const firstUnfinishedIndex = milestones.findIndex(
-      m => m.status !== "Paid"
+      (m) => m.status !== "Paid",
     );
 
     milestones.forEach((m, i) => {
@@ -213,7 +354,7 @@
   // ─── Render milestone list with payouts ──────────────────
   function renderMilestoneList(milestones, totalWei) {
     milestones = [...milestones].sort(
-      (a, b) => Number(a.milestone_index) - Number(b.milestone_index)
+      (a, b) => Number(a.milestone_index) - Number(b.milestone_index),
     );
 
     const container = document.getElementById("milestone-list");
@@ -227,9 +368,7 @@
     }
 
     const totalEth = totalWei
-      ? ethers.formatEther(
-        BigInt(totalWei).toString()
-      )
+      ? ethers.formatEther(BigInt(totalWei).toString())
       : 0;
 
     let html = "";
@@ -267,13 +406,7 @@
         cardClass += " milestone-pending";
       }
 
-      const icon = isPaid
-        ? "✓"
-        : isSubmitted
-          ? "!"
-          : isVerified
-            ? "✓"
-            : i + 1;
+      const icon = isPaid ? "✓" : isSubmitted ? "!" : isVerified ? "✓" : i + 1;
 
       html += `
   <div class="${cardClass}">
@@ -423,13 +556,11 @@
     // Active agreement — handle milestone proof
     if (status === "Active") {
       const nextMilestoneIndex = currentMilestones.findIndex(
-        (m) => m.status !== "Paid"
+        (m) => m.status !== "Paid",
       );
 
       const nextMilestone =
-        nextMilestoneIndex >= 0
-          ? currentMilestones[nextMilestoneIndex]
-          : null;
+        nextMilestoneIndex >= 0 ? currentMilestones[nextMilestoneIndex] : null;
 
       const label = proofSection.querySelector("h3");
       const upload = proofSection.querySelector("#proof-upload-box");
@@ -450,8 +581,9 @@
           btn.style.display = "none";
         }
 
-        const completionMessage =
-          proofSection.querySelector("#completion-message");
+        const completionMessage = proofSection.querySelector(
+          "#completion-message",
+        );
 
         if (completionMessage) {
           completionMessage.style.display = "block";
@@ -467,7 +599,6 @@
 
       // ─── Waiting for shipper verification ───
       if (nextMilestone.status === "Submitted") {
-
         if (label) {
           label.textContent = "Awaiting Shipper Verification";
         }
@@ -493,12 +624,10 @@
 
       // ─── Next milestone can be submitted ───
       if (nextMilestone.status === "Pending") {
-
         if (label) {
-          label.textContent =
-            `Submit Proof — ${nextMilestone.description ||
-            `Milestone ${milestoneIndex + 1}`
-            }`;
+          label.textContent = `Submit Proof — ${
+            nextMilestone.description || `Milestone ${milestoneIndex + 1}`
+          }`;
         }
 
         if (upload && fileInput) {
@@ -519,11 +648,7 @@
             }
 
             // Allow JPG, PNG and WebP only
-            const allowedTypes = [
-              "image/jpeg",
-              "image/png",
-              "image/webp",
-            ];
+            const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
 
             if (!allowedTypes.includes(file.type)) {
               showToast("Only JPG, PNG or WebP images are allowed.", "error");
@@ -576,8 +701,7 @@
         </div>
       `;
 
-              const removeBtn =
-                preview.querySelector("#remove-proof-btn");
+              const removeBtn = preview.querySelector("#remove-proof-btn");
 
               if (removeBtn) {
                 removeBtn.onclick = function () {
@@ -600,8 +724,7 @@
                     // ═══ YON End ═══
                   }
 
-                  upload.innerHTML =
-                    "📷 Click to upload delivery proof photo";
+                  upload.innerHTML = "📷 Click to upload delivery proof photo";
                 };
               }
             }
@@ -670,18 +793,16 @@
 
       const uploadResponse = await fetch("/api/milestones/upload-proof", {
         method: "POST",
-        headers: {
-          "x-wallet-address": wallet,
-        },
+
+        headers: window.getAuthHeaders(),
+
         body: formData,
       });
 
       const uploadData = await uploadResponse.json();
 
       if (!uploadResponse.ok) {
-        throw new Error(
-          uploadData.error || "Failed to upload proof photo"
-        );
+        throw new Error(uploadData.error || "Failed to upload proof photo");
       }
 
       console.log("✅ Proof uploaded:", uploadData);
@@ -694,25 +815,20 @@
 
       showToast("Proof uploaded. Submitting milestone...", "info");
 
-      const result = await window.submitMilestone(
-        agreementId,
-        milestoneIndex
-      );
+      const result = await window.submitMilestone(agreementId, milestoneIndex);
 
       console.log("✅ Milestone submitted on blockchain:", result);
 
       // ─── 3. Sync blockchain status to Supabase ────────────────
       const syncResponse = await fetch(`/api/agreements/${agreementId}`, {
-        headers: {
-          "x-wallet-address": wallet,
-        },
+        method: "GET",
+        headers: window.getAuthHeaders(),
       });
 
       if (!syncResponse.ok) {
         const errorData = await syncResponse.json();
         throw new Error(
-          errorData.error ||
-          "Milestone submitted, but database sync failed"
+          errorData.error || "Milestone submitted, but database sync failed",
         );
       }
 
@@ -729,13 +845,9 @@
       }
 
       await window.initAgreementDetails();
-
     } catch (error) {
       console.error("Submit proof error:", error);
-      showToast(
-        error.message || "Failed to submit proof",
-        "error"
-      );
+      showToast(error.message || "Failed to submit proof", "error");
     }
   };
 

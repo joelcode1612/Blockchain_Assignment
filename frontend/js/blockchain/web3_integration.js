@@ -48,9 +48,9 @@ async function fetchWithRetry(fn, retries = 3, delay = 500) {
       return await fn();
     } catch (e) {
       lastError = e;
-      console.warn(`⏳ Attempt ${i+1} failed:`, e.message);
+      console.warn(`⏳ Attempt ${i + 1} failed:`, e.message);
       if (i < retries - 1) {
-        await new Promise(r => setTimeout(r, delay));
+        await new Promise((r) => setTimeout(r, delay));
       }
     }
   }
@@ -58,7 +58,7 @@ async function fetchWithRetry(fn, retries = 3, delay = 500) {
 }
 
 function cacheKey(prefix, ...args) {
-  return `${prefix}:${args.join('|')}`;
+  return `${prefix}:${args.join("|")}`;
 }
 
 async function withCache(prefix, args, fn) {
@@ -143,8 +143,31 @@ async function connectWallet() {
 
   try {
     if (!window.ethereum) throw new Error("MetaMask not installed.");
+
     provider = new ethers.BrowserProvider(window.ethereum);
+
+    // ─── FORCE ACCOUNT PICKER ──────────────────────────────
+    // MetaMask remembers which account was approved for this site and
+    // silently reuses it. Revoking the permission first forces the
+    // "Select an account" popup on every connect.
+    try {
+      await window.ethereum.request({
+        method: "wallet_revokePermissions",
+        params: [{ eth_accounts: {} }],
+      });
+    } catch (revokeErr) {
+      // Older MetaMask versions or nothing-to-revoke — safe to ignore.
+      console.warn(
+        "wallet_revokePermissions skipped:",
+        revokeErr?.message || revokeErr,
+      );
+    }
+
+    // Ask for permission explicitly. Combined with the revoke above,
+    // this ALWAYS prompts MetaMask to show the account picker.
     await provider.send("wallet_requestPermissions", [{ eth_accounts: {} }]);
+    // ─── END FORCE ACCOUNT PICKER ──────────────────────────
+
     const accounts = await provider.send("eth_requestAccounts", []);
     if (!accounts || accounts.length === 0)
       throw new Error("No account selected.");
@@ -152,27 +175,55 @@ async function connectWallet() {
     signer = await provider.getSigner();
     userWalletAddress = await signer.getAddress();
     isWalletConnected = true;
+
     syncWalletToStorage(userWalletAddress);
-    await initContract();
     updateWalletUI(userWalletAddress);
+
+    // Contract init is separate from wallet connection — don't let
+    // an ABI/contract failure look like a MetaMask failure.
+    try {
+      await initContract();
+    } catch (contractErr) {
+      console.error(
+        "⚠️ Wallet connected, but contract init failed:",
+        contractErr,
+      );
+      showToast(
+        "Wallet connected, but the contract could not be loaded. Some features will be unavailable.",
+        "warning",
+      );
+    }
+
     showToast(
       "Wallet connected: " + truncateAddress(userWalletAddress),
       "success",
     );
+
     window.dispatchEvent(
       new CustomEvent("walletConnected", {
         detail: { address: userWalletAddress },
       }),
     );
+
     return userWalletAddress;
   } catch (error) {
     console.error("❌ Connect failed:", error);
-    // If the error is "pending request", show a user-friendly message
-    if (error.code === -32002) {
+
+    const code = error?.code;
+    const message = String(error?.message || "");
+
+    if (code === -32002 || message.includes("already pending")) {
       showToast(
         "MetaMask is already waiting for your confirmation. Please check the MetaMask popup.",
         "warning",
       );
+    } else if (
+      code === 4001 ||
+      code === "ACTION_REJECTED" ||
+      message.toLowerCase().includes("user rejected")
+    ) {
+      showToast("Connection cancelled.", "info");
+      return null;
     } else {
       showToast(error.message || "Failed to connect wallet.", "error");
     }
@@ -427,7 +478,7 @@ function paymentStatusToName(status) {
 
 /** Get full agreement details (all fields) */
 async function getAgreement(agreementId) {
-  return withCache('agreement', [agreementId], async () => {
+  return withCache("agreement", [agreementId], async () => {
     if (!isConnected()) await connectWallet();
     const contract = getContract();
     const result = await contract.getAgreement(agreementId);
@@ -452,7 +503,7 @@ async function getAgreement(agreementId) {
 
 /** Get escrow balance (remaining) */
 async function getEscrowBalance(agreementId) {
-  return withCache('balance', [agreementId], async () => {
+  return withCache("balance", [agreementId], async () => {
     if (!isConnected()) await connectWallet();
     const contract = getContract();
     const balance = await contract.getEscrowBalance(agreementId);
@@ -462,7 +513,7 @@ async function getEscrowBalance(agreementId) {
 
 /** Get milestone details */
 async function getMilestone(agreementId, milestoneId) {
-  return withCache('milestone', [agreementId, milestoneId], async () => {
+  return withCache("milestone", [agreementId, milestoneId], async () => {
     if (!isConnected()) await connectWallet();
     const contract = getContract();
     const result = await contract.getMilestone(agreementId, milestoneId);
@@ -587,7 +638,10 @@ async function submitMilestone(agreementId, milestoneId) {
   try {
     if (!isConnected()) await connectWallet();
     const contract = getContract();
-    const transaction = await contract.submitMilestone(agreementId, milestoneId);
+    const transaction = await contract.submitMilestone(
+      agreementId,
+      milestoneId,
+    );
 
     console.log("Submit milestone transaction:", transaction.hash);
     const receipt = await transaction.wait();
@@ -610,7 +664,10 @@ async function verifyMilestone(agreementId, milestoneId) {
   try {
     if (!isConnected()) await connectWallet();
     const contract = getContract();
-    const transaction = await contract.verifyMilestone(agreementId, milestoneId);
+    const transaction = await contract.verifyMilestone(
+      agreementId,
+      milestoneId,
+    );
 
     console.log("Verify milestone transaction:", transaction.hash);
     const receipt = await transaction.wait();

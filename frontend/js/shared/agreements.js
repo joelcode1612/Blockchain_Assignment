@@ -4,6 +4,7 @@
 (function () {
   async function renderAgreements() {
     let container = document.getElementById("agreements-list");
+
     if (!container) {
       container = document.querySelector(".content");
       if (!container) {
@@ -19,42 +20,72 @@
     `;
 
     try {
-      const walletAddress = localStorage.getItem("traxenWallet");
-      if (!walletAddress) {
-        container.innerHTML = `
-          <div style="padding: 60px 20px; text-align: center; color: var(--text-faint);">
-            <h3>🔑 Please connect your wallet</h3>
-            <p>You need to be logged in to view your agreements.</p>
-          </div>
-        `;
-        return;
+      // ========================================================
+      // 1. VERIFY FULL AUTHENTICATED SESSION
+      // ========================================================
+      if (window.Auth?.ensureFullSession) {
+        const authenticated = await window.Auth.ensureFullSession();
+        if (!authenticated) return;
       }
 
-      // ─── Determine role ──────────────────────────────────
-      const role = localStorage.getItem("traxenRole") || "Shipper";
+      // ========================================================
+      // 2. GET AUTHENTICATED WALLET (blockchain queries only)
+      // ========================================================
+      const walletAddress = window.Auth?.getWallet?.();
+      if (!walletAddress) {
+        throw new Error("Authenticated wallet not found.");
+      }
+
+      // ========================================================
+      // 3. GET AUTHENTICATED ROLE
+      // ========================================================
+      const role = window.Auth?.getCurrentRole?.();
+      if (!role) {
+        throw new Error("Authenticated role not found.");
+      }
+
+      console.log("🔐 Authenticated wallet:", walletAddress);
+      console.log("🔐 Authenticated role:", role);
 
       let agreements = [];
 
+      // ========================================================
+      // 4. SHIPPER — blockchain query uses wallet
+      // ========================================================
       if (role === "Shipper") {
-        // Shipper: fetch from blockchain
         if (typeof window.getAgreementsByShipper !== "function") {
           throw new Error("getAgreementsByShipper not available.");
         }
         agreements = await window.getAgreementsByShipper(walletAddress);
-      } else if (role === "Carrier") {
-        // Carrier: fetch from API
+      }
+
+      // ========================================================
+      // 5. CARRIER — backend query MUST use JWT
+      // ========================================================
+      else if (role === "Carrier") {
         const response = await fetch("/api/agreements", {
-          headers: { "x-wallet-address": walletAddress },
+          method: "GET",
+          headers: window.getAuthHeaders(),
         });
+
         if (!response.ok) {
-          const err = await response.json();
-          throw new Error(err.error || "Failed to fetch agreements");
+          let errorMessage = "Failed to fetch agreements.";
+          try {
+            const err = await response.json();
+            errorMessage = err.error || err.message || errorMessage;
+          } catch (_) {
+            /* ignore invalid JSON */
+          }
+          throw new Error(errorMessage);
         }
         agreements = await response.json();
       } else {
-        throw new Error("Unknown role: " + role);
+        throw new Error(`Unknown authenticated role: ${role}`);
       }
 
+      // ========================================================
+      // EMPTY STATE
+      // ========================================================
       if (!agreements || agreements.length === 0) {
         const msg =
           role === "Shipper"
@@ -69,111 +100,93 @@
         return;
       }
 
-      // ─── Build table ─────────────────────────────────────
-      // (The table logic is the same, but we need to adapt the data shape)
-      let tableHtml = `
-        <div style="overflow-x: auto; margin-top: 16px;">
-          <table style="width: 100%; border-collapse: collapse; font-size: 0.95rem;">
-            <thead>
-              <tr style="border-bottom: 2px solid var(--border-color, #e2e8f0); text-align: left;">
-                <th style="padding: 12px 16px;">ID</th>
-                <th style="padding: 12px 16px;">${role === "Shipper" ? "Carrier" : "Shipper"}</th>
-                <th style="padding: 12px 16px;">Value (ETH)</th>
-                <th style="padding: 12px 16px;">Status</th>
-                <th style="padding: 12px 16px;">Deadline</th>
-                <th style="padding: 12px 16px; text-align: center;">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-      `;
+      // ========================================================
+      // STATUS → PILL CLASS
+      // ========================================================
+      function statusPillClass(status) {
+        switch (status) {
+          case "Active":
+            return "pill lime";
+          case "PendingAcceptance":
+          case "AwaitingFunding":
+            return "pill amber";
+          case "Completed":
+            return "pill gray";
+          case "Expired":
+          case "Rejected":
+          case "Cancelled":
+          case "Refunded":
+            return "pill red";
+          default:
+            return "pill gray";
+        }
+      }
+
+      // ========================================================
+      // BUILD TABLE (now using the classes in styles.css)
+      // ========================================================
+      const counterpartyHeader = role === "Shipper" ? "Carrier" : "Shipper";
+
+      let rowsHtml = "";
 
       agreements.forEach((ag) => {
-        // Normalize data (handle both blockchain and API shapes)
         const id = ag.id || ag.onchain_id || "—";
         const status = ag.statusName || ag.status || "Unknown";
+
         const valueEth =
           ag.escrowAmountETH ||
           (ag.escrow_amount
-            ? parseFloat(ethers.formatEther(ag.escrow_amount)).toFixed(2)
+            ? parseFloat(ethers.formatEther(String(ag.escrow_amount))).toFixed(
+                2,
+              )
             : "0.00");
+
         const deadline = ag.deadline
-          ? new Date(ag.deadline * 1000 || ag.deadline).toLocaleDateString(
-              "en-US",
-              { month: "short", day: "numeric", year: "numeric" },
-            )
+          ? new Date(
+              typeof ag.deadline === "number"
+                ? ag.deadline * 1000
+                : ag.deadline,
+            ).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })
           : "—";
-        const counterparty =
-          role === "Shipper" ? ag.carrier || "N/A" : ag.shipper || "N/A";
-        // For carrier API response, we might have nested objects
-        const partyName =
+
+        // Counterparty display: prefer display_name, fall back to raw wallet
+        const rawParty =
           role === "Shipper"
-            ? ag.carrier || "N/A"
-            : ag.shipper?.display_name || ag.shipper_wallet || "N/A";
+            ? ag.carrier?.display_name ||
+              ag.carrier?.wallet_address ||
+              ag.carrier ||
+              ag.carrier_wallet ||
+              "N/A"
+            : ag.shipper?.display_name ||
+              ag.shipper?.wallet_address ||
+              ag.shipper ||
+              ag.shipper_wallet ||
+              "N/A";
 
-        // Status badge color
-        let statusColor = "var(--text-faint, #6b7280)";
-        let statusBg = "var(--bg-muted, #f3f4f6)";
-        if (status === "Active") {
-          statusColor = "#0b6e4f";
-          statusBg = "#d1fae5";
-        } else if (
-          status === "PendingAcceptance" ||
-          status === "AwaitingFunding"
-        ) {
-          statusColor = "#b45309";
-          statusBg = "#fef3c7";
-        } else if (status === "Completed") {
-          statusColor = "#1e40af";
-          statusBg = "#dbeafe";
-        } else if (
-          status === "Expired" ||
-          status === "Rejected" ||
-          status === "Cancelled"
-        ) {
-          statusColor = "#991b1b";
-          statusBg = "#fee2e2";
-        }
+        const partyShort =
+          typeof rawParty === "string" && rawParty.length > 14
+            ? rawParty.slice(0, 6) + "…" + rawParty.slice(-4)
+            : rawParty;
 
-        const agreementId = id;
-        tableHtml += `
-          <tr style="border-bottom: 1px solid var(--border-color, #e2e8f0);">
-            <td style="padding: 12px 16px; font-weight: 500; color: var(--primary, #2563eb);">
-              ${agreementId}
-            </td>
-            <td style="padding: 12px 16px; font-family: monospace; font-size: 0.85rem;">
-              ${typeof partyName === "string" && partyName.length > 10 ? partyName.slice(0, 6) + "…" + partyName.slice(-4) : partyName}
-            </td>
-            <td style="padding: 12px 16px; font-weight: 500;">${valueEth}</td>
-            <td style="padding: 12px 16px;">
-              <span style="
-                background: ${statusBg};
-                color: ${statusColor};
-                padding: 4px 12px;
-                border-radius: 9999px;
-                font-size: 0.8rem;
-                font-weight: 600;
-                display: inline-block;
-              ">
-                ${status}
+        rowsHtml += `
+          <tr>
+            <td><span class="agreement-id">#${id}</span></td>
+            <td><span class="mono">${partyShort}</span></td>
+            <td><span class="agreement-value">${valueEth} ETH</span></td>
+            <td>
+              <span class="${statusPillClass(status)}">
+                <span class="dot"></span>${status}
               </span>
             </td>
-            <td style="padding: 12px 16px;">${deadline}</td>
-            <td style="padding: 12px 16px; text-align: center;">
-              <button 
-                class="view-agreement-btn" 
-                data-id="${agreementId}"
-                style="
-                  background: var(--primary, #2563eb);
-                  color: white;
-                  border: none;
-                  padding: 6px 14px;
-                  border-radius: 6px;
-                  font-size: 0.8rem;
-                  cursor: pointer;
-                  transition: opacity 0.2s;
-                "
-                onmouseover="this.style.opacity='0.85'"
-                onmouseout="this.style.opacity='1'"
+            <td>${deadline}</td>
+            <td>
+              <button
+                class="agreement-view-btn view-agreement-btn"
+                data-id="${id}"
               >
                 View
               </button>
@@ -182,38 +195,60 @@
         `;
       });
 
-      tableHtml += `
-            </tbody>
-          </table>
+      container.innerHTML = `
+        <div class="traxen-agreements">
+          <div class="agreements-table-wrap">
+            <table class="agreements-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>${counterpartyHeader}</th>
+                  <th>Value</th>
+                  <th>Status</th>
+                  <th>Deadline</th>
+                  <th style="text-align:center;">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsHtml}
+              </tbody>
+            </table>
+          </div>
         </div>
       `;
-
-      container.innerHTML = tableHtml;
 
       // ─── View button listeners ──────────────────────────
       document.querySelectorAll(".view-agreement-btn").forEach((btn) => {
         btn.addEventListener("click", function (e) {
           e.preventDefault();
+
           const agreementId = this.dataset.id;
-          const role = localStorage.getItem("traxenRole") || "Shipper";
+          const roleNow = window.Auth?.getCurrentRole?.();
+
+          if (!roleNow) {
+            console.error("Authenticated role is missing.");
+            return;
+          }
+
           if (typeof window.loadPage === "function") {
             window.loadPage("agreement_details");
-            // Build correct detail URL based on role
+
             const detailPath =
-              role === "Shipper"
+              roleNow === "Shipper"
                 ? `/shipper/agreement_details_shipper.html?id=${agreementId}`
                 : `/carrier/carrier_agreement_detail.html?id=${agreementId}`;
+
             window.history.pushState(
               { page: "agreement_details" },
               "",
               detailPath,
             );
           } else {
-            // fallback
             const detailFile =
-              role === "Shipper"
+              roleNow === "Shipper"
                 ? "agreement_details_shipper.html"
                 : "carrier_agreement_detail.html";
+
             window.location.href = `${detailFile}?id=${agreementId}`;
           }
         });
@@ -234,28 +269,7 @@
 
   window.initAgreements = renderAgreements;
 
-  // Inside renderAgreements() after fetching agreements
-
-  // ─── Update stats ──────────────────────────────────────
-  // const completed = agreements.filter((a) => a.status === "Completed");
-  // const refunded = agreements.filter((a) => a.status === "Refunded");
-  // const totalEarned = completed.reduce((sum, a) => {
-  //   const amt = a.escrow_amount
-  //     ? parseFloat(ethers.formatEther(a.escrow_amount))
-  //     : 0;
-  //   return sum + amt;
-  // }, 0);
-
-  // document.getElementById("historyCompleted").textContent = completed.length;
-  // document.getElementById("historyEarned").textContent =
-  //   totalEarned.toFixed(2) + " ETH";
-  // document.getElementById("historyRefunded").textContent = refunded.length;
-  // document.getElementById("historyAvg").textContent =
-  //   completed.length > 0
-  //     ? (totalEarned / completed.length).toFixed(2) + " ETH"
-  //     : "—";
-
-  // Auto-init if the page is loaded directly (non‑SPA fallback)
+  // Auto-init if the page is loaded directly (non-SPA fallback)
   if (document.getElementById("agreements-list")) {
     if (
       document.readyState === "complete" ||

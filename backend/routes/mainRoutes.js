@@ -6,7 +6,7 @@ const router = express.Router();
 // =====================================================
 // MIDDLEWARE
 // =====================================================
-const { authenticate, authorize } = require("../middleware/auth");
+const { authenticate, authorize } = require("../middleware/authMiddleware");
 
 // =====================================================
 // MODULE ROUTES

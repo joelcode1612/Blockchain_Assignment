@@ -751,6 +751,23 @@ body {
   display: flex;
   flex-direction: column;
 }
+/* Part C fix : the sidebar stretched to the height of the page content, so
+   .sidebar-foot's margin-top:auto pushed the user + logout row to the very
+   bottom of long pages. Pin the sidebar to the viewport instead. */
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+/* Part C fix : .topbar-actions had no rules anywhere, so its block-level
+   children (icon buttons / avatar) stacked vertically. */
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
 .brand {
   display: flex;
   align-items: center;

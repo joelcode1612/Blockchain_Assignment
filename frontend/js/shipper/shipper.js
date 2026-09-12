@@ -162,16 +162,8 @@ document.addEventListener("DOMContentLoaded", function () {
     // ─── Load dashboard stats ──────────────────────────────
     async function loadDashboardStats() {
       try {
-        const walletAddress =
-          window.Session?.getWalletAddress?.() ||
-          localStorage.getItem("traxenWallet");
-        if (!walletAddress) {
-          console.warn("No wallet address available.");
-          return;
-        }
-        const cleanWallet = walletAddress.trim().toLowerCase();
         const response = await fetch("/api/agreements", {
-          headers: { "x-wallet-address": cleanWallet },
+          headers: authHeaders(),
         });
         if (!response.ok) throw new Error("Failed to fetch agreements");
         const agreements = await response.json();
@@ -220,7 +212,9 @@ document.addEventListener("DOMContentLoaded", function () {
             else if (status === "PendingAcceptance") pillClass = "pill amber";
             else if (status === "Completed") pillClass = "pill gray";
             const value = a.escrow_amount
-              ? parseFloat(ethers.formatEther(String(a.escrow_amount))).toFixed(2)
+              ? parseFloat(ethers.formatEther(String(a.escrow_amount))).toFixed(
+                  2,
+                )
               : "0.00";
             const carrierName =
               a.carrier?.display_name || a.carrier?.wallet_address || "Unknown";
@@ -260,34 +254,83 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     }
 
-    function updateSidebarUser() {
-      const walletAddress = localStorage.getItem("traxenWallet");
-      let displayName = localStorage.getItem("traxenUserName");
-      let role = localStorage.getItem("traxenRole") || "Shipper";
+    // ─── Sidebar user info ──────────────────────────────────
+    async function updateSidebarUser() {
+      // 1. Try the session first — but check every plausible key.
+      const session = window.Session?.getSession?.() || {};
+      const user = session.user || {};
 
-      if (!displayName && walletAddress) {
-        displayName =
-          walletAddress.slice(0, 6) + "..." + walletAddress.slice(-4);
+      let displayName =
+        session.name ||
+        session.display_name ||
+        session.displayName ||
+        user.name ||
+        user.display_name ||
+        user.displayName ||
+        null;
+
+      let role = session.role || user.role || null;
+
+      let wallet =
+        session.wallet ||
+        session.wallet_address ||
+        session.walletAddress ||
+        user.wallet ||
+        user.wallet_address ||
+        null;
+
+      // 2. If we still don't have a real name, ask the API (Bearer).
+      if (!displayName) {
+        try {
+          const res = await fetch("/api/users/me", { headers: authHeaders() });
+          if (res.ok) {
+            const me = await res.json();
+            displayName = me.display_name || me.displayName || me.name || null;
+            role = role || me.role || null;
+            wallet = wallet || me.wallet_address || me.wallet || null;
+          }
+        } catch (e) {
+          console.warn("[shipper] Failed to fetch /api/users/me:", e.message);
+        }
       }
 
-      const nameEl = document.getElementById("miniName");
-      const roleEl = document.getElementById("miniRole");
-      const avatarEl = document.getElementById("miniAvatar");
+      // 3. Last-resort display name from the wallet.
+      if (!displayName && wallet) {
+        displayName = wallet.slice(0, 6) + "..." + wallet.slice(-4);
+      }
+      displayName = displayName || "User";
+      role = role || "Shipper";
 
-      if (nameEl) nameEl.textContent = displayName || "User";
-      if (roleEl) roleEl.textContent = role || "Shipper";
+      // 4. Write it into the sidebar, supporting both ID conventions.
+      const nameEl =
+        document.getElementById("miniName") ||
+        document.getElementById("mini-name") ||
+        document.querySelector(".mini-name");
+
+      const roleEl =
+        document.getElementById("miniRole") ||
+        document.getElementById("mini-role") ||
+        document.querySelector(".mini-role");
+
+      const avatarEl =
+        document.getElementById("miniAvatar") ||
+        document.getElementById("mini-avatar") ||
+        document.querySelector(".mini-avatar");
+
+      if (nameEl) nameEl.textContent = displayName;
+      if (roleEl) roleEl.textContent = role;
 
       if (avatarEl) {
-        const initials = displayName
-          ? displayName
-            .split(" ")
-            .map((w) => w[0])
-            .join("")
-            .toUpperCase()
-            .slice(0, 2)
-          : "U";
-        avatarEl.textContent = initials;
+        avatarEl.textContent = displayName
+          .split(/\s+/)
+          .map((w) => w[0])
+          .join("")
+          .toUpperCase()
+          .slice(0, 2);
       }
+
+      // Cache so subsequent synchronous calls (topbar, dashboard greeting) work.
+      window.__shipperSidebar = { displayName, role, wallet };
     }
 
     // ─── Load a page ────────────────────────────────────────
@@ -310,7 +353,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (active) active.classList.add("active");
 
         if (pageTitleEl) pageTitleEl.textContent = "Dashboard";
-        const userName = localStorage.getItem("traxenUserName") || "User";
+        const userName = window.Session?.getSession?.()?.name || "User";
         if (pageSubEl) pageSubEl.textContent = `Welcome back, ${userName}!`;
 
         await loadDashboardStats();
@@ -438,3 +481,14 @@ document.addEventListener("DOMContentLoaded", function () {
     window.loadPage = loadPage;
   })();
 });
+
+function authHeaders(extra = {}) {
+  const token =
+    window.Auth?.getToken?.() ||
+    window.Session?.getToken?.() ||
+    localStorage.getItem("traxenToken") ||
+    sessionStorage.getItem("traxenToken");
+  const headers = { ...extra };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  return headers;
+}

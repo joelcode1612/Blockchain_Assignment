@@ -3,16 +3,41 @@
 (function () {
   let profileData = null;
 
+  // ─── BEARER AUTH HELPER (replaces legacy x-wallet-address) ───
+  function authHeaders(extra = {}) {
+    if (typeof window.getAuthHeaders === "function") {
+      return window.getAuthHeaders(extra);
+    }
+    const token =
+      window.Auth?.getToken?.() ||
+      window.Session?.getToken?.() ||
+      localStorage.getItem("traxenToken") ||
+      sessionStorage.getItem("traxenToken");
+
+    const headers = { ...extra };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    return headers;
+  }
+
+  function hasToken() {
+    return !!(
+      window.Auth?.getToken?.() ||
+      window.Session?.getToken?.() ||
+      localStorage.getItem("traxenToken") ||
+      sessionStorage.getItem("traxenToken")
+    );
+  }
+
+  // ─── FETCH PROFILE ────────────────────────────────────
   async function fetchProfile() {
-    const walletAddress = localStorage.getItem("traxenWallet");
-    if (!walletAddress) throw new Error("No wallet connected");
     const res = await fetch("/api/users/me", {
-      headers: { "x-wallet-address": walletAddress },
+      headers: authHeaders(),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
   }
 
+  // ─── RENDER PROFILE ───────────────────────────────────
   function renderProfile(data) {
     profileData = data;
 
@@ -30,9 +55,19 @@
     document.getElementById("accountStatus").textContent =
       data.verification_status || "Active";
 
-    // Wallet
+    // Wallet — prefer the server-provided value, fall back to session,
+    // then to the legacy local key only for display purposes.
+    const sessionWallet =
+      window.Session?.getSession?.()?.wallet ||
+      window.Session?.getSession?.()?.wallet_address ||
+      null;
+
     const wallet =
-      data.wallet_address || localStorage.getItem("traxenWallet") || "0x...";
+      data.wallet_address ||
+      sessionWallet ||
+      localStorage.getItem("traxenWallet") ||
+      "0x...";
+
     document.getElementById("walletAddress").textContent = wallet;
     document.getElementById("walletShort").textContent =
       wallet.slice(0, 6) + "…" + wallet.slice(-4);
@@ -58,7 +93,7 @@
     document.getElementById("nameInput").value = name;
     document.getElementById("emailInput").value = data.email || "";
 
-    // Statistics
+    // Statistics (initial placeholders — loadStats() overwrites these)
     const stats = data.statistics || {};
     document.getElementById("statTotal").textContent =
       stats.total_agreements || 0;
@@ -129,7 +164,8 @@
 
     const fillEl = document.getElementById("reputationFill");
     if (fillEl) {
-      fillEl.style.width = Math.min((balance / REPUTATION_CAP) * 100, 100) + "%";
+      fillEl.style.width =
+        Math.min((balance / REPUTATION_CAP) * 100, 100) + "%";
     }
 
     const noteEl = document.getElementById("reputationNote");
@@ -142,13 +178,12 @@
   }
 
   async function loadReputation() {
-    const wallet =
-      localStorage.getItem("traxenWallet") || window.userWalletAddress;
-    if (!wallet) return;
+    if (!hasToken()) return;
 
     try {
       const res = await fetch("/api/reputation/me", {
-        headers: { "x-wallet-address": wallet },
+        method: "GET",
+        headers: authHeaders(),
       });
       if (!res.ok) return;
 
@@ -177,22 +212,33 @@
   }
 
   async function loadStats() {
-    const wallet = localStorage.getItem("traxenWallet");
-    if (!wallet) return;
+    if (!hasToken()) return;
 
     try {
       const res = await fetch("/api/agreements", {
-        headers: { "x-wallet-address": wallet },
+        method: "GET",
+        headers: authHeaders(),
       });
       if (!res.ok) return;
 
       const agreements = await res.json();
       if (!Array.isArray(agreements)) return;
 
-      const target = wallet.toLowerCase();
-      const mine = agreements.filter(
-        (a) => (a.shipper_wallet || "").toLowerCase() === target,
-      );
+      // Identify this shipper from the session (server already scoped the
+      // response to the authed user, but we still filter by wallet for the
+      // "mine" view in case the endpoint returns a superset).
+      const sessionWallet =
+        window.Session?.getSession?.()?.wallet ||
+        window.Session?.getSession?.()?.wallet_address ||
+        profileData?.wallet_address ||
+        "";
+      const target = sessionWallet.toLowerCase();
+
+      const mine = target
+        ? agreements.filter(
+            (a) => (a.shipper_wallet || "").toLowerCase() === target,
+          )
+        : agreements;
 
       const active = mine.filter((a) =>
         ACTIVE_STATUSES.includes(a.status),
@@ -271,13 +317,9 @@
       return;
     }
     try {
-      const walletAddress = localStorage.getItem("traxenWallet");
       const res = await fetch("/api/users/me", {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          "x-wallet-address": walletAddress,
-        },
+        headers: authHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ display_name: name, email }),
       });
       if (!res.ok) throw new Error("Failed to update profile");

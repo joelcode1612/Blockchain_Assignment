@@ -20,7 +20,8 @@
         return;
       }
       const response = await fetch(`/api/agreements/${agreementId}`, {
-        headers: { "x-wallet-address": wallet },
+        method: "GET",
+        headers: window.getAuthHeaders(),
       });
       if (!response.ok) {
         const err = await response.json();
@@ -53,8 +54,8 @@
       const status = agreement.status || "PendingAcceptance";
       const escrowAmount = agreement.escrow_amount
         ? parseFloat(
-          ethers.formatEther(String(agreement.escrow_amount))
-        ).toFixed(4)
+            ethers.formatEther(String(agreement.escrow_amount)),
+          ).toFixed(4)
         : "0.00";
       document.getElementById("escrow-amount").textContent =
         `${escrowAmount} ETH`;
@@ -74,7 +75,7 @@
 
       // 4. Render milestones
       const milestones = [...(agreement.milestones || [])].sort(
-        (a, b) => Number(a.milestone_index) - Number(b.milestone_index)
+        (a, b) => Number(a.milestone_index) - Number(b.milestone_index),
       );
 
       agreement.milestones = milestones;
@@ -209,8 +210,9 @@
       // are combined into a single action. ═══
       if (status === "Submitted") {
         actionHtml = `
-    ${m.proof_url
-            ? `
+    ${
+      m.proof_url
+        ? `
           <button
             class="btn btn-ghost btn-sm milestone-action-btn"
             onclick="window.open('${m.proof_url}', '_blank')"
@@ -218,8 +220,8 @@
             View Proof
           </button>
         `
-            : ""
-          }
+        : ""
+    }
 
     <button
       class="btn btn-primary btn-sm milestone-action-btn"
@@ -312,7 +314,7 @@
       }
 
       const milestone = (currentAgreement.milestones || []).find(
-        (m) => Number(m.milestone_index) === Number(milestoneIndex)
+        (m) => Number(m.milestone_index) === Number(milestoneIndex),
       );
 
       if (!milestone || milestone.status !== "Submitted") {
@@ -322,16 +324,18 @@
       const amountEth =
         currentAgreement.escrow_amount && milestone.payment_percentage
           ? (
-            (parseFloat(ethers.formatEther(String(currentAgreement.escrow_amount))) *
-              Number(milestone.payment_percentage)) /
-            100
-          ).toFixed(4)
+              (parseFloat(
+                ethers.formatEther(String(currentAgreement.escrow_amount)),
+              ) *
+                Number(milestone.payment_percentage)) /
+              100
+            ).toFixed(4)
           : "the milestone amount";
 
       if (
         !confirm(
           `Verify this milestone AND release ${amountEth} ETH to the carrier?\n\n` +
-          `This will trigger two MetaMask confirmations (verify, then release).`
+            `This will trigger two MetaMask confirmations (verify, then release).`,
         )
       )
         return;
@@ -345,9 +349,9 @@
         currentAgreement.milestones || [],
         currentAgreement.escrow_amount
           ? parseFloat(
-            ethers.formatEther(String(currentAgreement.escrow_amount))
-          ).toFixed(4)
-          : "0.00"
+              ethers.formatEther(String(currentAgreement.escrow_amount)),
+            ).toFixed(4)
+          : "0.00",
       );
 
       const wallet = localStorage.getItem("traxenWallet");
@@ -357,7 +361,7 @@
       try {
         const verifyResult = await window.verifyMilestone(
           currentAgreement.onchain_id,
-          milestoneIndex
+          milestoneIndex,
         );
         console.log("✅ Verify result:", verifyResult);
 
@@ -366,10 +370,7 @@
 
         const verifySync = await fetch("/api/milestones/verify", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-wallet-address": wallet,
-          },
+          headers: authHeaders({ "Content-Type": "application/json" }),
           body: JSON.stringify({
             agreementId: currentAgreement.onchain_id,
             milestoneId: milestoneIndex,
@@ -393,7 +394,7 @@
       try {
         const releaseResult = await window.releasePayment(
           currentAgreement.onchain_id,
-          milestoneIndex
+          milestoneIndex,
         );
         console.log("✅ Release result:", releaseResult);
 
@@ -423,13 +424,16 @@
               const errBody = await payRes.json().catch(() => ({}));
               console.warn(
                 "⚠️ payment_history sync failed:",
-                errBody.error || payRes.status
+                errBody.error || payRes.status,
               );
             } else {
               console.log("✅ payment_history recorded");
             }
           } catch (syncErr) {
-            console.warn("payment_history POST failed (non-critical):", syncErr);
+            console.warn(
+              "payment_history POST failed (non-critical):",
+              syncErr,
+            );
           }
         }
         // ═══ YON End ═══
@@ -437,7 +441,7 @@
         // Refresh agreement from DB
         const releaseSync = await fetch(
           `/api/agreements/${currentAgreement.onchain_id}`,
-          { headers: { "x-wallet-address": wallet } }
+          { headers: authHeaders() },
         );
 
         if (!releaseSync.ok) {
@@ -452,20 +456,23 @@
         if (msg.includes("already paid") || msg.includes("already released")) {
           showToast(
             "⚠️ Milestone was already paid (auto-release skipped).",
-            "warning"
+            "warning",
           );
           return; // finally will reload
         }
         console.error("Release failed:", e);
         showToast(
           "⚠️ Verified, but release failed: " + (e.reason || e.message),
-          "warning"
+          "warning",
         );
         return; // finally will reload
       }
 
       // ─── Success ───────────────────────────────────────
-      showToast(`✅ Milestone verified & ${amountEth} ETH released!`, "success");
+      showToast(
+        `✅ Milestone verified & ${amountEth} ETH released!`,
+        "success",
+      );
     } catch (error) {
       console.error("Verify & release error:", error);
       showToast(error.message || "Failed to verify milestone", "error");
@@ -507,18 +514,27 @@
       );
 
       if (!milestone || milestone.status !== "Verified") {
-        throw new Error("Milestone must be verified before payment can be released");
+        throw new Error(
+          "Milestone must be verified before payment can be released",
+        );
       }
 
-      const amountEth = currentAgreement.escrow_amount && milestone.payment_percentage
-        ? (parseFloat(ethers.formatEther(String(currentAgreement.escrow_amount))) * Number(milestone.payment_percentage) / 100).toFixed(4)
-        : "the milestone amount";
+      const amountEth =
+        currentAgreement.escrow_amount && milestone.payment_percentage
+          ? (
+              (parseFloat(
+                ethers.formatEther(String(currentAgreement.escrow_amount)),
+              ) *
+                Number(milestone.payment_percentage)) /
+              100
+            ).toFixed(4)
+          : "the milestone amount";
 
       if (!confirm(`Release ${amountEth} ETH to the carrier?`)) return;
 
       const result = await window.releasePayment(
         currentAgreement.onchain_id,
-        milestoneIndex
+        milestoneIndex,
       );
 
       console.log("Payment release result:", result);
@@ -532,10 +548,7 @@
       try {
         const paymentSyncResponse = await fetch("/api/payment/release", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-wallet-address": wallet,
-          },
+          headers: authHeaders({ "Content-Type": "application/json" }),
           body: JSON.stringify({
             agreementId: currentAgreement.onchain_id,
             milestoneId: milestoneIndex,
@@ -556,17 +569,14 @@
       const syncResponse = await fetch(
         `/api/agreements/${currentAgreement.onchain_id}`,
         {
-          headers: {
-            "x-wallet-address": wallet,
-          },
-        }
+          headers: authHeaders(),
+        },
       );
 
       if (!syncResponse.ok) {
         const errorData = await syncResponse.json();
         throw new Error(
-          errorData.error ||
-          "Payment released, but database sync failed"
+          errorData.error || "Payment released, but database sync failed",
         );
       }
 
@@ -574,9 +584,7 @@
 
       currentAgreement = syncedAgreement;
 
-      console.log(
-        "✅ Payment and released amount synced to database"
-      );
+      console.log("✅ Payment and released amount synced to database");
 
       if (milestone) {
         milestone.status = "Paid";
@@ -592,13 +600,12 @@
         currentAgreement.milestones || [],
         currentAgreement.escrow_amount
           ? parseFloat(
-            ethers.formatEther(String(currentAgreement.escrow_amount))
-          ).toFixed(4)
-          : "0.00"
+              ethers.formatEther(String(currentAgreement.escrow_amount)),
+            ).toFixed(4)
+          : "0.00",
       );
 
       showToast("Payment released successfully.", "success");
-
     } catch (error) {
       console.error("Release payment error:", error);
       showToast(error.message || "Failed to release payment", "error");
@@ -681,10 +688,7 @@
           `/api/escrow/shipper/${currentAgreement.onchain_id}/deposit`,
           {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "x-wallet-address": wallet,
-            },
+            headers: authHeaders({ "Content-Type": "application/json" }), 
             body: JSON.stringify({
               amount: escrowWei.toString(),
               txHash: tx.hash,
@@ -780,3 +784,14 @@
     if (window.initAgreementDetails) window.initAgreementDetails();
   }
 })();
+function authHeaders(extra = {}) {
+  const token =
+    window.Auth?.getToken?.() ||
+    window.Session?.getToken?.() ||
+    localStorage.getItem("traxenToken") ||
+    sessionStorage.getItem("traxenToken");
+
+  const headers = { ...extra };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  return headers;
+}

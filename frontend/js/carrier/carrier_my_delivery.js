@@ -13,7 +13,8 @@
       }
 
       const response = await fetch("/api/agreements", {
-        headers: { "x-wallet-address": wallet },
+        method: "GET",
+        headers: window.getAuthHeaders(),
       });
       if (!response.ok) {
         const err = await response.json();
@@ -72,7 +73,9 @@
       // formatEther throws "overflow (INVALID_ARGUMENT)" when given a JS
       // number instead of a string/bigint. ═══
       const escrow = ag.escrow_amount
-        ? parseFloat(window.ethers.formatEther(String(ag.escrow_amount))).toFixed(2)
+        ? parseFloat(
+            window.ethers.formatEther(String(ag.escrow_amount)),
+          ).toFixed(2)
         : "0.00";
       // ═══ YON End ═══
       const deadline = ag.deadline

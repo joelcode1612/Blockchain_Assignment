@@ -1,440 +1,1559 @@
-// ─── Storage Keys ──────────────────────────────────────────
+// ============================================================
+// TRAXEN AUTHENTICATION + SESSION MANAGEMENT
+// ============================================================
+// Authentication architecture:
+//
+// REGISTER
+//   MetaMask
+//      ↓
+//   Check Sepolia FIRST
+//      ↓
+//   Connect wallet
+//      ↓
+//   Select role + enter details
+//      ↓
+//   Check Sepolia AGAIN
+//      ↓
+//   Blockchain registration
+//      ↓
+//   Request nonce
+//      ↓
+//   MetaMask signs registration message
+//      ↓
+//   POST /api/auth/register
+//      ↓
+//   Backend verifies signature
+//      ↓
+//   Backend creates user + JWT
+//
+// LOGIN
+//   MetaMask
+//      ↓
+//   Check Sepolia FIRST
+//      ↓
+//   Get wallet
+//      ↓
+//   Request nonce
+//      ↓
+//   MetaMask signs login message
+//      ↓
+//   POST /api/auth/login
+//      ↓
+//   Backend verifies signature
+//      ↓
+//   Backend returns JWT
+//
+// PROTECTED APPLICATION
+//   JWT
+//      ↓
+//   MetaMask account check
+//      ↓
+//   Sepolia check
+//      ↓
+//   GET /api/users/me
+//      Authorization: Bearer JWT
+//      ↓
+//   Backend validates JWT
+//      ↓
+//   req.user
+//      ↓
+//   Verify wallet + role
+//      ↓
+//   Web3/contract ready
+// ============================================================
+
+// ============================================================
+// STORAGE KEYS
+// ============================================================
+
 const STORAGE_WALLET = "traxenWallet";
 const STORAGE_ROLE = "traxenUserRole";
 const STORAGE_NAME = "traxenUserName";
 const STORAGE_EMAIL = "traxenUserEmail";
+const STORAGE_TOKEN = "traxenAuthToken";
 
-// ─── Private Helpers ──────────────────────────────────────
+// ============================================================
+// NETWORK CONFIGURATION
+// ============================================================
+
+// Sepolia decimal chain ID = 11155111
+// MetaMask RPC requires hexadecimal:
+// 11155111 = 0xaa36a7
+const REQUIRED_CHAIN_ID = "0xaa36a7";
+
+// ============================================================
+// ROUTES
+// ============================================================
+
+const LOGIN_PATH = "/login";
+
+// ============================================================
+// PRIVATE STORAGE HELPERS
+// ============================================================
+
 function getWallet() {
   return localStorage.getItem(STORAGE_WALLET);
 }
+
 function getRole() {
   return localStorage.getItem(STORAGE_ROLE);
 }
+
 function getName() {
   return localStorage.getItem(STORAGE_NAME);
 }
+
 function getEmail() {
   return localStorage.getItem(STORAGE_EMAIL);
 }
-function setAuthData(wallet, role, name, email) {
-  if (wallet) localStorage.setItem(STORAGE_WALLET, wallet);
-  if (role) localStorage.setItem(STORAGE_ROLE, role);
-  if (name) localStorage.setItem(STORAGE_NAME, name);
-  if (email) localStorage.setItem(STORAGE_EMAIL, email);
+
+function getToken() {
+  return localStorage.getItem(STORAGE_TOKEN);
 }
+
+// ============================================================
+// STORE AUTHENTICATED DATA
+// ============================================================
+
+function setAuthData(wallet, role, name, email, token = null) {
+  if (wallet) {
+    localStorage.setItem(STORAGE_WALLET, wallet);
+  }
+
+  if (role) {
+    localStorage.setItem(STORAGE_ROLE, role);
+  }
+
+  if (name) {
+    localStorage.setItem(STORAGE_NAME, name);
+  }
+
+  if (email !== undefined && email !== null) {
+    localStorage.setItem(STORAGE_EMAIL, email);
+  }
+
+  if (token) {
+    localStorage.setItem(STORAGE_TOKEN, token);
+  }
+}
+
+// ============================================================
+// CLEAR AUTHENTICATION DATA
+// ============================================================
 
 function clearAuthData() {
   localStorage.removeItem(STORAGE_WALLET);
+
   localStorage.removeItem(STORAGE_ROLE);
+
   localStorage.removeItem(STORAGE_NAME);
+
   localStorage.removeItem(STORAGE_EMAIL);
+
+  localStorage.removeItem(STORAGE_TOKEN);
+
   sessionStorage.clear();
 }
 
-// ─── Core Guard ────────────────────────────────────────────
+// ============================================================
+// PUBLIC PAGE CHECK
+// ============================================================
+
+function isPublicPage() {
+  const path = window.location.pathname;
+
+  return (
+    path === "/" ||
+    path === "/login" ||
+    path === "/register" ||
+    path === "/connect.html" ||
+    path.startsWith("/login") ||
+    path.startsWith("/register") ||
+    path.startsWith("/connect")
+  );
+}
+
+// ============================================================
+// ROLE FROM URL
+// ============================================================
+
+function getAllowedRolesForUrl(url) {
+  if (url.includes("/shipper/") || url.includes("/shipper")) {
+    return ["Shipper"];
+  }
+
+  if (url.includes("/carrier/") || url.includes("/carrier")) {
+    return ["Carrier"];
+  }
+
+  return [];
+}
+
+// ============================================================
+// BASIC AUTH GUARD
+// ============================================================
+
 function guard(allowedRoles) {
   const wallet = getWallet();
   const role = getRole();
-  if (!wallet || !role) {
-    window.location.href = "/login";
+  const token = getToken();
+
+  if (!wallet || !role || !token) {
+    window.location.replace(LOGIN_PATH);
+
     return false;
   }
-  if (allowedRoles && Array.isArray(allowedRoles) && allowedRoles.length > 0) {
+
+  if (Array.isArray(allowedRoles) && allowedRoles.length > 0) {
     if (!allowedRoles.includes(role)) {
-      window.location.href = "/login";
+      window.location.replace(LOGIN_PATH);
+
       return false;
     }
   }
+
   return true;
 }
 
-// ─── Auto‑Guard for Current Page ──────────────────────────
+// ============================================================
+// AUTO GUARD CURRENT PAGE
+// ============================================================
+
 function autoGuard() {
-  const path = window.location.pathname;
-  let allowedRoles = [];
-  if (path.includes("/shipper/") || path.includes("/shipper")) {
-    allowedRoles = ["Shipper"];
-  } else if (path.includes("/carrier/") || path.includes("/carrier")) {
-    allowedRoles = ["Carrier"];
-  } else {
-    // Public pages – no role required
+  if (isPublicPage()) {
     return true;
   }
+
+  const allowedRoles = getAllowedRolesForUrl(window.location.pathname);
+
   return guard(allowedRoles);
 }
 
-// ─── For SPA Navigation ────────────────────────────────────
+// ============================================================
+// ROLE GUARD FOR SPA URL
+// ============================================================
+
 function requireRoleForUrl(url) {
-  let allowedRoles = [];
-  if (url.includes("/shipper/") || url.includes("/shipper")) {
-    allowedRoles = ["Shipper"];
-  } else if (url.includes("/carrier/") || url.includes("/carrier")) {
-    allowedRoles = ["Carrier"];
-  } else {
+  if (!url) {
     return true;
   }
+
+  if (isPublicPage()) {
+    return true;
+  }
+
+  const allowedRoles = getAllowedRolesForUrl(url);
+
   return guard(allowedRoles);
 }
 
-// ─── Run the guard immediately on page load ──────────────
-autoGuard();
+// ============================================================
+// ENSURE SEPOLIA NETWORK
+// ============================================================
+// used BEFORE login/register
+//
+// switchNetwork = true
+//   → automatically request MetaMask switch
+//
+// switchNetwork = false
+//   → do NOT automatically switch
+//   → protected pages will fail if wrong network
+// ============================================================
 
-// ─── Expose public functions ──────────────────────────────
-window.Auth = {
-  isAuthenticated: () => !!getWallet() && !!getRole(),
-  getCurrentRole: getRole,
-  getName: getName,
-  getWallet: getWallet,
-  getEmail: getEmail,
-  setAuthData: setAuthData,
-  clearAuthData: clearAuthData,
-  logout: function () {
-    clearAuthData();
-    window.location.href = "/";
-  },
-  requireRoleForUrl: function (url) {
-    let allowedRoles = [];
-    if (url.includes("/shipper/") || url.includes("/shipper"))
-      allowedRoles = ["Shipper"];
-    else if (url.includes("/carrier/") || url.includes("/carrier"))
-      allowedRoles = ["Carrier"];
-    else return true;
-    return guard(allowedRoles);
-  },
-  autoGuard: autoGuard,
-  guard: guard,
+async function ensureSepoliaNetwork(switchNetwork = true) {
+  if (!window.ethereum) {
+    throw new Error("MetaMask is not installed.");
+  }
 
-  ensureFullSession: function () {
-    const wallet = this.getWallet();
-    const role = this.getCurrentRole();
+  // ----------------------------------------------------------
+  // Check current chain
+  // ----------------------------------------------------------
 
-    if (!wallet || !role) {
-      this.clearAuthData();
-      window.location.href = "/login";
-      return false;
+  const currentChainId = await window.ethereum.request({
+    method: "eth_chainId",
+  });
+
+  console.log("🌐 Current MetaMask chain:", currentChainId);
+
+  console.log("🌐 Required Sepolia chain:", REQUIRED_CHAIN_ID);
+
+  // ----------------------------------------------------------
+  // Already on Sepolia
+  // ----------------------------------------------------------
+
+  if (currentChainId.toLowerCase() === REQUIRED_CHAIN_ID) {
+    console.log("✅ MetaMask is already on Sepolia.");
+
+    return true;
+  }
+
+  // ----------------------------------------------------------
+  // Protected pages can reject wrong network
+  // ----------------------------------------------------------
+
+  if (!switchNetwork) {
+    throw new Error("Please switch MetaMask to the Sepolia network.");
+  }
+
+  // ----------------------------------------------------------
+  // Login/Register:
+  // request automatic network switch
+  // ----------------------------------------------------------
+
+  console.log("⚠️ Wrong network. Requesting switch to Sepolia...");
+
+  try {
+    await window.ethereum.request({
+      method: "wallet_switchEthereumChain",
+
+      params: [
+        {
+          chainId: REQUIRED_CHAIN_ID,
+        },
+      ],
+    });
+
+    console.log("✅ MetaMask switched to Sepolia.");
+  } catch (switchError) {
+    console.error("❌ MetaMask network switch error:", switchError);
+
+    console.error("Error code:", switchError?.code);
+
+    console.error("Error message:", switchError?.message);
+
+    // --------------------------------------------------------
+    // User rejected
+    // --------------------------------------------------------
+
+    if (switchError?.code === 4001) {
+      throw new Error("Please approve the MetaMask switch to Sepolia.");
     }
 
-    // Check if contract is initialising – wait up to 5 seconds
-    if (typeof window.isInitializing !== "undefined" && window.isInitializing) {
-      console.log("Contract initialising, waiting...");
-      return new Promise((resolve) => {
-        let attempts = 0;
-        const check = setInterval(() => {
-          attempts++;
-          if (window.isConnected()) {
-            clearInterval(check);
-            resolve(true);
-          } else if (attempts > 50) {
-            // 5 seconds
-            clearInterval(check);
-            // Still not connected – try reconnect
-            if (typeof window.reconnectWeb3 === "function") {
-              window.reconnectWeb3().then((connected) => {
-                if (!connected) {
-                  this.clearAuthData();
-                  window.location.href = "/login";
-                }
-                resolve(connected);
-              });
-            } else {
-              this.clearAuthData();
-              window.location.href = "/login";
-              resolve(false);
-            }
-          }
-        }, 100);
-      });
+    // --------------------------------------------------------
+    // Request already pending
+    // --------------------------------------------------------
+
+    if (switchError?.code === -32002) {
+      throw new Error(
+        "A MetaMask request is already pending. Please open MetaMask and approve or reject it.",
+      );
     }
 
-    // Normal check
-    if (typeof window.isConnected === "function" && !window.isConnected()) {
-      if (typeof window.reconnectWeb3 === "function") {
-        return window.reconnectWeb3().then((connected) => {
-          if (!connected) {
-            this.clearAuthData();
-            window.location.href = "/login";
-          }
-          return connected;
+    // --------------------------------------------------------
+    // Sepolia isn't added
+    // --------------------------------------------------------
+
+    if (switchError?.code === 4902) {
+      console.log("⚠️ Sepolia is not added to MetaMask. Requesting add...");
+
+      try {
+        await window.ethereum.request({
+          method: "wallet_addEthereumChain",
+
+          params: [
+            {
+              chainId: REQUIRED_CHAIN_ID,
+
+              chainName: "Sepolia",
+
+              nativeCurrency: {
+                name: "Sepolia Ether",
+
+                symbol: "ETH",
+
+                decimals: 18,
+              },
+
+              rpcUrls: ["https://rpc.sepolia.org"],
+
+              blockExplorerUrls: ["https://sepolia.etherscan.io"],
+            },
+          ],
         });
-      } else {
-        this.clearAuthData();
-        window.location.href = "/login";
-        return false;
+
+        console.log("✅ Sepolia added to MetaMask.");
+      } catch (addError) {
+        console.error("❌ Add Sepolia error:", addError);
+
+        if (addError?.code === 4001) {
+          throw new Error("Please approve adding the Sepolia network.");
+        }
+
+        if (addError?.code === -32002) {
+          throw new Error(
+            "A MetaMask request is already pending. Please open MetaMask and finish it.",
+          );
+        }
+
+        throw new Error(
+          addError?.message || "MetaMask could not add the Sepolia network.",
+        );
+      }
+    } else {
+      throw new Error(
+        switchError?.message ||
+          `Unable to switch MetaMask to Sepolia. Error code: ${switchError?.code ?? "unknown"}`,
+      );
+    }
+  }
+
+  // ----------------------------------------------------------
+  // Verify final network
+  // ----------------------------------------------------------
+
+  const finalChainId = await window.ethereum.request({
+    method: "eth_chainId",
+  });
+
+  console.log("🌐 Final MetaMask chain:", finalChainId);
+
+  if (finalChainId.toLowerCase() !== REQUIRED_CHAIN_ID) {
+    throw new Error("MetaMask is still not connected to Sepolia.");
+  }
+
+  console.log("✅ Sepolia network verified.");
+
+  return true;
+}
+
+// ============================================================
+// REDIRECT AFTER AUTH FAILURE
+// ============================================================
+
+function redirectToLogin(message = null) {
+  clearAuthData();
+
+  if (typeof window.resetWalletState === "function") {
+    try {
+      window.resetWalletState();
+    } catch (error) {
+      console.warn("Could not reset Web3 state:", error);
+    }
+  }
+
+  if (message && typeof window.showToast === "function") {
+    window.showToast(message, "error");
+  }
+
+  window.location.replace(LOGIN_PATH);
+
+  return false;
+}
+
+// ============================================================
+// FULL PROTECTED SESSION VALIDATION
+// ============================================================
+
+async function ensureFullSession() {
+  try {
+    console.log("🔐 Checking full Traxen session...");
+
+    // --------------------------------------------------------
+    // 1. Get stored authentication data
+    // --------------------------------------------------------
+
+    const token = getToken();
+
+    const wallet = getWallet();
+
+    const role = getRole();
+
+    if (!token || !wallet || !role) {
+      return redirectToLogin("Please sign in to access this page.");
+    }
+
+    // --------------------------------------------------------
+    // 2. MetaMask must exist
+    // --------------------------------------------------------
+
+    if (!window.ethereum) {
+      return redirectToLogin("MetaMask is not available.");
+    }
+
+    // --------------------------------------------------------
+    // 3. Protected page must be Sepolia
+    // Don't silently switch an already authenticated user.
+    // --------------------------------------------------------
+
+    try {
+      await ensureSepoliaNetwork(false);
+    } catch (networkError) {
+      return redirectToLogin(networkError.message);
+    }
+
+    // --------------------------------------------------------
+    // 4. Check active MetaMask account
+    // --------------------------------------------------------
+
+    const accounts = await window.ethereum.request({
+      method: "eth_accounts",
+    });
+
+    if (!accounts || accounts.length === 0) {
+      return redirectToLogin(
+        "Please connect your authenticated MetaMask account.",
+      );
+    }
+
+    const currentWallet = accounts[0].toLowerCase();
+
+    const authenticatedWallet = wallet.toLowerCase();
+
+    console.log("🔐 Authenticated wallet:", authenticatedWallet);
+
+    console.log("🔐 Current MetaMask wallet:", currentWallet);
+
+    // --------------------------------------------------------
+    // 5. Prevent account switching
+    // --------------------------------------------------------
+
+    if (currentWallet !== authenticatedWallet) {
+      return redirectToLogin(
+        "The active MetaMask account does not match your authenticated account.",
+      );
+    }
+
+    console.log("✅ MetaMask account matches authenticated wallet.");
+
+    // --------------------------------------------------------
+    // 6. Ask backend to validate JWT
+    // --------------------------------------------------------
+
+    const meResponse = await fetch("/api/users/me", {
+      method: "GET",
+
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    // --------------------------------------------------------
+    // JWT rejected
+    // --------------------------------------------------------
+
+    if (!meResponse.ok) {
+      console.warn("❌ Backend rejected JWT:", meResponse.status);
+
+      return redirectToLogin("Your session is invalid or expired.");
+    }
+
+    const userData = await meResponse.json();
+
+    // --------------------------------------------------------
+    // 7. Verify backend wallet
+    // --------------------------------------------------------
+
+    if (!userData.wallet_address) {
+      return redirectToLogin("Backend did not return an authenticated wallet.");
+    }
+
+    if (userData.wallet_address.toLowerCase() !== authenticatedWallet) {
+      return redirectToLogin(
+        "Backend wallet does not match the authenticated wallet.",
+      );
+    }
+
+    // --------------------------------------------------------
+    // 8. Verify backend role
+    // --------------------------------------------------------
+
+    if (userData.role !== role) {
+      return redirectToLogin(
+        "Backend role does not match the authenticated role.",
+      );
+    }
+
+    console.log("✅ JWT authentication verified.");
+
+    console.log("✅ Backend user verified.");
+
+    console.log("✅ Authenticated role:", userData.role);
+
+    // --------------------------------------------------------
+    // 9. Make sure Web3 / contract is ready
+    // --------------------------------------------------------
+
+    if (typeof window.ensureWeb3Ready === "function") {
+      try {
+        const web3 = await window.ensureWeb3Ready();
+
+        if (!web3 || !web3.contract) {
+          throw new Error("Contract instance unavailable.");
+        }
+
+        console.log("✅ Web3 is ready.");
+
+        console.log("✅ Contract is ready.");
+      } catch (web3Error) {
+        console.error("❌ Web3 initialization failed:", web3Error);
+
+        return redirectToLogin("Blockchain connection is unavailable.");
       }
     }
+
+    // --------------------------------------------------------
+    // 10. Full session valid
+    // --------------------------------------------------------
+
+    console.log("✅ Full Traxen session verified.");
+
     return true;
+  } catch (error) {
+    console.error("❌ Full session verification failed:", error);
+
+    return redirectToLogin(error.message || "Authentication failed.");
+  }
+}
+
+// ============================================================
+// PUBLIC AUTH OBJECT
+// ============================================================
+
+window.Auth = {
+  isAuthenticated: () => !!getToken() && !!getWallet() && !!getRole(),
+
+  getToken: getToken,
+
+  getCurrentRole: getRole,
+
+  getName: getName,
+
+  getWallet: getWallet,
+
+  getEmail: getEmail,
+
+  setAuthData: setAuthData,
+
+  clearAuthData: clearAuthData,
+
+  ensureFullSession: ensureFullSession,
+
+  ensureSepoliaNetwork: ensureSepoliaNetwork,
+
+  guard: guard,
+
+  autoGuard: autoGuard,
+
+  requireRoleForUrl: requireRoleForUrl,
+
+  logout: function () {
+    clearAuthData();
+
+    if (typeof window.resetWalletState === "function") {
+      try {
+        window.resetWalletState();
+      } catch (error) {
+        console.warn("Could not reset Web3 state:", error);
+      }
+    }
+
+    window.location.replace("/");
   },
 };
 
 // ============================================================
-// LOGIN / REGISTRATION UI (using central helpers)
+// RUN LOCAL GUARD IMMEDIATELY
+// ============================================================
+
+autoGuard();
+
+// ============================================================
+// LOGIN / REGISTER UI
 // ============================================================
 
 let selectedRole = null;
 
+// ============================================================
+// PASSWORD TOGGLE
+// ============================================================
+
 function togglePw(id) {
-  const el = document.getElementById(id);
-  if (el) el.type = el.type === "password" ? "text" : "password";
-}
+  const element = document.getElementById(id);
 
-function goRegStep(step) {
-  [1, 2, 3].forEach((i) => {
-    const el = document.getElementById("reg-step-" + i);
-    if (el) el.classList.toggle("active", i === step);
-  });
-  document
-    .querySelectorAll("#regDots .dot-bar")
-    .forEach((dot, i) => dot.classList.toggle("on", i < step));
-}
-
-function selectRole(el) {
-  document
-    .querySelectorAll(".role-card")
-    .forEach((card) => card.classList.remove("selected"));
-  el.classList.add("selected");
-  selectedRole = el.dataset.role;
-  document.getElementById("regRoleContinue").disabled = false;
-}
-
-async function finishRegister() {
-  try {
-    const name = document.getElementById("regDisplayName").value.trim();
-    const email = document.getElementById("regEmail").value.trim();
-
-    if (!name) {
-      showToast("Please enter your display name.", "warning");
-      return;
-    }
-    if (!email) {
-      showToast("Please enter your email.", "warning");
-      return;
-    }
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailPattern.test(email)) {
-      showToast("Please enter a valid email address.", "warning");
-      return;
-    }
-    if (!selectedRole) {
-      showToast("Please select a role.", "warning");
-      goRegStep(2);
-      return;
-    }
-
-    console.log("Selected role:", selectedRole);
-    const result = await registerBlockchainUser(selectedRole);
-    const walletAddress = result.wallet;
-    console.log("Registration result:", result);
-
-    const dbResponse = await fetch("/api/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        walletAddress: walletAddress,
-        role: selectedRole,
-        displayName: name,
-        email: email,
-        signature: result.signature,
-        message: result.message,
-      }),
-    });
-
-    if (!dbResponse.ok) {
-      const errorData = await dbResponse.json();
-      throw new Error(errorData.message || "Failed to create account.");
-    }
-
-    const userData = await dbResponse.json();
-    console.log("User created:", userData);
-
-    // ─── Use central helper to store session ──────────────
-    setAuthData(walletAddress, selectedRole, name, email);
-
-    showToast(
-      "Account created successfully as " + selectedRole + "!",
-      "success",
-    );
-    setTimeout(() => {
-      window.location.href =
-        "/" + selectedRole.toLowerCase() + "_dashboard.html";
-    }, 1500);
-  } catch (error) {
-    console.error("Registration error:", error);
-    showToast(error.reason || error.message || "Registration failed.", "error");
+  if (element) {
+    element.type = element.type === "password" ? "text" : "password";
   }
 }
 
-// ─── Check server availability on every page load ──────
-async function checkServerAndSession() {
-  const currentPath = window.location.pathname;
-  const isPublicPage =
-    ["/login", "/register", "/"].includes(currentPath) ||
-    currentPath.startsWith("/login") ||
-    currentPath.startsWith("/register");
+// ============================================================
+// REGISTRATION STEP CONTROL
+// ============================================================
 
-  // Function to perform a single health check
+function goRegStep(step) {
+  [1, 2, 3].forEach((index) => {
+    const element = document.getElementById(`reg-step-${index}`);
+
+    if (element) {
+      element.classList.toggle("active", index === step);
+    }
+  });
+
+  document.querySelectorAll("#regDots .dot-bar").forEach((dot, index) => {
+    dot.classList.toggle("on", index < step);
+  });
+}
+
+// ============================================================
+// ROLE SELECTION
+// ============================================================
+
+function selectRole(element) {
+  if (!element) {
+    return;
+  }
+
+  document.querySelectorAll(".role-card").forEach((card) => {
+    card.classList.remove("selected");
+  });
+
+  element.classList.add("selected");
+
+  selectedRole = element.dataset.role;
+
+  const continueButton = document.getElementById("regRoleContinue");
+
+  if (continueButton) {
+    continueButton.disabled = false;
+  }
+}
+
+// ============================================================
+// REGISTER WALLET CONNECTION
+// IMPORTANT:
+// NETWORK CHECK IS THE FIRST BLOCKCHAIN ACTION.
+// ============================================================
+
+async function handleRegisterWalletConnection(element) {
+  try {
+    // --------------------------------------------------------
+    // FIRST: MetaMask
+    // --------------------------------------------------------
+
+    if (!window.ethereum) {
+      throw new Error("MetaMask is not installed.");
+    }
+
+    // --------------------------------------------------------
+    // FIRST NETWORK CHECK
+    // BEFORE CONNECTING
+    // --------------------------------------------------------
+
+    console.log("🌐 Checking network before registration...");
+
+    await ensureSepoliaNetwork(true);
+
+    // --------------------------------------------------------
+    // Connect wallet
+    // --------------------------------------------------------
+
+    const address = await connectWallet();
+
+    // --------------------------------------------------------
+    // UI
+    // --------------------------------------------------------
+
+    document.querySelectorAll(".wallet-opt").forEach((wallet) => {
+      wallet.classList.remove("selected");
+    });
+
+    if (element) {
+      element.classList.add("selected");
+    }
+
+    const walletAddressEl = document.getElementById("regWalletAddr");
+
+    if (walletAddressEl) {
+      walletAddressEl.textContent = address;
+    }
+
+    const status = document.getElementById("regWalletStatus");
+
+    if (status) {
+      status.className = "status-line connected";
+
+      status.innerHTML =
+        '<div class="status-dot"></div>' + "<span>Connected</span>";
+    }
+
+    setTimeout(() => goRegStep(2), 500);
+  } catch (error) {
+    console.error("❌ Registration wallet connection error:", error);
+
+    if (typeof showToast === "function") {
+      showToast(error.message || "Unable to connect wallet.", "error");
+    }
+  }
+}
+
+// ============================================================
+// REGISTRATION
+// ============================================================
+
+async function finishRegister() {
+  try {
+    // --------------------------------------------------------
+    // 1. MetaMask
+    // --------------------------------------------------------
+
+    if (!window.ethereum) {
+      throw new Error("MetaMask is not installed.");
+    }
+
+    // --------------------------------------------------------
+    // 2. NETWORK CHECK AGAIN
+    // User could have changed network while entering details.
+    // --------------------------------------------------------
+
+    console.log("🌐 Rechecking network before registration submission...");
+
+    await ensureSepoliaNetwork(true);
+
+    // --------------------------------------------------------
+    // 3. Get form values
+    // --------------------------------------------------------
+
+    const nameElement = document.getElementById("regDisplayName");
+
+    const emailElement = document.getElementById("regEmail");
+
+    const name = nameElement ? nameElement.value.trim() : "";
+
+    const email = emailElement ? emailElement.value.trim() : "";
+
+    // --------------------------------------------------------
+    // 4. Validate name
+    // --------------------------------------------------------
+
+    if (!name) {
+      showToast("Please enter your display name.", "warning");
+
+      return;
+    }
+
+    // --------------------------------------------------------
+    // 5. Validate email
+    // --------------------------------------------------------
+
+    if (!email) {
+      showToast("Please enter your email.", "warning");
+
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showToast("Please enter a valid email address.", "warning");
+
+      return;
+    }
+
+    // --------------------------------------------------------
+    // 6. Validate role
+    // --------------------------------------------------------
+
+    if (!selectedRole || !["Shipper", "Carrier"].includes(selectedRole)) {
+      showToast("Please select a valid role.", "warning");
+
+      goRegStep(2);
+
+      return;
+    }
+
+    // --------------------------------------------------------
+    // 7. Get active MetaMask wallet
+    // --------------------------------------------------------
+
+    const provider = new ethers.BrowserProvider(window.ethereum);
+
+    const signer = await provider.getSigner();
+
+    const walletAddress = await signer.getAddress();
+
+    console.log("🔐 Registration wallet:", walletAddress);
+
+    // --------------------------------------------------------
+    // 8. Blockchain registration
+    // --------------------------------------------------------
+
+    let blockchainResult;
+
+    try {
+      blockchainResult = await registerBlockchainUser(selectedRole);
+    } catch (blockchainError) {
+      const message = blockchainError?.message || "";
+
+      // Existing blockchain account
+      // can continue to backend authentication.
+      if (message.toLowerCase().includes("already registered")) {
+        console.warn("⚠️ Wallet already registered on blockchain.");
+
+        blockchainResult = {
+          wallet: walletAddress,
+        };
+      } else {
+        throw blockchainError;
+      }
+    }
+
+    const authenticatedWallet = blockchainResult?.wallet || walletAddress;
+
+    // --------------------------------------------------------
+    // 9. Confirm wallet did not change
+    // --------------------------------------------------------
+
+    if (authenticatedWallet.toLowerCase() !== walletAddress.toLowerCase()) {
+      throw new Error(
+        "Registration wallet does not match the active MetaMask account.",
+      );
+    }
+
+    // --------------------------------------------------------
+    // 10. Request fresh nonce
+    // --------------------------------------------------------
+
+    console.log("🔐 Requesting registration nonce...");
+
+    const nonceResponse = await fetch(
+      `/api/auth/nonce/${authenticatedWallet}`,
+      {
+        method: "GET",
+      },
+    );
+
+    const nonceData = await nonceResponse.json();
+
+    if (!nonceResponse.ok || !nonceData.success || !nonceData.nonce) {
+      throw new Error(
+        nonceData.message || "Failed to generate registration nonce.",
+      );
+    }
+
+    const nonce = nonceData.nonce;
+
+    // --------------------------------------------------------
+    // 11. Create exact registration message
+    // --------------------------------------------------------
+
+    const message =
+      `Traxen Account Registration\n\n` +
+      `Please sign this message to verify that you control this wallet.\n\n` +
+      `This signature does not send a transaction and does not cost gas.\n\n` +
+      `Nonce: ${nonce}`;
+
+    // --------------------------------------------------------
+    // 12. MetaMask signature
+    // --------------------------------------------------------
+
+    console.log("✍️ Requesting registration signature...");
+
+    const signature = await signer.signMessage(message);
+
+    console.log("✅ Registration signature created.");
+
+    // --------------------------------------------------------
+    // 13. Send to backend
+    // --------------------------------------------------------
+
+    const dbResponse = await fetch("/api/auth/register", {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json",
+      },
+
+      body: JSON.stringify({
+        walletAddress: authenticatedWallet,
+
+        role: selectedRole,
+
+        displayName: name,
+
+        email: email,
+
+        signature: signature,
+
+        message: message,
+      }),
+    });
+
+    const data = await dbResponse.json();
+
+    // --------------------------------------------------------
+    // 14. Backend result
+    // --------------------------------------------------------
+
+    if (!dbResponse.ok || !data.success) {
+      // If backend says account already exists,
+      // registration should NOT silently create a second account.
+      throw new Error(data.message || "Registration failed.");
+    }
+
+    // --------------------------------------------------------
+    // 15. JWT must exist
+    // --------------------------------------------------------
+
+    if (!data.token) {
+      throw new Error(
+        "Registration succeeded but the server did not return a JWT.",
+      );
+    }
+
+    // --------------------------------------------------------
+    // 16. User data must exist
+    // --------------------------------------------------------
+
+    if (!data.user) {
+      throw new Error(
+        "Registration succeeded but user information was not returned.",
+      );
+    }
+
+    // --------------------------------------------------------
+    // 17. Store JWT + authenticated user
+    // --------------------------------------------------------
+
+    setAuthData(
+      data.user.wallet_address || authenticatedWallet,
+
+      data.user.role || selectedRole,
+
+      data.user.display_name || name,
+
+      data.user.email || email,
+
+      data.token,
+    );
+
+    console.log("✅ Registration JWT stored.");
+
+    console.log("✅ Registration session established.");
+
+    // --------------------------------------------------------
+    // 18. Success
+    // --------------------------------------------------------
+
+    showToast(`Account created successfully as ${selectedRole}!`, "success");
+
+    // --------------------------------------------------------
+    // 19. Role-based redirect
+    // --------------------------------------------------------
+
+    setTimeout(() => {
+      if (selectedRole === "Carrier") {
+        window.location.replace("/carrier/carrier_dashboard.html");
+
+        return;
+      }
+
+      if (selectedRole === "Shipper") {
+        window.location.replace("/shipper/shipper_dashboard.html");
+
+        return;
+      }
+
+      clearAuthData();
+
+      window.location.replace(LOGIN_PATH);
+    }, 1200);
+  } catch (error) {
+    console.error("❌ Registration error:", error);
+
+    if (typeof showToast === "function") {
+      showToast(
+        error.reason || error.message || "Registration failed.",
+        "error",
+      );
+    }
+  }
+}
+
+// ============================================================
+// LOGIN
+// IMPORTANT:
+// NETWORK CHECK IS THE FIRST BLOCKCHAIN ACTION.
+// ============================================================
+
+async function handleLogin() {
+  try {
+    // --------------------------------------------------------
+    // 1. MetaMask
+    // --------------------------------------------------------
+
+    if (!window.ethereum) {
+      throw new Error("MetaMask is not installed.");
+    }
+
+    // --------------------------------------------------------
+    // 2. NETWORK CHECK FIRST
+    // --------------------------------------------------------
+
+    console.log("🌐 Checking network before login...");
+
+    await ensureSepoliaNetwork(true);
+
+    // --------------------------------------------------------
+    // 3. Request wallet access if necessary
+    // --------------------------------------------------------
+
+    let accounts = await window.ethereum.request({
+      method: "eth_accounts",
+    });
+
+    if (!accounts || accounts.length === 0) {
+      accounts = await window.ethereum.request({
+        method: "eth_requestAccounts",
+      });
+    }
+
+    if (!accounts || accounts.length === 0) {
+      throw new Error("No MetaMask account is connected.");
+    }
+
+    // --------------------------------------------------------
+    // 4. Get signer
+    // --------------------------------------------------------
+
+    const provider = new ethers.BrowserProvider(window.ethereum);
+
+    const signer = await provider.getSigner();
+
+    const walletAddress = await signer.getAddress();
+
+    console.log("🔐 Login wallet:", walletAddress);
+
+    if (typeof showToast === "function") {
+      showToast("Verifying your wallet...", "info");
+    }
+
+    // --------------------------------------------------------
+    // 5. Request fresh nonce
+    // --------------------------------------------------------
+
+    console.log("🔐 Requesting login nonce...");
+
+    const nonceResponse = await fetch(`/api/auth/nonce/${walletAddress}`, {
+      method: "GET",
+    });
+
+    const nonceData = await nonceResponse.json();
+
+    if (!nonceResponse.ok || !nonceData.success || !nonceData.nonce) {
+      throw new Error(nonceData.message || "Failed to generate login nonce.");
+    }
+
+    const nonce = nonceData.nonce;
+
+    // --------------------------------------------------------
+    // 6. Exact login message
+    // --------------------------------------------------------
+
+    const message =
+      `Traxen Login Verification\n\n` +
+      `Please sign this message to verify that you control this wallet.\n\n` +
+      `This signature does not send a transaction and does not cost gas.\n\n` +
+      `Nonce: ${nonce}`;
+
+    // --------------------------------------------------------
+    // 7. MetaMask signature
+    // --------------------------------------------------------
+
+    console.log("✍️ Requesting login signature...");
+
+    const signature = await signer.signMessage(message);
+
+    console.log("✅ Login signature created.");
+
+    // --------------------------------------------------------
+    // 8. Send login to backend
+    // --------------------------------------------------------
+
+    const loginResponse = await fetch("/api/auth/login", {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json",
+      },
+
+      body: JSON.stringify({
+        walletAddress: walletAddress,
+
+        signature: signature,
+
+        message: message,
+      }),
+    });
+
+    const data = await loginResponse.json();
+
+    // --------------------------------------------------------
+    // 9. Backend result
+    // --------------------------------------------------------
+
+    if (!loginResponse.ok || !data.success) {
+      throw new Error(data.message || "Login failed.");
+    }
+
+    // --------------------------------------------------------
+    // 10. JWT must exist
+    // --------------------------------------------------------
+
+    if (!data.token) {
+      throw new Error("Login succeeded but the server did not return a JWT.");
+    }
+
+    // --------------------------------------------------------
+    // 11. User must exist
+    // --------------------------------------------------------
+
+    if (!data.user) {
+      throw new Error(
+        "Login succeeded but the server did not return user information.",
+      );
+    }
+
+    // --------------------------------------------------------
+    // 12. Store JWT + authenticated user
+    // --------------------------------------------------------
+
+    setAuthData(
+      data.user.wallet_address || walletAddress,
+
+      data.user.role,
+
+      data.user.display_name || "User",
+
+      data.user.email || "",
+
+      data.token,
+    );
+
+    console.log("✅ Login JWT stored.");
+
+    console.log("✅ Authenticated wallet:", data.user.wallet_address);
+
+    console.log("✅ Authenticated role:", data.user.role);
+
+    // --------------------------------------------------------
+    // 13. Success
+    // --------------------------------------------------------
+
+    showToast("Login successful! Redirecting...", "success");
+
+    // --------------------------------------------------------
+    // 14. Redirect based on BACKEND role
+    // --------------------------------------------------------
+
+    setTimeout(() => {
+      if (data.user.role === "Carrier") {
+        window.location.replace("/carrier/carrier_dashboard.html");
+
+        return;
+      }
+
+      if (data.user.role === "Shipper") {
+        window.location.replace("/shipper/shipper_dashboard.html");
+
+        return;
+      }
+
+      console.error("Unknown backend role:", data.user.role);
+
+      clearAuthData();
+
+      window.location.replace(LOGIN_PATH);
+    }, 900);
+  } catch (error) {
+    console.error("❌ Login error:", error);
+
+    if (typeof showToast === "function") {
+      showToast(error.message || "Unable to complete login.", "error");
+    }
+  }
+}
+
+// ============================================================
+// LOGIN BUTTON COMPATIBILITY
+// ============================================================
+
+function doLogin() {
+  return handleLogin();
+}
+
+// ============================================================
+// WALLET SELECTION UI
+// ============================================================
+
+function selectWallet(element, context) {
+  if (!element) {
+    return;
+  }
+
+  if (element.classList.contains("disabled")) {
+    return;
+  }
+
+  document.querySelectorAll(".wallet-opt").forEach((wallet) => {
+    wallet.classList.remove("selected");
+  });
+
+  element.classList.add("selected");
+
+  const status = document.getElementById(`${context}WalletStatus`);
+
+  const walletName =
+    element.querySelector(".wallet-name")?.textContent || "wallet";
+
+  if (status) {
+    status.className = "status-line connecting";
+
+    status.innerHTML =
+      '<div class="status-dot"></div>' +
+      `<span>Connecting to ${walletName}…</span>`;
+  }
+
+  setTimeout(async () => {
+    try {
+      if (context === "reg") {
+        await handleRegisterWalletConnection(element);
+      }
+
+      if (context === "login") {
+        await handleLogin();
+      }
+    } catch (error) {
+      console.error("Wallet selection error:", error);
+    }
+  }, 150);
+}
+
+// ============================================================
+// LOGOUT
+// ============================================================
+
+function handleLogout(event) {
+  if (event) {
+    event.preventDefault();
+  }
+
+  window.Auth.logout();
+}
+
+// ============================================================
+// SERVER HEALTH CHECK
+// ============================================================
+
+async function checkServerAndSession() {
+  const publicPage = isPublicPage();
+
   async function checkHealth() {
     try {
-      const response = await fetch("/api/health", { method: "GET" });
-      if (!response.ok) {
-        throw new Error("Server returned " + response.status);
-      }
-      return true;
+      const response = await fetch("/api/health", {
+        method: "GET",
+      });
+
+      return response.ok;
     } catch (error) {
+      console.error("Health check failed:", error);
+
       return false;
     }
   }
 
-  // Try twice with a 2‑second delay between attempts
   let healthy = false;
+
   for (let attempt = 1; attempt <= 2; attempt++) {
     healthy = await checkHealth();
-    if (healthy) break;
+
+    if (healthy) {
+      break;
+    }
+
     if (attempt < 2) {
-      console.warn(`Health check attempt ${attempt} failed. Retrying in 2s...`);
       await new Promise((resolve) => setTimeout(resolve, 2000));
     }
   }
 
   if (!healthy) {
-    // Server is unreachable – clear the session
-    console.warn("Server unreachable after 2 attempts – clearing session.");
     clearAuthData();
 
-    // If we're on a protected page, redirect to login
-    if (!isPublicPage) {
-      window.location.href = "/login";
-    } else {
-      // If already on login/register, just show a warning (optional)
-      if (typeof showToast === "function") {
-        showToast("Server is unreachable. Please try again later.", "error");
-      }
+    if (!publicPage) {
+      window.location.replace(LOGIN_PATH);
+    } else if (typeof showToast === "function") {
+      showToast("Server is unreachable. Please try again later.", "error");
     }
+
+    return false;
   }
-}
 
-function doLogin() {
-  const address = localStorage.getItem("traxenWallet");
-  if (!address) {
-    showToast("Please connect your wallet first.", "warning");
-    // Redirect to login page (if not already there)
-    if (window.location.pathname !== "/login") {
-      // Use replace to avoid history issues
-      setTimeout(() => {
-        window.location.replace("/login");
-      }, 1500); // keep the toast visible
-    }
-    return;
+  // ----------------------------------------------------------
+  // Public pages don't require an existing session
+  // ----------------------------------------------------------
+
+  if (publicPage) {
+    return true;
   }
-  // Proceed with login
-  localStorage.setItem("traxenWallet", address);
-  const role = localStorage.getItem("traxenUserRole") || "Shipper";
-  window.location.href = "/" + role.toLowerCase() + "_dashboard.html";
+
+  // ----------------------------------------------------------
+  // Protected pages require full session validation
+  // ----------------------------------------------------------
+
+  return ensureFullSession();
 }
 
-function selectWallet(el, ctx) {
-  if (el.classList.contains("disabled")) return;
-  el.style.opacity = "0.6";
-  el.style.pointerEvents = "none";
+// ============================================================
+// DOM READY
+// ============================================================
 
-  el.parentElement
-    .querySelectorAll(".wallet-opt")
-    .forEach((w) => w.classList.remove("selected"));
-  el.classList.add("selected");
+document.addEventListener("DOMContentLoaded", async () => {
+  if (document.getElementById("reg-step-1")) {
+    goRegStep(1);
+  }
 
-  const status = document.getElementById(ctx + "WalletStatus");
-  const walletName = el.querySelector(".wallet-name").textContent;
-  status.className = "status-line connecting";
-  status.innerHTML =
-    '<div class="status-dot"></div><span>Connecting to ' +
-    walletName +
-    "…</span>";
-
-  setTimeout(() => {
-    status.className = "status-line connected";
-    status.innerHTML = '<div class="status-dot"></div> ...';
-    if (ctx === "reg") setTimeout(() => goRegStep(2), 500);
-    if (ctx === "login") setTimeout(() => handleLogin(), 500);
-  }, 900);
-
-  el.style.opacity = "1";
-  el.style.pointerEvents = "auto";
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  if (document.getElementById("reg-step-1")) goRegStep(1);
+  try {
+    await checkServerAndSession();
+  } catch (error) {
+    console.error("❌ Startup authentication check failed:", error);
+  }
 });
 
-function handleLogout(event) {
-  if (event) event.preventDefault();
-  // Reset blockchain state
-  if (typeof window.resetWalletState === "function") {
-    window.resetWalletState();
-  }
-  clearAuthData();
-  window.location.href = "/";
-}
+// ============================================================
+// METAMASK ACCOUNT CHANGES
+// ============================================================
 
-async function handleRegisterWalletConnection(element) {
-  try {
-    const address = await connectWallet();
-    document
-      .querySelectorAll(".wallet-opt")
-      .forEach((wallet) => wallet.classList.remove("selected"));
-    element.classList.add("selected");
+if (window.ethereum) {
+  window.ethereum.on("accountsChanged", (accounts) => {
+    console.warn("⚠️ MetaMask accounts changed:", accounts);
 
-    const status = document.getElementById("regWalletStatus");
-    status.className = "status-line connected";
-    status.innerHTML =
-      '<div class="status-dot"></div>' +
-      "<span>Connected · " +
-      truncateAddress(address) +
-      "</span>";
+    // ------------------------------------------------------
+    // No account
+    // ------------------------------------------------------
 
-    const walletAddressEl = document.getElementById("regWalletAddr");
-    if (walletAddressEl) walletAddressEl.textContent = address;
+    if (!accounts || accounts.length === 0) {
+      if (!isPublicPage()) {
+        clearAuthData();
 
-    setTimeout(() => goRegStep(2), 500);
-  } catch (error) {
-    console.error(error);
-    showToast("Failed to connect wallet: " + error.message, "error");
-  }
-}
-
-async function handleLogin() {
-  try {
-    const loginResult = await blockchainLogin();
-    if (loginResult.success && loginResult.authenticated) {
-      showToast("Login successful! Redirecting...", "success");
-
-      // Fetch user details from database
-      let displayName = "User";
-      let email = "";
-      try {
-        const meResponse = await fetch("/api/users/me", {
-          headers: { "x-wallet-address": loginResult.wallet },
-        });
-        if (meResponse.ok) {
-          const userData = await meResponse.json();
-          displayName = userData.display_name || displayName;
-          email = userData.email || "";
-        }
-      } catch (e) {
-        console.warn("Could not fetch user details", e);
+        window.location.replace(LOGIN_PATH);
       }
 
-      setAuthData(loginResult.wallet, loginResult.role, displayName, email);
-      setTimeout(() => {
-        window.location.href =
-          "/" + loginResult.role.toLowerCase() + "_dashboard.html";
-      }, 1200);
-    } else {
-      showToast("Wallet not recognized. Please register first.", "error");
+      return;
     }
-  } catch (err) {
-    showToast(err.message || "Failed to authenticate.", "error");
-  }
+
+    // ------------------------------------------------------
+    // Compare against authenticated wallet
+    // ------------------------------------------------------
+
+    const authenticatedWallet = getWallet();
+
+    if (
+      authenticatedWallet &&
+      accounts[0].toLowerCase() !== authenticatedWallet.toLowerCase()
+    ) {
+      console.warn("❌ MetaMask account switched.");
+
+      clearAuthData();
+
+      if (typeof window.resetWalletState === "function") {
+        try {
+          window.resetWalletState();
+        } catch (error) {
+          console.warn("Could not reset Web3 state:", error);
+        }
+      }
+
+      if (!isPublicPage()) {
+        window.location.replace(LOGIN_PATH);
+      }
+    }
+  });
+
+  // ==========================================================
+  // METAMASK NETWORK CHANGE
+  // ==========================================================
+
+  window.ethereum.on("chainChanged", async (chainId) => {
+    console.warn("⚠️ MetaMask network changed:", chainId);
+
+    if (typeof window.resetWalletState === "function") {
+      try {
+        window.resetWalletState();
+      } catch (error) {
+        console.warn("Could not reset Web3 state:", error);
+      }
+    }
+
+    // ------------------------------------------------------
+    // Public login/register page
+    //
+    // Do not destroy anything here.
+    // Login/register will check/switch network when clicked.
+    // ------------------------------------------------------
+
+    if (isPublicPage()) {
+      return;
+    }
+
+    // ------------------------------------------------------
+    // Protected page
+    //
+    // Wrong network invalidates this session.
+    // ------------------------------------------------------
+
+    if (chainId.toLowerCase() !== REQUIRED_CHAIN_ID) {
+      clearAuthData();
+
+      if (typeof showToast === "function") {
+        showToast("Please reconnect using the Sepolia network.", "error");
+      }
+
+      window.location.replace(LOGIN_PATH);
+
+      return;
+    }
+
+    // ------------------------------------------------------
+    // Correct network
+    // Rebuild Web3 state.
+    // ------------------------------------------------------
+
+    try {
+      if (typeof window.ensureWeb3Ready === "function") {
+        await window.ensureWeb3Ready();
+
+        console.log("✅ Web3 reconnected after network change.");
+      }
+    } catch (error) {
+      console.error("❌ Web3 reconnection failed:", error);
+
+      clearAuthData();
+
+      window.location.replace(LOGIN_PATH);
+    }
+  });
 }
 
-// Run the check as soon as the DOM is ready.
-document.addEventListener("DOMContentLoaded", checkServerAndSession);
+// ============================================================
+// AUTH HEADERS FOR PROTECTED API REQUESTS
+// ============================================================
+
+window.getAuthHeaders = function () {
+  const token = getToken();
+
+  if (!token) {
+    return {
+      "Content-Type": "application/json",
+    };
+  }
+
+  return {
+    "Content-Type": "application/json",
+
+    Authorization: `Bearer ${token}`,
+  };
+};
+
+// ============================================================
+// TOKEN HELPER
+// ============================================================
+
+window.getAuthToken = function () {
+  return getToken();
+};

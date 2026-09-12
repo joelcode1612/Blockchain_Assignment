@@ -11,7 +11,8 @@
       }
 
       const response = await fetch("/api/agreements", {
-        headers: { "x-wallet-address": wallet },
+        method: "GET",
+        headers: window.getAuthHeaders(),
       });
       if (!response.ok) {
         const err = await response.json();
@@ -25,14 +26,15 @@
       // the array below if you want expired agreements shown too.
       const CONCLUDED_STATUSES = ["Completed", "Refunded", "Rejected"];
       agreements = agreements.filter((ag) =>
-        CONCLUDED_STATUSES.includes(ag.status)
+        CONCLUDED_STATUSES.includes(ag.status),
       );
 
       // Load REP changes for these agreements from reputation_history.
       const repByAgreement = {};
       try {
         const repRes = await fetch("/api/reputation/history", {
-          headers: { "x-wallet-address": wallet },
+          method: "GET",
+          headers: window.getAuthHeaders(),
         });
         if (repRes.ok) {
           const repData = await repRes.json();
@@ -88,9 +90,10 @@
       const shipper =
         ag.shipper?.display_name || ag.shipper_wallet || "Unknown";
       const cargo = ag.cargo_type || "—";
-      const amount = ag.escrow_amount != null
-        ? parseFloat(ethers.formatEther(String(ag.escrow_amount))).toFixed(2)
-        : "0.00";
+      const amount =
+        ag.escrow_amount != null
+          ? parseFloat(ethers.formatEther(String(ag.escrow_amount))).toFixed(2)
+          : "0.00";
       const status = ag.status || "Unknown";
       const statusBadge =
         status === "Completed"

@@ -2,7 +2,7 @@ const express = require("express");
 
 const router = express.Router();
 
-const { authenticate } = require("../middleware/auth");
+const { authenticate } = require("../middleware/authMiddleware");
 const userController = require("../controllers/userController");
 
 // GET /api/users/me  ->  Get the current logged-in user's profile

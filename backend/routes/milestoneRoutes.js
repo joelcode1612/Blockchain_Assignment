@@ -1,11 +1,11 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const milestoneController = require('../controllers/milestoneController');
-const { authenticate, authorize } = require('../middleware/auth');
-const multer = require('multer');
+const milestoneController = require("../controllers/milestoneController");
+const { authenticate, authorize } = require("../middleware/authMiddleware");
+const multer = require("multer");
 
 // ═══ YON — SECURITY ═══
-const { verifyTransaction } = require('../middleware/verifyTx');
+const { verifyTransaction } = require("../middleware/verifyTx");
 // ═══ YON End ═══
 
 const upload = multer({
@@ -14,8 +14,8 @@ const upload = multer({
     fileSize: 5 * 1024 * 1024,
   },
   fileFilter: (req, file, cb) => {
-    if (!file.mimetype.startsWith('image/')) {
-      return cb(new Error('Only image files are allowed'));
+    if (!file.mimetype.startsWith("image/")) {
+      return cb(new Error("Only image files are allowed"));
     }
 
     cb(null, true);
@@ -24,14 +24,20 @@ const upload = multer({
 
 // POST /api/milestones/verify  (body: { agreementId, milestoneId, txHash })
 // ═══ YON — SECURITY: added verifyTransaction ═══
-router.post('/verify', authenticate, verifyTransaction, authorize('Shipper'), milestoneController.verifyMilestone);
+router.post(
+  "/verify",
+  authenticate,
+  verifyTransaction,
+  authorize("Shipper"),
+  milestoneController.verifyMilestone,
+);
 // ═══ YON End ═══
 router.post(
-  '/upload-proof',
+  "/upload-proof",
   authenticate,
-  authorize('Carrier'),
-  upload.single('proof'),
-  milestoneController.uploadProof
+  authorize("Carrier"),
+  upload.single("proof"),
+  milestoneController.uploadProof,
 );
 
 module.exports = router;

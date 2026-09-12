@@ -16,6 +16,19 @@ let milestones = [
   { name: "Delivered", desc: "Successfully delivered", pct: 30 },
 ];
 
+function authHeaders(extra = {}) {
+  const token =
+    window.Auth?.getToken?.() ||
+    window.Session?.getToken?.() ||
+    localStorage.getItem("traxenToken") ||
+    sessionStorage.getItem("traxenToken");
+
+  const headers = { ...extra };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  return headers;
+}
+
+// ─── Load Carriers from Blockchain ──────────────────────────
 // ─── Load Carriers from Blockchain ──────────────────────────
 async function loadCarriersFromBlockchain() {
   const carrierSelect = document.getElementById("f-carrier");
@@ -23,12 +36,15 @@ async function loadCarriersFromBlockchain() {
   if (!carrierSelect) return;
 
   try {
-    // Check wallet connection (optional, but good for UX)
-    const walletAddress = localStorage.getItem("traxenWallet");
-    if (!walletAddress) {
-      carrierSelect.innerHTML = `<option value="">Please connect your wallet first</option>`;
-      if (carrierStatus)
-        carrierStatus.textContent = "Wallet connection required.";
+    const token =
+      window.Auth?.getToken?.() ||
+      window.Session?.getToken?.() ||
+      localStorage.getItem("traxenToken") ||
+      sessionStorage.getItem("traxenToken");
+
+    if (!token) {
+      carrierSelect.innerHTML = `<option value="">Please sign in first</option>`;
+      if (carrierStatus) carrierStatus.textContent = "Authentication required.";
       return;
     }
 
@@ -36,12 +52,16 @@ async function loadCarriersFromBlockchain() {
     if (carrierStatus)
       carrierStatus.textContent = "Loading carriers from database...";
 
-    // ─── Fetch carriers from the database API ──────────────
-    const response = await fetch("/api/users/carriers");
+    const response = await fetch("/api/users/carriers", {
+      headers: authHeaders(),
+    });
+
+    // ═══ FIX ═══
     if (!response.ok) {
-      throw new Error(`Failed to fetch carriers: ${response.statusText}`);
+      throw new Error(`Failed to fetch carriers: HTTP ${response.status}`);
     }
-    const carriers = await response.json(); // array of { wallet_address, display_name, email, ... }
+    const carriers = await response.json(); // <-- this line was missing
+    // ═══ END FIX ═══
 
     console.log("Carriers from DB:", carriers);
 
@@ -56,9 +76,12 @@ async function loadCarriersFromBlockchain() {
     carrierSelect.innerHTML = `<option value="">-- Select a carrier --</option>`;
     carriers.forEach((carrier) => {
       const option = document.createElement("option");
-      option.value = carrier.wallet_address; // store the wallet address
+      option.value = carrier.wallet_address;
       const display =
-        carrier.display_name || carrier.wallet_address.substring(0, 8) + "...";
+        carrier.display_name ||
+        (carrier.wallet_address
+          ? carrier.wallet_address.substring(0, 8) + "..."
+          : "Unknown carrier");
       const email = carrier.email ? ` (${carrier.email})` : "";
       option.textContent = `${display}${email}`;
       carrierSelect.appendChild(option);
@@ -511,13 +534,15 @@ async function submitCreateAgreement() {
     // 7. GET SHIPPER WALLET
     // =====================================================
 
-    const shipperWallet = localStorage.getItem("traxenWallet");
+    const token =
+      window.Auth?.getToken?.() ||
+      window.Session?.getToken?.() ||
+      localStorage.getItem("traxenToken") ||
+      sessionStorage.getItem("traxenToken");
 
-    if (!shipperWallet) {
-      alert("Please connect your wallet first.");
-
+    if (!token) {
+      alert("Please sign in first.");
       window.location.href = "/";
-
       return;
     }
 
@@ -559,13 +584,7 @@ async function submitCreateAgreement() {
 
     const dbResponse = await fetch("/api/agreements/create", {
       method: "POST",
-
-      headers: {
-        "Content-Type": "application/json",
-
-        "x-wallet-address": shipperWallet,
-      },
-
+      headers: authHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({
         onchainId: blockchainResult.agreementId,
         carrier: carrierAddress,
@@ -600,10 +619,14 @@ async function submitCreateAgreement() {
     // 11. SUCCESS
     // =====================================================
 
-    alert(
-      "Agreement created successfully!\n\n" +
+    showToast("✅ Agreement created!", "success");
+    openSuccess(
+      "Agreement created!",
       "Waiting for the carrier to accept the agreement.",
+      `Agreement #${blockchainResult.agreementId}`,
+      `/shipper/agreement_details_shipper.html?id=${blockchainResult.agreementId}`,
     );
+    return;
 
     // =====================================================
     // 12. REDIRECT
@@ -903,7 +926,7 @@ function validateDeadline() {
     return false;
   }
 
-//  const minDeadline = new Date(Date.now() + 60 * 60 * 1000);
+  //  const minDeadline = new Date(Date.now() + 60 * 60 * 1000);
   const minDeadline = new Date(Date.now() + 1 * 60 * 1000);
 
   if (deadline <= minDeadline) {

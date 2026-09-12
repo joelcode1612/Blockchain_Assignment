@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const agreementController = require("../controllers/agreementController");
-const { authenticate, authorize } = require("../middleware/auth");
+const { authenticate, authorize } = require("../middleware/authMiddleware");
 
 // ═══ YON — SECURITY ═══
 const { verifyTransaction } = require("../middleware/verifyTx");
