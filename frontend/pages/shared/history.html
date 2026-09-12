@@ -8,30 +8,12 @@
   <link rel="stylesheet" href="/css/styles.css">
   <link rel="stylesheet" href="/css/shipper_styles.css">
   <link rel="stylesheet" href="/css/carrier_styles.css">
+  <link rel="stylesheet" href="/css/responsive.css">
 </head>
 
 <body>
   <div class="app">
     <div class="content">
-      <!-- Agreement Selector & Toggle -->
-      <div class="agreement-select history-agreement-select">
-
-        <label class="show-all-option">
-          <input type="checkbox" id="showAllToggle" checked>
-          <span>Show all agreements</span>
-        </label>
-
-        <span class="agreement-divider">|</span>
-
-        <div class="agreement-picker">
-          <label for="agreementSelect">Agreement:</label>
-
-          <select id="agreementSelect" onchange="loadHistory()">
-            <option value="">— Select —</option>
-          </select>
-        </div>
-
-      </div>
 
       <!-- Stats Row -->
       <div class="stat-row" id="statsRow">
@@ -48,33 +30,52 @@
           <div class="val" id="latestPayment">—</div>
         </div>
         <div class="stat-card">
-          <div class="lbl">Agreement</div>
-          <div class="val" id="agreementIdDisplay">—</div>
+          <div class="lbl">Agreements</div>
+          <div class="val" id="agreementIdDisplay">All</div>
         </div>
       </div>
 
       <!-- Transactions Table -->
+      <!-- Transactions Table -->
       <div class="panel">
         <h2>Transactions</h2>
-        <div class="desc" id="historyDesc">All recorded on‑chain events</div>
+        <div class="desc" id="historyDesc">All recorded payments</div>
         <div id="historyContent">
           <div style="color:var(--text-faint);padding:12px 0;">Loading transactions...</div>
         </div>
+        <!-- Pagination controls get injected here automatically -->
+        <div id="historyPagination"></div>
       </div>
 
-      <!-- Log Panel -->
-      <div class="panel" style="background:rgba(0,0,0,0.2);padding:10px 16px;">
-        <div id="output"
-          style="font-family:monospace;font-size:12px;color:var(--text-faint);max-height:100px;overflow-y:auto;white-space:pre-wrap;">
-          Ready...</div>
-      </div>
     </div>
   </div>
-  <!-- Scripts - absolute paths -->
+
+  <!-- Toast container (used by showToast) -->
+  <div id="toast-container"></div>
+
+  <!-- Scripts — absolute paths -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
   <script src="/js/shared/common.js"></script>
   <script src="/js/blockchain/web3_integration.js"></script>
+  <script src="/js/shared/auth.js"></script>
   <script src="/js/shared/history.js"></script>
+
+  <!-- Standalone init (only fires if history.js didn't auto-init) -->
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      if (
+        typeof window.initHistory === "function" &&
+        document.getElementById("historyContent")
+      ) {
+        // If the SPA router isn't managing this page, run init manually.
+        // If it is, this is a no-op because initHistory has already run.
+        if (!window.__historyInitialized) {
+          window.__historyInitialized = true;
+          window.initHistory();
+        }
+      }
+    });
+  </script>
 </body>
 
 </html>

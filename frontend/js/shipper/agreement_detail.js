@@ -608,10 +608,9 @@
   };
 
   // ─── Existing actions ────────────────────────────────────
-  // ═══ YON — FUND ESCROW (agreement detail page) ═══
-  // Funds the escrow with the full agreement amount — no manual input.
-  // Mirrors the deposit flow from the Escrow Overview page.
+  // ─── Fund Escrow (with full sync + cache invalidation) ───
   let fundEscrowInProgress = false;
+
   window.fundEscrow = async function () {
     if (fundEscrowInProgress) return;
 
@@ -644,13 +643,15 @@
       const balance = await provider.getBalance(wallet);
       if (balance < escrowWei) {
         throw new Error(
-          `Insufficient balance. Escrow requires ${amountEth} ETH but the wallet only has ${ethers.formatEther(balance)} ETH.`,
+          `Insufficient balance. Escrow requires ${amountEth} ETH but the wallet only has ${ethers.formatEther(balance)} ETH.`
         );
       }
 
-      if (!confirm(`Fund escrow with the full amount of ${amountEth} ETH?`)) {
-        return;
-      }
+      const ok = await customConfirm.confirm(
+        `Fund escrow with the full amount of <strong>${amountEth} ETH</strong>?`,
+        "Confirm Escrow Deposit"
+      );
+      if (!ok) return;
 
       fundEscrowInProgress = true;
       const fundBtn = document.getElementById("fund-escrow-btn");
@@ -660,13 +661,21 @@
       }
 
       showToast("Funding escrow...", "info");
+
+      // ═════════════════════════════════════════════════════
+      // STEP 1 — Send the on-chain transaction
+      // ═════════════════════════════════════════════════════
       const tx = await window.contract.depositEscrow(
         currentAgreement.onchain_id,
-        { value: escrowWei, from: wallet },
+        { value: escrowWei, from: wallet }
       );
       await tx.wait();
+      console.log("✅ On-chain deposit confirmed:", tx.hash);
 
-      // Record the funding in the backend (escrow_history + status → Active).
+      // ═════════════════════════════════════════════════════
+      // STEP 2 — Sync to backend (escrow_history + agreements.status)
+      // ═════════════════════════════════════════════════════
+      let syncOk = false;
       try {
         const syncResponse = await fetch(
           `/api/escrow/shipper/${currentAgreement.onchain_id}/deposit`,
@@ -680,27 +689,76 @@
               amount: escrowWei.toString(),
               txHash: tx.hash,
             }),
-          },
+          }
         );
-        if (!syncResponse.ok) {
+
+        if (syncResponse.ok) {
+          syncOk = true;
+          const data = await syncResponse.json().catch(() => ({}));
+          console.log("✅ Backend sync OK:", data);
+        } else {
+          const errText = await syncResponse.text().catch(() => "");
           console.warn(
-            "[Yon] Escrow funded on-chain, but DB sync failed:",
+            "⚠️ Escrow funded on-chain, but DB sync returned",
             syncResponse.status,
+            errText
           );
         }
       } catch (syncError) {
-        console.warn("[Yon] Backend sync failed:", syncError);
+        console.warn("⚠️ Backend sync request failed:", syncError);
       }
 
-      showToast(`✅ Escrow funded with ${amountEth} ETH!`, "success");
+      if (syncOk) {
+        showToast(`Escrow funded with ${amountEth} ETH!`, "success");
+      } else {
+        // On-chain succeeded but DB didn't record it — warn the user
+        showToast(
+          `Escrow funded on-chain, but DB sync failed. Please refresh.`,
+          "warning"
+        );
+      }
 
-      // Refresh the page with the new on-chain/DB state.
+      // ═════════════════════════════════════════════════════
+      // STEP 3 — Invalidate caches so all pages see fresh data
+      // ═════════════════════════════════════════════════════
+      try {
+        // Agreement list cache (used by dashboard, deposit page, milestone page)
+        if (typeof window.invalidateAgreementsCache === "function") {
+          window.invalidateAgreementsCache();
+        } else {
+          Object.keys(localStorage)
+            .filter((k) => k.startsWith("agreements_"))
+            .forEach((k) => localStorage.removeItem(k));
+        }
+
+        // History cache (used by the Transaction History page)
+        if (typeof window.invalidateHistoryCache === "function") {
+          window.invalidateHistoryCache();
+        } else {
+          Object.keys(localStorage)
+            .filter((k) => k.startsWith("history_"))
+            .forEach((k) => localStorage.removeItem(k));
+        }
+
+        console.log("🗑️ Caches invalidated after deposit");
+      } catch (cacheErr) {
+        console.warn("Cache invalidation failed (non-critical):", cacheErr);
+      }
+
+      // ═════════════════════════════════════════════════════
+      // STEP 4 — Refresh the current agreement details
+      // ═════════════════════════════════════════════════════
       if (typeof window.initAgreementDetails === "function") {
         await window.initAgreementDetails();
       }
     } catch (error) {
       console.error("Fund escrow error:", error);
-      showToast(error.message || "Failed to fund escrow", "error");
+      const msg = error?.reason || error?.message || "Failed to fund escrow";
+      if (typeof customAlert !== "undefined") {
+        customAlert.alert(msg, "Deposit Failed");
+      } else {
+        showToast(msg, "error");
+      }
     } finally {
       fundEscrowInProgress = false;
       const fundBtn = document.getElementById("fund-escrow-btn");
@@ -710,7 +768,6 @@
       }
     }
   };
-  // ═══ YON End ═══
   window.raiseDispute = function () {
     alert("Dispute functionality will be implemented in the next step.");
   };

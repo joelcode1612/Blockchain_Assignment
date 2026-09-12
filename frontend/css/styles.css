@@ -1640,3 +1640,51 @@ tr:last-child td {
     transform: translateX(0) scale(1);
   }
 }
+
+#dialogoverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 9998;
+}
+
+#dialogbox {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 420px;
+  width: 90%;
+  background: var(--panel, #1e1e2a);
+  border: 1px solid var(--border-soft, #333);
+  border-radius: 12px;
+  z-index: 9999;
+  padding: 20px;
+  color: var(--text, #fff);
+}
+
+#dialogboxhead {
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+
+#dialogboxbody {
+  font-size: 14px;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+#dialogboxfoot {
+  text-align: right;
+}
+
+.slit-in-vertical {
+  animation: slitInV 0.25s ease-out;
+}
+
+@keyframes slitInV {
+  from { transform: translate(-50%, -20px); opacity: 0; }
+  to   { transform: translate(-50%, 0);     opacity: 1; }
+}
