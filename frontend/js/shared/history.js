@@ -1,10 +1,16 @@
-// ─── Transaction History (verified on-chain, invalid rows removed) ──
+// ─── Transaction History (verify + remove non-network rows) ──
 console.log("🚀 history.js loaded");
 
 (function () {
   let allPayments = [];
 
-  // ─── In-memory verification cache (per tx hash) ──────────
+  // ─── Pagination state ────────────────────────────────────
+  const PAGE_SIZE = 10;
+  let currentPage = 1;
+  let totalPages = 1;
+  let totalCount = 0;
+
+  // ─── In-memory verification cache ────────────────────────
   const VERIFICATION_TTL = 5 * 60 * 1000;
   const _verifyCache = new Map();
 
@@ -13,13 +19,13 @@ console.log("🚀 history.js loaded");
   const EXPECTED_CHAIN_NAME = "Sepolia";
 
   // ─── Cache helpers ───────────────────────────────────────
-  function cacheKey(wallet, role) {
-    return `history_${wallet.toLowerCase()}_${role.toLowerCase()}`;
+  function cacheKey(wallet, role, page = 1) {
+    return `history_${wallet.toLowerCase()}_${role.toLowerCase()}_p${page}`;
   }
 
-  function getCachedHistory(wallet, role) {
+  function getCachedHistory(wallet, role, page = 1) {
     try {
-      const raw = localStorage.getItem(cacheKey(wallet, role));
+      const raw = localStorage.getItem(cacheKey(wallet, role, page));
       if (!raw) return null;
       const parsed = JSON.parse(raw);
       if (!Array.isArray(parsed?.payments)) return null;
@@ -29,10 +35,10 @@ console.log("🚀 history.js loaded");
     }
   }
 
-  function setCachedHistory(wallet, role, payments) {
+  function setCachedHistory(wallet, role, payments, page = 1) {
     try {
       localStorage.setItem(
-        cacheKey(wallet, role),
+        cacheKey(wallet, role, page),
         JSON.stringify({ payments, cachedAt: Date.now() })
       );
     } catch (e) {}
@@ -41,7 +47,11 @@ console.log("🚀 history.js loaded");
   function invalidateHistoryCache(wallet, role) {
     try {
       if (wallet && role) {
-        localStorage.removeItem(cacheKey(wallet, role));
+        Object.keys(localStorage)
+          .filter((k) =>
+            k.startsWith(`history_${wallet.toLowerCase()}_${role.toLowerCase()}_`)
+          )
+          .forEach((k) => localStorage.removeItem(k));
       } else {
         Object.keys(localStorage)
           .filter((k) => k.startsWith("history_"))
@@ -81,9 +91,33 @@ console.log("🚀 history.js loaded");
   }
 
   // ═══════════════════════════════════════════════════════════
+  // DEFENSIVE FILTER — only money events
+  // ═══════════════════════════════════════════════════════════
+  const ALLOWED_TYPES = ["deposit", "release", "payment", "refund"];
+
+  function isMoneyEvent(p) {
+    if (!p) return false;
+    const t = (p.type || "").toLowerCase();
+    const allowed = ALLOWED_TYPES.some((k) => t.includes(k));
+    if (!allowed) return false;
+    if (t.includes("milestone") && !t.includes("release")) return false;
+    return true;
+  }
+
+  function sanitizePayments(payments) {
+    if (!Array.isArray(payments)) return [];
+    const filtered = payments.filter(isMoneyEvent);
+    if (filtered.length !== payments.length) {
+      console.log(
+        `🧹 Filtered out ${payments.length - filtered.length} non-money row(s)`
+      );
+    }
+    return filtered;
+  }
+
+  // ═══════════════════════════════════════════════════════════
   // ON-CHAIN VERIFICATION
   // ═══════════════════════════════════════════════════════════
-
   function getContractAddress() {
     return window.__CONFIG?.contractAddress || window.contract?.target || null;
   }
@@ -106,7 +140,6 @@ console.log("🚀 history.js loaded");
     ]);
   }
 
-  // ─── Network check (cached per page load) ────────────────
   let _networkCheckResult = null;
   async function checkNetwork(provider) {
     if (_networkCheckResult) return _networkCheckResult;
@@ -132,7 +165,6 @@ console.log("🚀 history.js loaded");
     }
   }
 
-  // Verify a tx exists on the CURRENT contract
   async function verifyTxOnChain(txHash) {
     if (!txHash || txHash === "—") {
       return { ok: false, reason: "no hash", transient: true };
@@ -144,42 +176,37 @@ console.log("🚀 history.js loaded");
     }
 
     const provider = getReadProvider();
-    if (!provider) {
-      return { ok: false, reason: "no provider", transient: true };
-    }
+    if (!provider) return { ok: false, reason: "no provider", transient: true };
 
-    // Network guard — never verify on wrong chain
     const netCheck = await checkNetwork(provider);
-    if (!netCheck.ok) {
+    if (!netCheck.ok)
       return { ok: false, reason: netCheck.reason, transient: true };
-    }
 
     const expectedContract = getContractAddress();
-    if (!expectedContract) {
+    if (!expectedContract)
       return { ok: false, reason: "no contract address", transient: true };
-    }
 
     try {
       const tx = await withTimeout(provider.getTransaction(txHash), 4000);
       if (!tx) {
-        // Not found → could be wrong hash or fresh tx. Treat as permanent
-        // because we reached the RPC successfully.
+        // Tx doesn't exist on the chain → NOT this network
         const result = {
           ok: false,
           reason: "tx not found",
           time: Date.now(),
-          transient: false,
+          transient: false,      // ← permanent → remove
         };
         _verifyCache.set(txHash, result);
         return result;
       }
 
       if (tx.to?.toLowerCase() !== expectedContract.toLowerCase()) {
+        // Tx went to a different contract → NOT this contract
         const result = {
           ok: false,
           reason: "wrong contract",
           time: Date.now(),
-          transient: false,
+          transient: false,      // ← permanent → remove
         };
         _verifyCache.set(txHash, result);
         return result;
@@ -190,23 +217,24 @@ console.log("🚀 history.js loaded");
         4000
       );
       if (!receipt) {
-        // Pending tx — don't hide the row, retry later
+        // Pending — keep, retry later
         const result = {
           ok: false,
           reason: "pending",
           time: Date.now(),
-          transient: true,
+          transient: true,       // ← transient → keep
         };
         _verifyCache.set(txHash, result);
         return result;
       }
 
       if (receipt.status !== 1) {
+        // Tx reverted → failed on chain → remove
         const result = {
           ok: false,
           reason: "tx reverted",
           time: Date.now(),
-          transient: false,
+          transient: false,      // ← permanent → remove
         };
         _verifyCache.set(txHash, result);
         return result;
@@ -226,14 +254,13 @@ console.log("🚀 history.js loaded");
         ok: false,
         reason: e.message,
         time: Date.now(),
-        transient: isTimeout,
+        transient: isTimeout,    // ← timeout → keep, other → remove
       };
       _verifyCache.set(txHash, result);
       return result;
     }
   }
 
-  // Concurrency pool (3 RPC calls at a time)
   async function withConcurrency(items, limit, worker) {
     const queue = [...items];
     const workers = Array.from({ length: limit }, async () => {
@@ -247,7 +274,6 @@ console.log("🚀 history.js loaded");
     await Promise.all(workers);
   }
 
-  // Update a row's badge in the DOM
   function setRowBadge(txHash, state) {
     const badge = document.querySelector(`[data-verify-tx="${txHash}"]`);
     if (!badge) return;
@@ -274,14 +300,15 @@ console.log("🚀 history.js loaded");
     }
   }
 
-  // Remove a row after permanent verification failure
+  // ─── Remove a row after a permanent verification failure ─
   function removeRow(txHash, reason) {
     const row = document.querySelector(`[data-verify-row="${txHash}"]`);
     if (!row) return;
-    row.style.transition = "opacity 0.25s";
+    row.style.transition = "opacity 0.3s, transform 0.3s";
     row.style.opacity = "0";
-    setTimeout(() => row.remove(), 250);
-    console.log(`🗑️ Row removed (${reason}): ${txHash.slice(0, 10)}…`);
+    row.style.transform = "translateX(-8px)";
+    setTimeout(() => row.remove(), 300);
+    console.log(`🗑️ Removed (${reason}): ${txHash.slice(0, 10)}…`);
   }
 
   // Notice for hidden rows
@@ -297,30 +324,15 @@ console.log("🚀 history.js loaded");
       const container = document.getElementById("historyContent");
       if (container) container.parentNode.appendChild(notice);
     }
-    notice.textContent = `ℹ️ ${hiddenCount} transaction(s) hidden — not found on the current ${EXPECTED_CHAIN_NAME} contract.`;
+    notice.textContent = `ℹ️ ${hiddenCount} transaction(s) removed — not part of the current ${EXPECTED_CHAIN_NAME} contract.`;
   }
 
-  // Big banner when every row is invalid
-  function showAllInvalidBanner(hiddenCount) {
-    const container = document.getElementById("historyContent");
-    if (!container) return;
-    container.innerHTML = `
-      <div style="text-align:center;padding:40px 20px;color:var(--text-faint);">
-        <div style="font-size:36px;margin-bottom:12px;">📭</div>
-        <div style="font-size:15px;margin-bottom:6px;color:var(--text);">
-          No transactions on the current contract
-        </div>
-        <div style="font-size:12px;">
-          ${hiddenCount} row(s) belong to a previous contract deployment.
-        </div>
-        <div style="font-size:12px;margin-top:8px;">
-          Contract: <span class="mono">${(getContractAddress() || "").slice(0, 10)}…</span>
-        </div>
-      </div>
-    `;
+  function clearHiddenNotice() {
+    const n = document.getElementById("history-hidden-notice");
+    if (n) n.remove();
   }
 
-  // Verify all rows in background; remove only permanent failures
+  // Verify + remove rows that don't belong to this network
   async function verifyAndFilterRows(payments) {
     if (!window.ethereum) {
       console.log("ℹ️ No wallet — skipping verification");
@@ -344,51 +356,50 @@ console.log("🚀 history.js loaded");
       }
 
       if (result.transient) {
+        // RPC slow, pending, wrong network in MetaMask → keep the row
         setRowBadge(p.txHash, result);
         console.log(
-          `⚠️ Transient verify failure for ${p.txHash.slice(0, 10)}… — keeping row`
+          `⚠️ Transient: ${p.txHash.slice(0, 10)}… — keeping row`
         );
         return;
       }
 
-      // Permanent failure → remove
+      // Permanent failure → remove the row
       setRowBadge(p.txHash, result);
-      setTimeout(() => removeRow(p.txHash, result.reason), 400);
+      setTimeout(() => removeRow(p.txHash, result.reason), 500);
       hiddenCount++;
     });
 
+    // Recompute stats with only valid rows
     const valid = payments.filter((p) => {
+      if (p.txHash === "—") return true; // no hash → still valid (shouldn't happen with our filters)
       const v = _verifyCache.get(p.txHash);
       return v?.ok === true;
     });
 
-    if (valid.length === 0 && hiddenCount > 0) {
-      showAllInvalidBanner(hiddenCount);
-      updateStats([]);
-      return;
-    }
-
     updateStats(valid);
     showHiddenNotice();
     console.log(
-      `✅ Verification complete — ${valid.length} valid, ${hiddenCount} hidden`
+      `✅ Verification complete — ${valid.length} valid, ${hiddenCount} removed`
     );
   }
 
   // ═══════════════════════════════════════════════════════════
   // FETCH
   // ═══════════════════════════════════════════════════════════
-  async function fetchHistoryFromNetwork(wallet, role) {
-    const roleParam = role ? `?role=${role.toLowerCase()}` : "";
+  async function fetchHistoryFromNetwork(wallet, role, page = 1) {
+    const params = new URLSearchParams();
+    if (role) params.set("role", role.toLowerCase());
+    params.set("page", page);
+    params.set("limit", PAGE_SIZE);
+
+    const url = `/api/history?${params.toString()}`;
     const headers =
       typeof window.getAuthHeaders === "function"
         ? window.getAuthHeaders()
-        : {
-            "Content-Type": "application/json",
-            "x-wallet-address": wallet,
-          };
+        : { "Content-Type": "application/json", "x-wallet-address": wallet };
 
-    let res = await fetch(`/api/history${roleParam}`, { headers });
+    let res = await fetch(url, { headers });
 
     if (res.status === 401) {
       console.warn("⚠️ 401 on history fetch — retrying after 400ms");
@@ -397,18 +408,31 @@ console.log("🚀 history.js loaded");
         typeof window.getAuthHeaders === "function"
           ? window.getAuthHeaders()
           : headers;
-      res = await fetch(`/api/history${roleParam}`, { headers: retryHeaders });
+      res = await fetch(url, { headers: retryHeaders });
     }
 
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    return data.payments || [];
+
+    const cleaned = sanitizePayments(data.payments || []);
+
+    return {
+      payments: cleaned,
+      pagination: data.pagination || {
+        page: 1,
+        limit: PAGE_SIZE,
+        total: cleaned.length,
+        totalPages: 1,
+        hasPrev: false,
+        hasNext: false,
+      },
+    };
   }
 
   // ═══════════════════════════════════════════════════════════
   // LOAD
   // ═══════════════════════════════════════════════════════════
-  async function loadHistory() {
+  async function loadHistory(page = currentPage) {
     const container = document.getElementById("historyContent");
     const desc = document.getElementById("historyDesc");
 
@@ -428,48 +452,52 @@ console.log("🚀 history.js loaded");
           '<div style="color:var(--text-faint);padding:12px 0;">Please connect your wallet.</div>';
       }
       clearStats();
+      clearPagination();
+      clearHiddenNotice();
       return;
     }
 
+    currentPage = page;
     _networkCheckResult = null;
     _verifyCache.clear();
+    clearHiddenNotice();
 
-    const oldNotice = document.getElementById("history-hidden-notice");
-    if (oldNotice) oldNotice.remove();
-
-    const cached = getCachedHistory(wallet, role);
+    const cached = getCachedHistory(wallet, role, currentPage);
     if (cached) {
-      console.log(`⚡ History: cache hit (${cached.length} rows)`);
-      allPayments = cached;
-      renderHistory(cached);
-      updateStats(cached);
-      verifyAndFilterRows(cached);
-
-      fetchHistoryFromNetwork(wallet, role)
-        .then((fresh) => {
-          setCachedHistory(wallet, role, fresh);
-          if (fresh.length !== cached.length) {
-            console.log("🔄 History: data changed, re-rendering");
-            allPayments = fresh;
-            renderHistory(fresh);
-            updateStats(fresh);
-            verifyAndFilterRows(fresh);
-          }
-        })
-        .catch((err) =>
-          console.warn("Background history refresh failed:", err.message)
+      const sanitized = sanitizePayments(cached);
+      if (sanitized.length !== cached.length) {
+        console.log("🧹 Stale cache detected — refetching from network");
+        localStorage.removeItem(cacheKey(wallet, role, currentPage));
+      } else {
+        console.log(
+          `⚡ History: cache hit (page ${currentPage}, ${sanitized.length} rows)`
         );
-
-      return;
+        allPayments = sanitized;
+        renderHistory(sanitized);
+        renderPagination();
+        updateStats(sanitized);
+        verifyAndFilterRows(sanitized);
+        return;
+      }
     }
 
     try {
-      const payments = await fetchHistoryFromNetwork(wallet, role);
+      const { payments, pagination } = await fetchHistoryFromNetwork(
+        wallet,
+        role,
+        currentPage
+      );
+
       allPayments = payments;
-      setCachedHistory(wallet, role, payments);
+      totalPages = pagination.totalPages || 1;
+      totalCount = pagination.total || payments.length;
+      currentPage = pagination.page || 1;
+
+      setCachedHistory(wallet, role, payments, currentPage);
       renderHistory(payments);
+      renderPagination();
       updateStats(payments);
-      log(`✅ Loaded ${payments.length} payment(s) for ${role}`);
+      log(`✅ Loaded page ${currentPage}/${totalPages} (${payments.length} rows)`);
 
       verifyAndFilterRows(payments);
     } catch (e) {
@@ -478,6 +506,7 @@ console.log("🚀 history.js loaded");
         container.innerHTML = `<div style="color:var(--text-faint);padding:12px 0;">❌ ${e.message}</div>`;
       }
       clearStats();
+      clearPagination();
     }
   }
 
@@ -567,6 +596,90 @@ console.log("🚀 history.js loaded");
   }
 
   // ═══════════════════════════════════════════════════════════
+  // PAGINATION
+  // ═══════════════════════════════════════════════════════════
+  function renderPagination() {
+    let container = document.getElementById("historyPagination");
+    if (!container) {
+      const table = document.getElementById("historyContent");
+      if (!table) return;
+      container = document.createElement("div");
+      container.id = "historyPagination";
+      container.style.cssText =
+        "display:flex;align-items:center;justify-content:center;gap:6px;" +
+        "padding:14px 0;color:var(--text-faint);font-size:13px;flex-wrap:wrap;";
+      table.parentNode.appendChild(container);
+    }
+
+    if (totalPages <= 1) {
+      container.innerHTML =
+        totalCount > 0
+          ? `<span style="font-size:12px;">${totalCount} transaction(s)</span>`
+          : "";
+      return;
+    }
+
+    const btnStyle =
+      "background:var(--panel-2,#1e1e2a);border:1px solid var(--border-soft,#333);" +
+      "color:var(--text,#fff);padding:6px 12px;border-radius:6px;cursor:pointer;" +
+      "font-size:13px;";
+    const disabledStyle = btnStyle + "opacity:0.4;cursor:not-allowed;";
+    const activeStyle =
+      btnStyle + "background:var(--lime,#22c55e);color:#000;font-weight:600;";
+
+    const pageNumbers = [];
+    const maxVisible = 5;
+    let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+    let end = Math.min(totalPages, start + maxVisible - 1);
+    if (end - start + 1 < maxVisible)
+      start = Math.max(1, end - maxVisible + 1);
+    for (let i = start; i <= end; i++) pageNumbers.push(i);
+
+    let html = "";
+
+    html += `<button onclick="window.goToHistoryPage(${currentPage - 1})"
+      ${currentPage <= 1 ? "disabled" : ""}
+      style="${currentPage > 1 ? btnStyle : disabledStyle}">← Prev</button>`;
+
+    if (start > 1) {
+      html += `<button onclick="window.goToHistoryPage(1)" style="${btnStyle}">1</button>`;
+      if (start > 2) html += `<span style="padding:0 4px;">…</span>`;
+    }
+
+    pageNumbers.forEach((p) => {
+      html += `<button onclick="window.goToHistoryPage(${p})"
+        style="${p === currentPage ? activeStyle : btnStyle}">${p}</button>`;
+    });
+
+    if (end < totalPages) {
+      if (end < totalPages - 1)
+        html += `<span style="padding:0 4px;">…</span>`;
+      html += `<button onclick="window.goToHistoryPage(${totalPages})" style="${btnStyle}">${totalPages}</button>`;
+    }
+
+    html += `<button onclick="window.goToHistoryPage(${currentPage + 1})"
+      ${currentPage >= totalPages ? "disabled" : ""}
+      style="${currentPage < totalPages ? btnStyle : disabledStyle}">Next →</button>`;
+
+    html += `<span style="margin-left:12px;font-size:12px;">Page ${currentPage} of ${totalPages} · ${totalCount} total</span>`;
+
+    container.innerHTML = html;
+  }
+
+  function clearPagination() {
+    const el = document.getElementById("historyPagination");
+    if (el) el.innerHTML = "";
+  }
+
+  window.goToHistoryPage = function (page) {
+    if (page < 1 || page > totalPages || page === currentPage) return;
+    currentPage = page;
+    const table = document.getElementById("historyContent");
+    if (table) table.scrollIntoView({ behavior: "smooth", block: "start" });
+    loadHistory(page);
+  };
+
+  // ═══════════════════════════════════════════════════════════
   // STATS
   // ═══════════════════════════════════════════════════════════
   function updateStats(payments) {
@@ -608,7 +721,7 @@ console.log("🚀 history.js loaded");
   }
 
   // ═══════════════════════════════════════════════════════════
-  // INIT — with wait-for-ready retry
+  // INIT
   // ═══════════════════════════════════════════════════════════
   async function initHistory(attempt = 1) {
     if (!document.getElementById("historyContent")) return;
@@ -632,10 +745,12 @@ console.log("🚀 history.js loaded");
           '<div style="color:var(--text-faint);padding:12px 0;">Please connect your wallet to view history.</div>';
       }
       clearStats();
+      clearPagination();
       return;
     }
 
-    await loadHistory();
+    currentPage = 1;
+    await loadHistory(1);
   }
 
   // ─── Listeners ──────────────────────────────────────────
@@ -647,14 +762,13 @@ console.log("🚀 history.js loaded");
     invalidateHistoryCache();
   });
 
-  // Re-verify on chain change
   if (window.ethereum?.on) {
     window.ethereum.on("chainChanged", function () {
       console.log("⛓️ Chain changed — re-verifying history");
       _networkCheckResult = null;
       _verifyCache.clear();
       if (document.getElementById("historyContent")) {
-        loadHistory();
+        loadHistory(currentPage);
       }
     });
   }
@@ -666,7 +780,6 @@ console.log("🚀 history.js loaded");
   window.invalidateHistoryCache = invalidateHistoryCache;
   window.verifyTxOnChain = verifyTxOnChain;
 
-  // ─── Auto-init ──────────────────────────────────────────
   if (
     document.readyState === "complete" ||
     document.readyState === "interactive"
