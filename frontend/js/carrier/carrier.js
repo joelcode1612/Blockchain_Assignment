@@ -584,6 +584,12 @@
         : "carrier_dashboard";
 
       await loadPage(initialPage);
+
+      // Restored: an earlier commit (eabd4c4) dropped these two exports, which
+      // made every carrier navigation button fail — including the Accept
+      // button on My Deliveries ("window.loadPage is not a function").
+      window.loadPage = loadPage;
+      window.carrierNavigate = loadPage;
     })();
   });
 })();

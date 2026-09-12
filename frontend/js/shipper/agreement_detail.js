@@ -355,8 +355,8 @@
         verifiedMilestone.status = "Verified";
       }
 
-      // Re-render only the milestone section.
-      // This will immediately show the "Release Payment" button.
+      // Re-render only the milestone section, so the transient
+      // "⏳ Releasing payment…" state is visible during the next step.
       renderMilestones(
         currentAgreement.milestones || [],
         currentAgreement.escrow_amount
@@ -366,13 +366,96 @@
           : "0.00"
       );
 
-      showToast(
-        "Milestone verified. You can now release the payment.",
-        "success"
-      );
+      // ─── Step 2/2: AUTO-RELEASE ───────────────────────────
+      // This button is labelled "Verify & Release Payment", so the release
+      // has to happen here. The verify-only version left the UI showing
+      // "⏳ Releasing payment…" forever and the funds were never released.
+      if (typeof window.releasePayment !== "function") {
+        throw new Error("releasePayment function not available");
+      }
 
+      showToast("Step 2/2: Releasing payment…", "info");
+
+      try {
+        const releaseResult = await window.releasePayment(
+          currentAgreement.onchain_id,
+          milestoneIndex,
+        );
+        console.log("✅ Release result:", releaseResult);
+
+        const txHash =
+          releaseResult?.hash || releaseResult?.transactionHash || null;
+
+        // ═══ YON — HISTORY/REPUTATION SYNC ═══
+        // Records payment_history, marks the milestone Paid, completes the
+        // agreement when this was the last milestone, and awards the REP
+        // reward — all handled by the backend.
+        if (txHash) {
+          try {
+            const payRes = await fetch("/api/payment/release", {
+              method: "POST",
+              headers: window.getAuthHeaders(),
+              body: JSON.stringify({
+                agreementId: currentAgreement.onchain_id,
+                milestoneId: milestoneIndex,
+                txHash: txHash,
+              }),
+            });
+            if (!payRes.ok) {
+              const errBody = await payRes.json().catch(() => ({}));
+              console.warn(
+                "⚠️ payment_history sync failed:",
+                errBody.error || payRes.status,
+              );
+            } else {
+              console.log("✅ payment_history recorded");
+            }
+          } catch (syncErr) {
+            console.warn("payment_history POST failed (non-critical):", syncErr);
+          }
+        }
+        // ═══ YON End ═══
+
+        // Refresh the agreement so the UI reflects the released state.
+        const releaseSync = await fetch(
+          `/api/agreements/${currentAgreement.onchain_id}`,
+          { headers: window.getAuthHeaders() },
+        );
+        if (!releaseSync.ok) {
+          const err = await releaseSync.json().catch(() => ({}));
+          throw new Error(err.error || "Release sync failed");
+        }
+        currentAgreement = await releaseSync.json();
+
+        showToast("✅ Milestone verified & payment released!", "success");
+      } catch (releaseError) {
+        // An already-paid milestone is not a failure.
+        const msg = (
+          releaseError.reason ||
+          releaseError.message ||
+          ""
+        ).toLowerCase();
+
+        if (msg.includes("already paid") || msg.includes("already released")) {
+          showToast(
+            "⚠️ Milestone was already paid (auto-release skipped).",
+            "warning",
+          );
+        } else {
+          console.error("Release failed:", releaseError);
+          showToast(
+            "⚠️ Verified, but release failed: " +
+              (releaseError.reason || releaseError.message),
+            "warning",
+          );
+        }
+      }
+
+      // Single guaranteed reload point — runs after success OR failure so the
+      // milestone list never stays stuck on "⏳ Releasing payment…".
+      await window.initAgreementDetails();
     } catch (error) {
-      console.error("Verify milestone error:", error);
+      console.error("Verify & release error:", error);
       showToast(error.message || "Failed to verify milestone", "error");
     } finally {
       milestoneActionInProgress = false;
@@ -552,9 +635,107 @@
   };
 
   // ─── Existing actions ────────────────────────────────────
-  window.fundEscrow = function () {
-    alert("Fund escrow functionality will be implemented in the next step.");
+  // ═══ YON — FUND ESCROW (agreement detail page) ═══
+  // Funds the escrow with the full agreement amount — no manual input.
+  // Mirrors the deposit flow from the Escrow Overview page.
+  let fundEscrowInProgress = false;
+  window.fundEscrow = async function () {
+    if (fundEscrowInProgress) return;
+
+    try {
+      if (!currentAgreement?.onchain_id) {
+        throw new Error("No agreement loaded.");
+      }
+      if (currentAgreement.status !== "AwaitingFunding") {
+        throw new Error("Escrow can only be funded while awaiting funding.");
+      }
+      if (!window.contract) {
+        throw new Error("Contract not available. Please connect your wallet.");
+      }
+
+      const sessionOk = await window.Auth?.ensureFullSession?.();
+      if (!sessionOk) return;
+
+      // Use the total escrow value automatically.
+      const escrowWei = BigInt(String(currentAgreement.escrow_amount));
+      const amountEth = ethers.formatEther(escrowWei);
+
+      const wallet =
+        window.userWalletAddress || localStorage.getItem("traxenWallet");
+      if (!wallet) {
+        throw new Error("Wallet not connected.");
+      }
+
+      // Make sure the wallet has enough funds before sending the tx.
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const balance = await provider.getBalance(wallet);
+      if (balance < escrowWei) {
+        throw new Error(
+          `Insufficient balance. Escrow requires ${amountEth} ETH but the wallet only has ${ethers.formatEther(balance)} ETH.`,
+        );
+      }
+
+      if (!confirm(`Fund escrow with the full amount of ${amountEth} ETH?`)) {
+        return;
+      }
+
+      fundEscrowInProgress = true;
+      const fundBtn = document.getElementById("fund-escrow-btn");
+      if (fundBtn) {
+        fundBtn.disabled = true;
+        fundBtn.textContent = "Funding...";
+      }
+
+      showToast("Funding escrow...", "info");
+      const tx = await window.contract.depositEscrow(
+        currentAgreement.onchain_id,
+        { value: escrowWei, from: wallet },
+      );
+      await tx.wait();
+
+      // Record the funding in the backend (escrow_history + status → Active).
+      try {
+        const syncResponse = await fetch(
+          `/api/escrow/shipper/${currentAgreement.onchain_id}/deposit`,
+          {
+            method: "POST",
+            // Backend requires JWT auth (x-wallet-address is rejected).
+            headers: window.getAuthHeaders(),
+            body: JSON.stringify({
+              amount: escrowWei.toString(),
+              txHash: tx.hash,
+            }),
+          },
+        );
+        if (!syncResponse.ok) {
+          console.warn(
+            "[Yon] Escrow funded on-chain, but DB sync failed:",
+            syncResponse.status,
+          );
+        }
+      } catch (syncError) {
+        console.warn("[Yon] Backend sync failed:", syncError);
+      }
+
+      showToast(`✅ Escrow funded with ${amountEth} ETH!`, "success");
+
+      // Refresh the page with the new on-chain/DB state.
+      if (typeof window.initAgreementDetails === "function") {
+        await window.initAgreementDetails();
+      }
+    } catch (error) {
+      console.error("Fund escrow error:", error);
+      showToast(error.message || "Failed to fund escrow", "error");
+    } finally {
+      fundEscrowInProgress = false;
+      const fundBtn = document.getElementById("fund-escrow-btn");
+      if (fundBtn && currentAgreement?.status !== "Active") {
+        fundBtn.disabled = false;
+        fundBtn.textContent = "Fund Escrow";
+      }
+    }
   };
+  // ═══ YON End ═══
   window.raiseDispute = function () {
     alert("Dispute functionality will be implemented in the next step.");
   };

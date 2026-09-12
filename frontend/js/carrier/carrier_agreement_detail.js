@@ -81,8 +81,14 @@
   };
 
   function populateUI(agreement) {
-    document.getElementById("agreement-id").textContent =
-      agreement.onchain_id || "—";
+    // NOTE: the title is rebuilt with innerHTML further down, which removes the
+    // #agreement-id span from the DOM. On the second render (after accepting a
+    // job or submitting a proof photo) the unguarded access threw
+    // "Cannot set properties of null (setting 'textContent')".
+    const agreementIdEl = document.getElementById("agreement-id");
+    if (agreementIdEl) {
+      agreementIdEl.textContent = agreement.onchain_id || "—";
+    }
     const statusBadge = document.getElementById("agreement-status-badge");
     if (statusBadge) {
       const status = agreement.status || "PendingAcceptance";
