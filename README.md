@@ -756,6 +756,50 @@ Fix → remove `--config` flag:
 npx truffle migrate --reset --network sepolia
 ```
 
+## 🌿 Project Branch
+
+This project uses **`main`** as its primary and active branch.
+
+All latest project code, configuration, documentation, and updates should be maintained on:
+
+```text
+main
+```
+
+### Switch to `main`
+
+```bash
+git switch main
+```
+
+### Pull latest version
+
+```bash
+git pull origin main
+```
+
+### Verify current branch
+
+```bash
+git branch --show-current
+```
+
+Expected:
+
+```text
+main
+```
+
+### Clone latest project
+
+```bash
+git clone <your-repo-url>
+cd Blockchain_Assignment
+git switch main
+```
+
+> **Important:** Do not use branch `tttt` for current project development. `main` is current project branch.
+
 ## 📄 License
 
 MIT — see `LICENSE` file.
