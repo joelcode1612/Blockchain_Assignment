@@ -758,24 +758,24 @@ npx truffle migrate --reset --network sepolia
 
 ## 🌿 Project Branch
 
-This project uses **`main`** as its primary and active branch.
+This project uses **`tttt`** as primary and active branch.
 
-All latest project code, configuration, documentation, and updates should be maintained on:
+All latest project code, config, documentation, and updates should be maintained on:
 
 ```text
-main
+tttt
 ```
 
-### Switch to `main`
+### Switch to `tttt`
 
 ```bash
-git switch main
+git switch tttt
 ```
 
 ### Pull latest version
 
 ```bash
-git pull origin main
+git pull origin tttt
 ```
 
 ### Verify current branch
@@ -787,7 +787,7 @@ git branch --show-current
 Expected:
 
 ```text
-main
+tttt
 ```
 
 ### Clone latest project
@@ -795,10 +795,11 @@ main
 ```bash
 git clone <your-repo-url>
 cd Blockchain_Assignment
-git switch main
+git switch tttt
 ```
 
-> **Important:** Do not use branch `tttt` for current project development. `main` is current project branch.
+> **Important:** Use branch `tttt` for current project development and updates.
+
 
 ## 📄 License
 
